@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions
 {
     using System.Reflection;
 
@@ -20,7 +20,7 @@
         // Nest
         //--------------------------------------------------------------------------------
 
-        IAllMemberExpression Nested();
+        // TODO IAllMemberExpression Nested();
 
         //--------------------------------------------------------------------------------
         // Order
@@ -32,6 +32,6 @@
         // Null
         //--------------------------------------------------------------------------------
 
-        IAllMemberExpression NullIgnore();
+        // TODO IAllMemberExpression NullIgnore();
     }
 }

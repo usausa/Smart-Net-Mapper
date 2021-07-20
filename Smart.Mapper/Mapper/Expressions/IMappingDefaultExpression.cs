@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions
 {
     using System;
 
@@ -10,27 +10,28 @@
         // Convert
         //--------------------------------------------------------------------------------
 
-        IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
+        // TODO
+        //IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
 
-        IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> converter);
+        //IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> converter);
 
-        IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
+        //IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
 
-        IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
+        //IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+        //    where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
 
         //--------------------------------------------------------------------------------
         // Constant
         //--------------------------------------------------------------------------------
 
-        IMappingDefaultExpression Const<TMember>(TMember value);
+        // TODO IMappingDefaultExpression Const<TMember>(TMember value);
 
         //--------------------------------------------------------------------------------
         // Null
         //--------------------------------------------------------------------------------
 
-        IMappingDefaultExpression NullIf<TMember>(TMember value);
+        // TODO IMappingDefaultExpression NullIf<TMember>(TMember value);
 
-        IMappingDefaultExpression NullIgnore(Type type);
+        // TODO IMappingDefaultExpression NullIgnore(Type type);
     }
 }

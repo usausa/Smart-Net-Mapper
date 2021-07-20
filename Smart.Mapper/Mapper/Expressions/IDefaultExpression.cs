@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions
 {
     using System;
 
@@ -10,35 +10,37 @@
         // Factory
         //--------------------------------------------------------------------------------
 
-        IDefaultExpression FactoryUsingServiceProvider();
+        // TODO
+        //IDefaultExpression FactoryUsingServiceProvider();
 
-        IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
+        //IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
 
         //--------------------------------------------------------------------------------
         // Convert
         //--------------------------------------------------------------------------------
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
+        // TODO
+        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> converter);
+        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> converter);
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
+        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
+        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+        //    where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
 
         //--------------------------------------------------------------------------------
         // Constant
         //--------------------------------------------------------------------------------
 
-        IDefaultExpression Const<TMember>(TMember value);
+        // TODO IDefaultExpression Const<TMember>(TMember value);
 
         //--------------------------------------------------------------------------------
         // Null
         //--------------------------------------------------------------------------------
 
-        IDefaultExpression NullIf<TMember>(TMember value);
+        // TODO IDefaultExpression NullIf<TMember>(TMember value);
 
-        IDefaultExpression NullIgnore(Type type);
+        // TODO IDefaultExpression NullIgnore(Type type);
     }
 }

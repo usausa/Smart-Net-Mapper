@@ -1,7 +1,6 @@
 namespace Smart.Mapper.Mappers
 {
     using System;
-    using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
 
@@ -10,8 +9,6 @@ namespace Smart.Mapper.Mappers
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
     internal class EmitMapperFactory : IMapperFactory
     {
-        private readonly IFactoryResolver factoryResolver;
-
         private readonly IConverterResolver converterResolver;
 
         private readonly IServiceProvider serviceProvider;
@@ -40,11 +37,9 @@ namespace Smart.Mapper.Mappers
         }
 
         public EmitMapperFactory(
-            IFactoryResolver factoryResolver,
             IConverterResolver converterResolver,
             IServiceProvider serviceProvider)
         {
-            this.factoryResolver = factoryResolver;
             this.converterResolver = converterResolver;
             this.serviceProvider = serviceProvider;
         }
@@ -55,6 +50,8 @@ namespace Smart.Mapper.Mappers
         {
             // Mapper
             var mapper = CreateMapperInfo(context);
+
+            // TODO immutable work ?
 
             // Holder
             var holder = CreateHolder(context);
@@ -73,7 +70,7 @@ namespace Smart.Mapper.Mappers
 
         private static object CreateMapperInfo(MapperCreateContext context)
         {
-            var type = typeof(MapperInfo<,>).MakeGenericType(context.MappingOption.SourceType, context.MappingOption.DestinationType);
+            var type = typeof(MapperInfo<,>).MakeGenericType(context.SourceType, context.DestinationType);
             return Activator.CreateInstance(type)!;
         }
 
@@ -81,7 +78,7 @@ namespace Smart.Mapper.Mappers
         // Holder
         //--------------------------------------------------------------------------------
 
-        private object CreateHolder(MapperCreateContext context)
+        private HolderInfo CreateHolder(MapperCreateContext context)
         {
             var typeBuilder = ModuleBuilder.DefineType(
                 $"Holder_{typeNo}",
@@ -96,168 +93,138 @@ namespace Smart.Mapper.Mappers
 
             // TODO Set field
 
-            return holder;
+            return new HolderInfo(holder);
         }
 
         //--------------------------------------------------------------------------------
         // Method
         //--------------------------------------------------------------------------------
 
-        private static Delegate CreateMapAction(MapperCreateContext context, object holder)
+        private static Delegate CreateMapAction(MapperCreateContext context, HolderInfo holderInfo)
         {
             // Func
             var dynamicMethod = new DynamicMethod(
                 "MapAction",
                 typeof(void),
-                new[] { holder.GetType(), context.MappingOption.SourceType, context.MappingOption.DestinationType },
+                new[] { holderInfo.Holder.GetType(), context.SourceType, context.DestinationType },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            // TODO
             // Property
-            foreach (var memberOption in context.MappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
-            {
-                var sourceProperty = context.MappingOption.SourceType.GetProperty(memberOption.Property.Name, BindingFlags.Instance | BindingFlags.Public);
-                if ((sourceProperty is not null) && sourceProperty.CanRead)
-                {
-                    if (memberOption.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
-                    {
-                        ilGenerator.Emit(OpCodes.Ldarg_2);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
-                        ilGenerator.Emit(OpCodes.Callvirt, memberOption.Property.SetMethod!);
-                    }
-                }
-            }
+            EmitMemberMapping(context, ilGenerator, new WorkTable { IsFunction = false });
 
             // Return
             ilGenerator.Emit(OpCodes.Ret);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,>).MakeGenericType(
-                    context.MappingOption.SourceType,
-                    context.MappingOption.DestinationType),
-                holder);
+                    context.SourceType,
+                    context.DestinationType),
+                holderInfo.Holder);
         }
 
-        private static Delegate CreateParameterMapAction(MapperCreateContext context, object holder)
+        private static Delegate CreateParameterMapAction(MapperCreateContext context, HolderInfo holderInfo)
         {
             // Func
             var dynamicMethod = new DynamicMethod(
                 "ParameterMapAction",
                 typeof(void),
-                new[] { holder.GetType(), context.MappingOption.SourceType, context.MappingOption.DestinationType, typeof(object) },
+                new[] { holderInfo.Holder.GetType(), context.SourceType, context.DestinationType, typeof(object) },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            // TODO
-            foreach (var memberOption in context.MappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
-            {
-                var sourceProperty = context.MappingOption.SourceType.GetProperty(memberOption.Property.Name, BindingFlags.Instance | BindingFlags.Public);
-                if ((sourceProperty is not null) && sourceProperty.CanRead)
-                {
-                    if (memberOption.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
-                    {
-                        ilGenerator.Emit(OpCodes.Ldarg_2);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
-                        ilGenerator.Emit(OpCodes.Callvirt, memberOption.Property.SetMethod!);
-                    }
-                }
-            }
+            // Property
+            EmitMemberMapping(context, ilGenerator, new WorkTable { IsFunction = false });
 
             // Return
             ilGenerator.Emit(OpCodes.Ret);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,,>).MakeGenericType(
-                    context.MappingOption.SourceType,
-                    context.MappingOption.DestinationType,
+                    context.SourceType,
+                    context.DestinationType,
                     typeof(object)),
-                holder);
+                holderInfo.Holder);
         }
 
-        private static Delegate CreateMapFunc(MapperCreateContext context, object holder)
+        private static Delegate CreateMapFunc(MapperCreateContext context, HolderInfo holderInfo)
         {
             // Func
             var dynamicMethod = new DynamicMethod(
                 "MapFunc",
-                context.MappingOption.DestinationType,
-                new[] { holder.GetType(), context.MappingOption.SourceType },
+                context.DestinationType,
+                new[] { holderInfo.Holder.GetType(), context.SourceType },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
             // Class new
-            var ctor = context.MappingOption.DestinationType.GetConstructor(Type.EmptyTypes)!;
+            var ctor = context.DestinationType.GetConstructor(Type.EmptyTypes)!;
             ilGenerator.Emit(OpCodes.Newobj, ctor);
 
-            // TODO
             // Property
-            foreach (var memberOption in context.MappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
-            {
-                var sourceProperty = context.MappingOption.SourceType.GetProperty(memberOption.Property.Name, BindingFlags.Instance | BindingFlags.Public);
-                if ((sourceProperty is not null) && sourceProperty.CanRead)
-                {
-                    if (memberOption.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
-                    {
-                        ilGenerator.Emit(OpCodes.Dup);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
-                        ilGenerator.Emit(OpCodes.Callvirt, memberOption.Property.SetMethod!);
-                    }
-                }
-            }
+            EmitMemberMapping(context, ilGenerator, new WorkTable { IsFunction = true });
 
             // Return
             ilGenerator.Emit(OpCodes.Ret);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,>).MakeGenericType(
-                    context.MappingOption.SourceType,
-                    context.MappingOption.DestinationType),
-                holder);
+                    context.SourceType,
+                    context.DestinationType),
+                holderInfo.Holder);
         }
 
-        private static Delegate CreateParameterMapFunc(MapperCreateContext context, object holder)
+        private static Delegate CreateParameterMapFunc(MapperCreateContext context, HolderInfo holderInfo)
         {
             // Func
             var dynamicMethod = new DynamicMethod(
                 "MapFunc",
-                context.MappingOption.DestinationType,
-                new[] { holder.GetType(), context.MappingOption.SourceType, typeof(object) },
+                context.DestinationType,
+                new[] { holderInfo.Holder.GetType(), context.SourceType, typeof(object) },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
             // Class new
-            var ctor = context.MappingOption.DestinationType.GetConstructor(Type.EmptyTypes)!;
+            var ctor = context.DestinationType.GetConstructor(Type.EmptyTypes)!;
             ilGenerator.Emit(OpCodes.Newobj, ctor);
 
-            // TODO
             // Property
-            foreach (var memberOption in context.MappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
-            {
-                var sourceProperty = context.MappingOption.SourceType.GetProperty(memberOption.Property.Name, BindingFlags.Instance | BindingFlags.Public);
-                if ((sourceProperty is not null) && sourceProperty.CanRead)
-                {
-                    if (memberOption.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
-                    {
-                        ilGenerator.Emit(OpCodes.Dup);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
-                        ilGenerator.Emit(OpCodes.Callvirt, memberOption.Property.SetMethod!);
-                    }
-                }
-            }
+            EmitMemberMapping(context, ilGenerator, new WorkTable { IsFunction = true });
 
             // Return
             ilGenerator.Emit(OpCodes.Ret);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,,>).MakeGenericType(
-                    context.MappingOption.SourceType,
+                    context.SourceType,
                     typeof(object),
-                    context.MappingOption.DestinationType),
-                holder);
+                    context.DestinationType),
+                holderInfo.Holder);
+        }
+
+        private static void EmitMemberMapping(MapperCreateContext context, ILGenerator ilGenerator, WorkTable work)
+        {
+            foreach (var member in context.Members)
+            {
+                // by Property
+                if (member.MapFrom is PropertyInfo sourceProperty)
+                {
+                    // Can set
+                    if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
+                    {
+                        // TODO local ?
+                        ilGenerator.Emit(work.IsFunction ? OpCodes.Dup : OpCodes.Ldarg_2);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
+                        ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
+                    }
+                    else
+                    {
+                        // Need convert
+                        throw new NotImplementedException();
+                    }
+                }
+            }
         }
 
         //--------------------------------------------------------------------------------
@@ -267,5 +234,29 @@ namespace Smart.Mapper.Mappers
         // TODO コンストラクターセレクター？、Factoryと一緒にする？、デフォルトCtor前提で良い(AutoMapperはそう)
         // TODO コンテキストの必要性チェック
         // TODO 中間構造の作成？
+
+        private class HolderInfo
+        {
+            public object Holder { get; }
+
+            public bool HasDestinationParameter { get; set; }
+
+            //public bool HasNestedMapper { get; set; }
+
+            public bool HasContext { get; set; }
+
+            public HolderInfo(
+                object holder)
+            {
+                Holder = holder;
+            }
+        }
+
+        private class WorkTable
+        {
+            public bool IsFunction { get; set; }
+
+            // TODO Local等
+        }
     }
 }

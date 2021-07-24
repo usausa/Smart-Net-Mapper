@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Options
+namespace Smart.Mapper.Options
 {
     using System;
     using System.Linq.Expressions;
@@ -73,9 +73,49 @@
         // MapFrom
         //--------------------------------------------------------------------------------
 
-        public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, TSourceMember>> value) => mapFrom = value;
+        public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, TSourceMember>> value)
+        {
+            if (value.Body is MemberExpression memberExpression)
+            {
+                var type = typeof(TSource);
+                if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
+                {
+                    mapFrom = pi;
+                    return;
+                }
+            }
 
-        public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> value) => mapFrom = value;
+            if (value.Body is ConstantExpression constantExpression)
+            {
+                useConst = true;
+                constValue = constantExpression.Value;
+                return;
+            }
+
+            mapFrom = value.Compile();
+        }
+
+        public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> value)
+        {
+            if (value.Body is MemberExpression memberExpression)
+            {
+                var type = typeof(TSource);
+                if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
+                {
+                    mapFrom = pi;
+                    return;
+                }
+            }
+
+            if (value.Body is ConstantExpression constantExpression)
+            {
+                useConst = true;
+                constValue = constantExpression.Value;
+                return;
+            }
+
+            mapFrom = value.Compile();
+        }
 
         public void SetMapFrom<TSource, TDestination, TMember>(IValueResolver<TSource, TDestination, TMember> value) => mapFrom = value;
 

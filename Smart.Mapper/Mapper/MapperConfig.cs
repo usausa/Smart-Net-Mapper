@@ -30,10 +30,7 @@ namespace Smart.Mapper
                 config.Add<IMapperFactory, ReflectionMapperFactory>();
             }
 
-            config.Add<IFactoryResolver, StandardFactoryResolver>();
             config.Add<IConverterResolver, StandardConverterResolver>();
-
-            config.Add<IDelegateFactory>(DelegateFactory.Default);
             config.Add<IObjectConverter>(ObjectConverter.Default);
 
             config.Add<IServiceProvider, StandardServiceProvider>();

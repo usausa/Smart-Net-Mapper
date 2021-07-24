@@ -39,6 +39,18 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
+        public IMappingExpression<TSource, TDestination> FactoryUsing(Func<ResolutionContext, TDestination> factory)
+        {
+            mappingOption.SetFactory(factory);
+            return this;
+        }
+
+        public IMappingExpression<TSource, TDestination> FactoryUsing(Func<TSource, ResolutionContext, TDestination> factory)
+        {
+            mappingOption.SetFactory(factory);
+            return this;
+        }
+
         public IMappingExpression<TSource, TDestination> FactoryUsing(IObjectFactory<TSource, TDestination> factory)
         {
             mappingOption.SetFactory(factory);

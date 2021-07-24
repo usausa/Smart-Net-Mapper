@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Options
+namespace Smart.Mapper.Options
 {
     using System;
     using System.Collections.Generic;
@@ -28,6 +28,8 @@
 
         public void SetFactory<TDestination>(Func<TDestination> value) => SetFactory(typeof(TDestination), value);
 
+        public void SetFactory<TDestination>(Func<ResolutionContext, TDestination> value) => SetFactory(typeof(TDestination), value);
+
         private void SetFactory(Type type, object value)
         {
             factories ??= new Dictionary<Type, object>();
@@ -41,7 +43,7 @@
         public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> value) =>
             SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), value);
 
-        public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> value) =>
+        public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> value) =>
             SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), value);
 
         public void SetConverter<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> value) =>

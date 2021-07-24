@@ -28,8 +28,6 @@ namespace Smart.Mapper.Options
 
         public void SetFactory<TDestination>(Func<TDestination> value) => SetFactory(typeof(TDestination), value);
 
-        public void SetFactory<TDestination>(Func<ResolutionContext, TDestination> value) => SetFactory(typeof(TDestination), value);
-
         private void SetFactory(Type type, object value)
         {
             factories ??= new Dictionary<Type, object>();

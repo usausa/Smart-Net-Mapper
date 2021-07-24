@@ -15,8 +15,6 @@ namespace Smart.Mapper.Expressions
 
         //IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
 
-        //IDefaultExpression FactoryUsing<TDestination>(Func<ResolutionContext, TDestination> factory);
-
         //--------------------------------------------------------------------------------
         // Convert
         //--------------------------------------------------------------------------------

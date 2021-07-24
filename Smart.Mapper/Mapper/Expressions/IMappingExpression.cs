@@ -18,8 +18,6 @@ namespace Smart.Mapper.Expressions
 
         //IMappingExpression<TSource, TDestination> FactoryUsing(Func<TSource, TDestination> factory);
 
-        //IMappingExpression<TSource, TDestination> FactoryUsing(Func<ResolutionContext, TDestination> factory);
-
         //IMappingExpression<TSource, TDestination> FactoryUsing(Func<TSource, ResolutionContext, TDestination> factory);
 
         //IMappingExpression<TSource, TDestination> FactoryUsing(IObjectFactory<TSource, TDestination> factory);

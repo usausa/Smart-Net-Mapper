@@ -30,12 +30,6 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
-        public IDefaultExpression FactoryUsing<TDestination>(Func<ResolutionContext, TDestination> factory)
-        {
-            defaultOption.SetFactory(factory);
-            return this;
-        }
-
         //--------------------------------------------------------------------------------
         // Converter
         //--------------------------------------------------------------------------------

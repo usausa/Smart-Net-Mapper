@@ -19,13 +19,11 @@ namespace Smart.Mapper.Options
 
         private bool factoryUseServiceProvider;
 
-        private FactoryType factoryType;
+        private TypeEntry<FactoryType>? factory;
 
-        private object? factory;
+        private List<TypeEntry<ActionType>>? beforeMaps;
 
-        private List<object>? beforeMaps;
-
-        private List<object>? afterMaps;
+        private List<TypeEntry<ActionType>>? afterMaps;
 
         private Func<string, string?>? matcher;
 
@@ -59,57 +57,62 @@ namespace Smart.Mapper.Options
 
         public void SetFactoryUseServiceProvider() => factoryUseServiceProvider = true;
 
-        public void SetFactory<TDestination>(Func<TDestination> value) => factory = value;
+        public void SetFactory<TDestination>(Func<TDestination> value) =>
+            factory = new TypeEntry<FactoryType>(FactoryType.FuncDestination, value);
 
-        public void SetFactory<TSource, TDestination>(Func<TSource, TDestination> value) => factory = value;
+        public void SetFactory<TSource, TDestination>(Func<TSource, TDestination> value) =>
+            factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceDestination, value);
 
-        public void SetFactory<TSource, TDestination>(Func<TSource, ResolutionContext, TDestination> value) => factory = value;
+        public void SetFactory<TSource, TDestination>(Func<TSource, ResolutionContext, TDestination> value) =>
+            factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceContextDestination, value);
 
-        public void SetFactory<TSource, TDestination>(IObjectFactory<TSource, TDestination> value) => factory = value;
+        public void SetFactory<TSource, TDestination>(IObjectFactory<TSource, TDestination> value) =>
+            factory = new TypeEntry<FactoryType>(FactoryType.Interface, value);
 
         public void SetFactory<TSource, TDestination, TObjectFactory>()
-            where TObjectFactory : IObjectFactory<TSource, TDestination> => factory = typeof(TObjectFactory);
+            where TObjectFactory : IObjectFactory<TSource, TDestination> =>
+            factory = new TypeEntry<FactoryType>(FactoryType.InterfaceType, typeof(TObjectFactory));
 
         //--------------------------------------------------------------------------------
         // Pre/Post process
         //--------------------------------------------------------------------------------
 
         public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
-            AddBeforeMapInternal(action);
+            AddBeforeMapInternal(ActionType.Action, action);
 
         public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
-            AddBeforeMapInternal(action);
+            AddBeforeMapInternal(ActionType.ActionContext, action);
 
         public void AddBeforeMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
-            AddBeforeMapInternal(action);
+            AddBeforeMapInternal(ActionType.Interface, action);
 
         public void AddBeforeMap<TSource, TDestination, TMappingAction>()
             where TMappingAction : IMappingAction<TSource, TDestination> =>
-            AddBeforeMapInternal(typeof(TMappingAction));
+            AddBeforeMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
 
-        private void AddBeforeMapInternal(object value)
+        private void AddBeforeMapInternal(ActionType type, object value)
         {
-            beforeMaps ??= new List<object>();
-            beforeMaps.Add(value);
+            beforeMaps ??= new List<TypeEntry<ActionType>>();
+            beforeMaps.Add(new TypeEntry<ActionType>(type, value));
         }
 
         public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
-            AddAfterMapInternal(action);
+            AddAfterMapInternal(ActionType.Action, action);
 
         public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
-            AddAfterMapInternal(action);
+            AddAfterMapInternal(ActionType.ActionContext, action);
 
         public void AddAfterMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
-            AddAfterMapInternal(action);
+            AddAfterMapInternal(ActionType.Interface, action);
 
         public void AddAfterMap<TSource, TDestination, TMappingAction>()
             where TMappingAction : IMappingAction<TSource, TDestination> =>
-            AddAfterMapInternal(typeof(TMappingAction));
+            AddAfterMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
 
-        private void AddAfterMapInternal(object value)
+        private void AddAfterMapInternal(ActionType type, object value)
         {
-            afterMaps ??= new List<object>();
-            afterMaps.Add(value);
+            afterMaps ??= new List<TypeEntry<ActionType>>();
+            afterMaps.Add(new TypeEntry<ActionType>(type, value));
         }
 
         //--------------------------------------------------------------------------------
@@ -173,11 +176,11 @@ namespace Smart.Mapper.Options
 
         internal bool IsFactoryUseServiceProvider() => factoryUseServiceProvider;
 
-        internal object? GetFactory() => factory;
+        internal TypeEntry<FactoryType>? GetFactory() => factory;
 
-        internal IReadOnlyList<object> GetBeforeMaps() => beforeMaps ?? (IReadOnlyList<object>)Array.Empty<object>();
+        internal IReadOnlyList<TypeEntry<ActionType>> GetBeforeMaps() => beforeMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
 
-        internal IReadOnlyList<object> GetAfterMaps() => afterMaps ?? (IReadOnlyList<object>)Array.Empty<object>();
+        internal IReadOnlyList<TypeEntry<ActionType>> GetAfterMaps() => afterMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
 
         internal Func<string, string?>? GetMatcher() => matcher;
 

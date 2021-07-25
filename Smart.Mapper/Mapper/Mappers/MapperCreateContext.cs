@@ -8,7 +8,7 @@ namespace Smart.Mapper.Mappers
 
     using Smart.Mapper.Options;
 
-    public sealed class MemberMapping
+    internal sealed class MemberMapping
     {
         public int No { get; }
 
@@ -16,11 +16,11 @@ namespace Smart.Mapper.Mappers
 
         public bool IsNested { get; }
 
-        public object? Condition { get; }
+        public TypeEntry<ConditionType>? Condition { get; }
 
-        public object? MapFrom { get; }
+        public TypeEntry<FromType> MapFrom { get; }
 
-        public object? Converter { get; }
+        public TypeEntry<ConverterType>? Converter { get; }
 
         public bool IsConst { get; }
 
@@ -36,9 +36,9 @@ namespace Smart.Mapper.Mappers
             int no,
             PropertyInfo property,
             bool isNested,
-            object? condition,
-            object? mapFrom,
-            object? converter,
+            TypeEntry<ConditionType>? condition,
+            TypeEntry<FromType> mapFrom,
+            TypeEntry<ConverterType>? converter,
             bool isConst,
             object? constValue,
             bool isNullIf,
@@ -59,7 +59,7 @@ namespace Smart.Mapper.Mappers
         }
     }
 
-    public sealed class MapperCreateContext
+    internal sealed class MapperCreateContext
     {
         private static readonly Func<string, string?> DefaultMatcher = x => x;
 
@@ -76,13 +76,13 @@ namespace Smart.Mapper.Mappers
         public bool IsFactoryUseServiceProvider => mappingOption.IsFactoryUseServiceProvider() ||
                                                    defaultOption.IsFactoryUseServiceProvider();
 
-        public object? Factory => mappingOption.GetFactory() ?? defaultOption.GetFactory(DestinationType);
+        public TypeEntry<FactoryType>? Factory { get; }
 
         // Map actions
 
-        public IReadOnlyList<object> BeforeMaps => mappingOption.GetBeforeMaps();
+        public IReadOnlyList<TypeEntry<ActionType>> BeforeMaps => mappingOption.GetBeforeMaps();
 
-        public IReadOnlyList<object> AfterMaps => mappingOption.GetAfterMaps();
+        public IReadOnlyList<TypeEntry<ActionType>> AfterMaps => mappingOption.GetAfterMaps();
 
         // Member
 
@@ -94,6 +94,16 @@ namespace Smart.Mapper.Mappers
         {
             this.defaultOption = defaultOption;
             this.mappingOption = mappingOption;
+
+            Factory = mappingOption.GetFactory();
+            if (Factory is null)
+            {
+                var defaultFactory = defaultOption.GetFactory(DestinationType);
+                if (defaultFactory is not null)
+                {
+                    Factory = new TypeEntry<FactoryType>(FactoryType.FuncDestination, defaultFactory);
+                }
+            }
 
             var matcher = mappingOption.GetMatcher() ?? DefaultMatcher;
 
@@ -147,17 +157,11 @@ namespace Smart.Mapper.Mappers
             Members = members;
         }
 
-        private object? ResolveMapFrom(MemberOption memberOption, Func<string, string?> matcher)
+        private TypeEntry<FromType>? ResolveMapFrom(MemberOption memberOption, Func<string, string?> matcher)
         {
             var mapFrom = memberOption.GetMapFrom();
             if (mapFrom is not null)
             {
-                var type = mapFrom.GetType();
-                if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Lazy<>)))
-                {
-                    mapFrom = mapFrom.GetType().GetProperty("Value")!.GetValue(mapFrom);
-                }
-
                 return mapFrom;
             }
 
@@ -174,7 +178,7 @@ namespace Smart.Mapper.Mappers
                 return null;
             }
 
-            return pi;
+            return new TypeEntry<FromType>(FromType.Property, pi);
         }
 
         public bool TryGetConverter(Tuple<Type, Type> pair, [NotNullWhen(true)] out object? value) =>

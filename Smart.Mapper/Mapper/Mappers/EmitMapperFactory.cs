@@ -157,12 +157,12 @@ namespace Smart.Mapper.Mappers
                 return null;
             }
 
-            if (context.Factory is Type type)
+            if (context.Factory.Type == FactoryType.InterfaceType)
             {
-                return serviceProvider.GetService(type);
+                return serviceProvider.GetService((Type)context.Factory.Value);
             }
 
-            return context.Factory;
+            return context.Factory.Value;
         }
 
         //--------------------------------------------------------------------------------
@@ -352,8 +352,9 @@ namespace Smart.Mapper.Mappers
             foreach (var member in context.Members)
             {
                 // by Property
-                if (member.MapFrom is PropertyInfo sourceProperty)
+                if (member.MapFrom.Type == FromType.Property)
                 {
+                    var sourceProperty = (PropertyInfo)member.MapFrom.Value;
                     // Can set
                     if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
                     {

@@ -10,7 +10,7 @@ namespace Smart.Mapper.Mappers
         InterfaceType
     }
 
-    public enum MapType
+    public enum ActionType
     {
         None,
         Action,
@@ -29,12 +29,12 @@ namespace Smart.Mapper.Mappers
         InterfaceType
     }
 
-    public enum ResolverType
+    public enum FromType
     {
         None,
         Property,
-        FuncSource,
-        FuncSourceContext,
+        Expression,
+        ExpressionContext,
         Interface,
         InterfaceType,
         Path

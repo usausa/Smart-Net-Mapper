@@ -5,6 +5,7 @@ namespace Smart.Mapper.Options
     using System.Reflection;
 
     using Smart.Mapper.Functions;
+    using Smart.Mapper.Mappers;
 
     public class MemberOption
     {
@@ -16,11 +17,11 @@ namespace Smart.Mapper.Options
 
         private int order = Int32.MaxValue;
 
-        private object? condition;
+        private TypeEntry<ConditionType>? condition;
 
-        private object? mapFrom;
+        private TypeEntry<FromType>? mapFrom;
 
-        private object? converter;
+        private TypeEntry<ConverterType>? converter;
 
         private bool useConst;
         private object? constValue;
@@ -57,15 +58,20 @@ namespace Smart.Mapper.Options
         // Condition
         //--------------------------------------------------------------------------------
 
-        public void SetCondition<TSource>(Func<TSource, bool> value) => condition = value;
+        public void SetCondition<TSource>(Func<TSource, bool> value) =>
+            condition = new TypeEntry<ConditionType>(ConditionType.FuncSource, value);
 
-        public void SetCondition<TSource>(Func<TSource, ResolutionContext, bool> value) => condition = value;
+        public void SetCondition<TSource>(Func<TSource, ResolutionContext, bool> value) =>
+            condition = new TypeEntry<ConditionType>(ConditionType.FuncSourceContext, value);
 
-        public void SetCondition<TSource, TDestination>(Func<TSource, TDestination, ResolutionContext, bool> value) => condition = value;
+        public void SetCondition<TSource, TDestination>(Func<TSource, TDestination, ResolutionContext, bool> value) =>
+            condition = new TypeEntry<ConditionType>(ConditionType.FuncSourceDestinationContext, value);
 
-        public void SetCondition<TSource, TDestination>(IMemberCondition<TSource, TDestination> value) => condition = value;
+        public void SetCondition<TSource, TDestination>(IMemberCondition<TSource, TDestination> value) =>
+            condition = new TypeEntry<ConditionType>(ConditionType.Interface, value);
 
-        public void SetCondition<TMemberCondition>() => condition = typeof(TMemberCondition);
+        public void SetCondition<TMemberCondition>() =>
+            condition = new TypeEntry<ConditionType>(ConditionType.InterfaceType, typeof(TMemberCondition));
 
         //--------------------------------------------------------------------------------
         // MapFrom
@@ -78,7 +84,7 @@ namespace Smart.Mapper.Options
                 var type = typeof(TSource);
                 if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
                 {
-                    mapFrom = pi;
+                    mapFrom = new TypeEntry<FromType>(FromType.Property, pi);
                     return;
                 }
             }
@@ -90,7 +96,7 @@ namespace Smart.Mapper.Options
                 return;
             }
 
-            mapFrom = new Lazy<Func<TSource, TSourceMember>>(value.Compile);
+            mapFrom = new TypeEntry<FromType>(FromType.Expression, new Lazy<Func<TSource, TSourceMember>>(value.Compile));
         }
 
         public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> value)
@@ -100,7 +106,7 @@ namespace Smart.Mapper.Options
                 var type = typeof(TSource);
                 if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
                 {
-                    mapFrom = pi;
+                    mapFrom = new TypeEntry<FromType>(FromType.Property, pi);
                     return;
                 }
             }
@@ -112,28 +118,35 @@ namespace Smart.Mapper.Options
                 return;
             }
 
-            mapFrom = value.Compile();
+            mapFrom = new TypeEntry<FromType>(FromType.ExpressionContext, new Lazy<Func<TSource, ResolutionContext, TSourceMember>>(value.Compile));
         }
 
-        public void SetMapFrom<TSource, TDestination, TMember>(IValueResolver<TSource, TDestination, TMember> value) => mapFrom = value;
+        public void SetMapFrom<TSource, TDestination, TMember>(IValueResolver<TSource, TDestination, TMember> value) =>
+            mapFrom = new TypeEntry<FromType>(FromType.Interface, value);
 
         public void SetMapFrom<TSource, TDestination, TMember, TValueResolver>()
-            where TValueResolver : IValueResolver<TSource, TDestination, TMember> => mapFrom = typeof(TValueResolver);
+            where TValueResolver : IValueResolver<TSource, TDestination, TMember> =>
+            mapFrom = new TypeEntry<FromType>(FromType.InterfaceType, typeof(TValueResolver));
 
-        public void SetMapFrom(string value) => mapFrom = value;
+        public void SetMapFrom(string value) =>
+            mapFrom = new TypeEntry<FromType>(FromType.Path, value);
 
         //--------------------------------------------------------------------------------
         // Convert
         //--------------------------------------------------------------------------------
 
-        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, TMember> value) => converter = value;
+        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, TMember> value) =>
+            converter = new TypeEntry<ConverterType>(ConverterType.FuncSource, value);
 
-        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, ResolutionContext, TMember> value) => converter = value;
+        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, ResolutionContext, TMember> value) =>
+            converter = new TypeEntry<ConverterType>(ConverterType.FuncSourceContext, value);
 
-        public void SetConverter<TSourceMember, TMember>(IValueConverter<TSourceMember, TMember> value) => converter = value;
+        public void SetConverter<TSourceMember, TMember>(IValueConverter<TSourceMember, TMember> value) =>
+            converter = new TypeEntry<ConverterType>(ConverterType.Interface, value);
 
         public void SetConverter<TSourceMember, TMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TMember> => converter = typeof(TValueConverter);
+            where TValueConverter : IValueConverter<TSourceMember, TMember> =>
+            converter = new TypeEntry<ConverterType>(ConverterType.InterfaceType, typeof(TValueConverter));
 
         //--------------------------------------------------------------------------------
         // Const
@@ -167,11 +180,11 @@ namespace Smart.Mapper.Options
 
         internal int GetOrder() => order;
 
-        internal object? GetCondition() => condition;
+        internal TypeEntry<ConditionType>? GetCondition() => condition;
 
-        internal object? GetMapFrom() => mapFrom;
+        internal TypeEntry<FromType>? GetMapFrom() => mapFrom;
 
-        internal object? GetConverter() => converter;
+        internal TypeEntry<ConverterType>? GetConverter() => converter;
 
         internal bool UseConst() => useConst;
 

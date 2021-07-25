@@ -152,6 +152,12 @@ namespace Smart.Mapper.Mappers
             var mapFrom = memberOption.GetMapFrom();
             if (mapFrom is not null)
             {
+                var type = mapFrom.GetType();
+                if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Lazy<>)))
+                {
+                    mapFrom = mapFrom.GetType().GetProperty("Value")!.GetValue(mapFrom);
+                }
+
                 return mapFrom;
             }
 

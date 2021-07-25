@@ -42,8 +42,6 @@ namespace Smart.Mapper.Expressions
 
         //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, ResolutionContext, bool> condition);
 
-        //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, bool> condition);
-
         //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, ResolutionContext, bool> condition);
 
         //IMemberExpression<TSource, TDestination, TMember> Condition(IMemberCondition<TSource, TDestination> condition);

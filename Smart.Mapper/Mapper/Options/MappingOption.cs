@@ -7,6 +7,7 @@ namespace Smart.Mapper.Options
     using System.Reflection;
 
     using Smart.Mapper.Functions;
+    using Smart.Mapper.Mappers;
 
     public class MappingOption
     {
@@ -17,6 +18,8 @@ namespace Smart.Mapper.Options
         // Mapping
 
         private bool factoryUseServiceProvider;
+
+        private FactoryType factoryType;
 
         private object? factory;
 

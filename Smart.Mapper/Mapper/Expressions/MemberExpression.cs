@@ -65,12 +65,6 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
-        public IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, bool> condition)
-        {
-            memberOption.SetCondition(condition);
-            return this;
-        }
-
         public IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, ResolutionContext, bool> condition)
         {
             memberOption.SetCondition(condition);

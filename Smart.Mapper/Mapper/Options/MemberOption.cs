@@ -61,8 +61,6 @@ namespace Smart.Mapper.Options
 
         public void SetCondition<TSource>(Func<TSource, ResolutionContext, bool> value) => condition = value;
 
-        public void SetCondition<TSource, TDestination>(Func<TSource, TDestination, bool> value) => condition = value;
-
         public void SetCondition<TSource, TDestination>(Func<TSource, TDestination, ResolutionContext, bool> value) => condition = value;
 
         public void SetCondition<TSource, TDestination>(IMemberCondition<TSource, TDestination> value) => condition = value;
@@ -92,7 +90,7 @@ namespace Smart.Mapper.Options
                 return;
             }
 
-            mapFrom = value.Compile();
+            mapFrom = new Lazy<Func<TSource, TSourceMember>>(value.Compile);
         }
 
         public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> value)

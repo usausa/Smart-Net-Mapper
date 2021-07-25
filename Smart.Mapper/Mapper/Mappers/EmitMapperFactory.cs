@@ -1,11 +1,14 @@
 namespace Smart.Mapper.Mappers
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
 
     using Smart.Linq;
     using Smart.Mapper.Components;
+    using Smart.Reflection.Emit;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
     internal class EmitMapperFactory : IMapperFactory
@@ -95,7 +98,7 @@ namespace Smart.Mapper.Mappers
             }
 
             // Factory
-            var factory = ResolveFactory(context);
+            var factory = ResolveFactory(context.Factory);
             if (context.IsFactoryUseServiceProvider)
             {
                 typeBuilder.DefineField("factory", typeof(IServiceProvider), FieldAttributes.Public);
@@ -106,10 +109,18 @@ namespace Smart.Mapper.Mappers
             }
 
             // BeforeMap
-            // TODO
+            var beforeMaps = context.BeforeMaps.Select(ResolveAction).ToList();
+            for (var i = 0; i < beforeMaps.Count; i++)
+            {
+                typeBuilder.DefineField($"beforeMap{i}", beforeMaps[i].GetType(), FieldAttributes.Public);
+            }
 
             // AfterMap
-            // TODO
+            var afterMaps = context.BeforeMaps.Select(ResolveAction).ToList();
+            for (var i = 0; i < afterMaps.Count; i++)
+            {
+                typeBuilder.DefineField($"afterMap{i}", afterMaps[i].GetType(), FieldAttributes.Public);
+            }
 
             // TODO Define field
 
@@ -128,9 +139,21 @@ namespace Smart.Mapper.Mappers
             {
                 GetFactoryField(holderType).SetValue(holder, serviceProvider);
             }
-            else if (context.Factory is not null)
+            else if (factory is not null)
             {
                 GetFactoryField(holderType).SetValue(holder, factory);
+            }
+
+            // BeforeMap
+            for (var i = 0; i < beforeMaps.Count; i++)
+            {
+                GetBeforeMapField(holderType, i).SetValue(holder, beforeMaps[i]);
+            }
+
+            // AfterMap
+            for (var i = 0; i < afterMaps.Count; i++)
+            {
+                GetAfterMapField(holderType, i).SetValue(holder, afterMaps[i]);
             }
 
             // TODO Set field
@@ -175,19 +198,29 @@ namespace Smart.Mapper.Mappers
         private static bool IsNestedExist(MapperCreateContext context) =>
             context.Members.Any(x => x.IsNested);
 
-        private object? ResolveFactory(MapperCreateContext context)
+        private object? ResolveFactory(TypeEntry<FactoryType>? entry)
         {
-            if (context.Factory is null)
+            if (entry is null)
             {
                 return null;
             }
 
-            if (context.Factory.Type == FactoryType.InterfaceType)
+            if (entry.Type == FactoryType.InterfaceType)
             {
-                return serviceProvider.GetService((Type)context.Factory.Value);
+                return serviceProvider.GetService((Type)entry.Value);
             }
 
-            return context.Factory.Value;
+            return entry.Value;
+        }
+
+        private object ResolveAction(TypeEntry<ActionType> entry)
+        {
+            if (entry.Type == ActionType.InterfaceType)
+            {
+                return serviceProvider.GetService((Type)entry.Value)!;
+            }
+
+            return entry.Value;
         }
 
         //--------------------------------------------------------------------------------
@@ -197,6 +230,10 @@ namespace Smart.Mapper.Mappers
         private static FieldInfo GetMapperField(Type holderType) => holderType.GetField("mapper")!;
 
         private static FieldInfo GetFactoryField(Type holderType) => holderType.GetField("factory")!;
+
+        private static FieldInfo GetBeforeMapField(Type holderType, int index) => holderType.GetField($"beforeMap{index}")!;
+
+        private static FieldInfo GetAfterMapField(Type holderType, int index) => holderType.GetField($"afterMap{index}")!;
 
         //--------------------------------------------------------------------------------
         // Method
@@ -212,15 +249,12 @@ namespace Smart.Mapper.Mappers
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            var workTable = new WorkTable { IsFunction = false };
-
-            // TODO ResolutionContext
-
-            // Property
-            EmitMemberMapping(context, ilGenerator, workTable);
-
-            // Return
-            ilGenerator.Emit(OpCodes.Ret);
+            var workTable = new WorkTable(false, false);
+            EmitPrepare(ilGenerator, context, holderInfo, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
+            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,>).MakeGenericType(
@@ -239,15 +273,12 @@ namespace Smart.Mapper.Mappers
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            var workTable = new WorkTable { IsFunction = false };
-
-            // TODO ResolutionContext
-
-            // Property
-            EmitMemberMapping(context, ilGenerator, workTable);
-
-            // Return
-            ilGenerator.Emit(OpCodes.Ret);
+            var workTable = new WorkTable(false, true);
+            EmitPrepare(ilGenerator, context, holderInfo, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
+            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,,>).MakeGenericType(
@@ -267,18 +298,13 @@ namespace Smart.Mapper.Mappers
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            var workTable = new WorkTable { IsFunction = true };
-
-            // TODO ResolutionContext
-
-            // Class new
-            EmitConstructor(context, ilGenerator, holderInfo);
-
-            // Property
-            EmitMemberMapping(context, ilGenerator, workTable);
-
-            // Return
-            ilGenerator.Emit(OpCodes.Ret);
+            var workTable = new WorkTable(true, false);
+            EmitPrepare(ilGenerator, context, holderInfo, workTable);
+            EmitConstructor(ilGenerator, context, holderInfo, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
+            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,>).MakeGenericType(
@@ -297,18 +323,13 @@ namespace Smart.Mapper.Mappers
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
-            var workTable = new WorkTable { IsFunction = true };
-
-            // TODO ResolutionContext
-
-            // Class new
-            EmitConstructor(context, ilGenerator, holderInfo);
-
-            // Property
-            EmitMemberMapping(context, ilGenerator, workTable);
-
-            // Return
-            ilGenerator.Emit(OpCodes.Ret);
+            var workTable = new WorkTable(true, true);
+            EmitPrepare(ilGenerator, context, holderInfo, workTable);
+            EmitConstructor(ilGenerator, context, holderInfo, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
+            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,,>).MakeGenericType(
@@ -322,7 +343,26 @@ namespace Smart.Mapper.Mappers
         // Helper
         //--------------------------------------------------------------------------------
 
-        private static void EmitConstructor(MapperCreateContext context, ILGenerator ilGenerator, HolderInfo holderInfo)
+        private static void EmitPrepare(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
+        {
+            if (work.IsFunction && holderInfo.HasDestinationParameter)
+            {
+                work.DestinationLocal = ilGenerator.DeclareLocal(context.DestinationType);
+            }
+
+            // Context
+            if (holderInfo.HasContext)
+            {
+                work.ContextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
+
+                ilGenerator.Emit(work.HasParameter ? OpCodes.Ldarg_2 : OpCodes.Ldnull);
+                ilGenerator.Emit(OpCodes.Ldfld, GetMapperField(holderInfo.Holder.GetType()));
+                ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
+                ilGenerator.EmitStloc(work.ContextLocal);
+            }
+        }
+
+        private static void EmitConstructor(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
         {
             if (context.IsFactoryUseServiceProvider)
             {
@@ -338,32 +378,38 @@ namespace Smart.Mapper.Mappers
             }
             else if (context.Factory is not null)
             {
-                // TODO
-                //var field = holderInfo.Holder.GetType().GetField("factory")!;
-                //if (field.FieldType.IsGenericType && field.FieldType.GetGenericArguments()[0].IsAssignableFrom())
-                //{
-                //    // Func<Destination>
-                //    // TODO
-                //}
-                //else if (field.FieldType == typeof(Func<,>).MakeGenericType(context.DestinationType))
-                //{
-                //    // Func<Source, Destination>
-                //    // TODO
-                //}
-                //else if (field.FieldType == typeof(Func<,,>).MakeGenericType(context.DestinationType))
-                //{
-                //    // Func<Source, ResolutionContext, Destination>
-                //    // TODO
-                //}
-                //else if (field.FieldType == typeof(IObjectFactory<,>).MakeGenericType(context.DestinationType))
-                //{
-                //    // IObjectFactory<Source, Destination>
-                //    // TODO
-                //}
-                //else
-                //{
-                //    throw new InvalidOperationException($"Type has not default constructor. type=[{context.DestinationType}]");
-                //}
+                var field = GetFactoryField(holderInfo.Holder.GetType());
+                switch (context.Factory.Type)
+                {
+                    case FactoryType.FuncDestination:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        break;
+                    case FactoryType.FuncSourceDestination:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        break;
+                    case FactoryType.FuncSourceContextDestination:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        break;
+                    case FactoryType.Interface:
+                    case FactoryType.InterfaceType:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Create")!);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported factory. type=[{field.FieldType}]");
+                }
             }
             else
             {
@@ -377,10 +423,50 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Newobj, ctor);
             }
 
-            // TODO local?
+            if (work.DestinationLocal is not null)
+            {
+                ilGenerator.EmitStloc(work.DestinationLocal);
+            }
         }
 
-        private static void EmitMemberMapping(MapperCreateContext context, ILGenerator ilGenerator, WorkTable work)
+        private static void EmitMapActions(ILGenerator ilGenerator, IReadOnlyList<TypeEntry<ActionType>> actions, HolderInfo holderInfo, WorkTable work, Func<Type, int, FieldInfo> resolver)
+        {
+            for (var i = 0; i < actions.Count; i++)
+            {
+                var field = resolver(holderInfo.Holder.GetType(), i)!;
+                switch (actions[i].Type)
+                {
+                    case ActionType.Action:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        EmitStackDestination(ilGenerator, work);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        break;
+                    case ActionType.ActionContext:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        EmitStackDestination(ilGenerator, work);
+                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        break;
+                    case ActionType.Interface:
+                    case ActionType.InterfaceType:
+                        ilGenerator.Emit(OpCodes.Ldarg_0);
+                        ilGenerator.Emit(OpCodes.Ldfld, field);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);
+                        EmitStackDestination(ilGenerator, work);
+                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Process")!);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported action map. type=[{field.FieldType}]");
+                }
+            }
+        }
+
+        private static void EmitMemberMapping(ILGenerator ilGenerator, MapperCreateContext context, WorkTable work)
         {
             foreach (var member in context.Members)
             {
@@ -403,6 +489,28 @@ namespace Smart.Mapper.Mappers
                         throw new NotImplementedException();
                     }
                 }
+            }
+        }
+
+        private static void EmitReturn(ILGenerator ilGenerator, WorkTable work)
+        {
+            if (work.DestinationLocal is not null)
+            {
+                ilGenerator.EmitLdloc(work.DestinationLocal);
+            }
+
+            ilGenerator.Emit(OpCodes.Ret);
+        }
+
+        private static void EmitStackDestination(ILGenerator ilGenerator, WorkTable work)
+        {
+            if (work.DestinationLocal is not null)
+            {
+                ilGenerator.EmitLdloc(work.DestinationLocal);
+            }
+            else
+            {
+                ilGenerator.Emit(OpCodes.Ldarg_2);
             }
         }
 
@@ -431,13 +539,23 @@ namespace Smart.Mapper.Mappers
                 HasContext = hasContext;
                 HasNestedMapper = hasNestedMapper;
             }
-
-            // TODO Local等
         }
 
         private class WorkTable
         {
-            public bool IsFunction { get; set; }
+            public bool IsFunction { get; }
+
+            public bool HasParameter { get; }
+
+            public LocalBuilder? DestinationLocal { get; set; }
+
+            public LocalBuilder? ContextLocal { get; set; }
+
+            public WorkTable(bool isFunction, bool hasParameter)
+            {
+                IsFunction = isFunction;
+                HasParameter = hasParameter;
+            }
         }
     }
 }

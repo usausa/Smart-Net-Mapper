@@ -88,12 +88,18 @@ namespace Smart.Mapper.Mappers
 
         public IReadOnlyList<MemberMapping> Members { get; }
 
+        // Mapper
+
+        public INestedMapper NexMapper { get; }
+
         public MapperCreateContext(
             DefaultOption defaultOption,
-            MappingOption mappingOption)
+            MappingOption mappingOption,
+            INestedMapper nestedMapper)
         {
             this.defaultOption = defaultOption;
             this.mappingOption = mappingOption;
+            NexMapper = nestedMapper;
 
             Factory = mappingOption.GetFactory();
             if (Factory is null)

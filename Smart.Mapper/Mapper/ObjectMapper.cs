@@ -78,7 +78,7 @@ namespace Smart.Mapper
                 }
 
                 // TODO
-                return factory.Create(new MapperCreateContext(defaultOption, mapperOption));
+                return factory.Create(new MapperCreateContext(defaultOption, mapperOption, null!));
             }
         }
 

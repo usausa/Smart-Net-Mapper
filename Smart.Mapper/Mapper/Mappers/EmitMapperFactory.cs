@@ -4,8 +4,8 @@ namespace Smart.Mapper.Mappers
     using System.Reflection;
     using System.Reflection.Emit;
 
+    using Smart.Linq;
     using Smart.Mapper.Components;
-    using Smart.Mapper.Functions;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
     internal class EmitMapperFactory : IMapperFactory
@@ -88,7 +88,11 @@ namespace Smart.Mapper.Mappers
             var hasContext = IsContextRequired(context);
             var hasNestedMapper = hasContext || IsNestedExist(context);
 
-            // TODO Nested
+            // Nested mapper
+            if (hasNestedMapper)
+            {
+                typeBuilder.DefineField("mapper", typeof(INestedMapper), FieldAttributes.Public);
+            }
 
             // Factory
             var factory = ResolveFactory(context);
@@ -113,14 +117,20 @@ namespace Smart.Mapper.Mappers
             var holderType = typeInfo.AsType();
             var holder = Activator.CreateInstance(holderType)!;
 
+            // Nested mapper
+            if (hasNestedMapper)
+            {
+                GetMapperField(holderType).SetValue(holder, context.NexMapper);
+            }
+
             // Factory
             if (context.IsFactoryUseServiceProvider)
             {
-                holderType.GetField("factory")!.SetValue(holder, serviceProvider);
+                GetFactoryField(holderType).SetValue(holder, serviceProvider);
             }
             else if (context.Factory is not null)
             {
-                holderType.GetField("factory")!.SetValue(holder, factory);
+                GetFactoryField(holderType).SetValue(holder, factory);
             }
 
             // TODO Set field
@@ -134,21 +144,36 @@ namespace Smart.Mapper.Mappers
 
         private static bool IsDestinationParameterRequired(MapperCreateContext context)
         {
-            // TODO
-            return false;
+            if (context.BeforeMaps.Any(x => x.Type.HasDestinationParameter()) ||
+                context.AfterMaps.Any(x => x.Type.HasDestinationParameter()))
+            {
+                return true;
+            }
+
+            return context.Members.Any(x => x.MapFrom.Type.HasDestinationParameter() ||
+                                            ((x.Condition is not null) && x.Condition.Type.HasDestinationParameter()));
         }
 
         private static bool IsContextRequired(MapperCreateContext context)
         {
-            // TODO
-            return false;
+            if ((context.Factory is not null) && context.Factory.Type.HasContext())
+            {
+                return true;
+            }
+
+            if (context.BeforeMaps.Any(x => x.Type.HasContext()) ||
+                context.AfterMaps.Any(x => x.Type.HasContext()))
+            {
+                return true;
+            }
+
+            return context.Members.Any(x => x.MapFrom.Type.HasContext() ||
+                                            ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
+                                            ((x.Converter is not null) && x.Converter.Type.HasContext()));
         }
 
-        private static bool IsNestedExist(MapperCreateContext context)
-        {
-            // TODO
-            return false;
-        }
+        private static bool IsNestedExist(MapperCreateContext context) =>
+            context.Members.Any(x => x.IsNested);
 
         private object? ResolveFactory(MapperCreateContext context)
         {
@@ -164,6 +189,14 @@ namespace Smart.Mapper.Mappers
 
             return context.Factory.Value;
         }
+
+        //--------------------------------------------------------------------------------
+        // Field
+        //--------------------------------------------------------------------------------
+
+        private static FieldInfo GetMapperField(Type holderType) => holderType.GetField("mapper")!;
+
+        private static FieldInfo GetFactoryField(Type holderType) => holderType.GetField("factory")!;
 
         //--------------------------------------------------------------------------------
         // Method
@@ -374,9 +407,8 @@ namespace Smart.Mapper.Mappers
         }
 
         //--------------------------------------------------------------------------------
-        // Helper
+        // Data
         //--------------------------------------------------------------------------------
-
 
         private class HolderInfo
         {
@@ -399,13 +431,13 @@ namespace Smart.Mapper.Mappers
                 HasContext = hasContext;
                 HasNestedMapper = hasNestedMapper;
             }
+
+            // TODO Local等
         }
 
         private class WorkTable
         {
             public bool IsFunction { get; set; }
-
-            // TODO Local等
         }
     }
 }

@@ -17,8 +17,7 @@ namespace Smart.Mapper
             config.CreateMap<Source, Destination>().FactoryUsingServiceProvider();
             using var mapper = config.ToMapper();
 
-            var source = new Source { Value = 1 };
-            var destination = mapper.Map<Source, Destination>(source);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
         }
@@ -31,8 +30,7 @@ namespace Smart.Mapper
             config.CreateMap<Source, Destination>();
             using var mapper = config.ToMapper();
 
-            var source = new Source { Value = 1 };
-            var destination = mapper.Map<Source, Destination>(source);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
         }
@@ -45,8 +43,7 @@ namespace Smart.Mapper
             config.CreateMap<Source, Destination>().FactoryUsingServiceProvider();
             using var mapper = config.ToMapper();
 
-            var source = new Source { Value = 1 };
-            var destination = mapper.Map<Source, Destination>(source);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
             Assert.Equal(2, destination.Value2);

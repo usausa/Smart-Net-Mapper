@@ -64,10 +64,6 @@ namespace Smart.Mapper
                     mapperOption = handlers
                         .Select(x => x.Handle(sourceType, destinationType))
                         .FirstOrDefault(x => x is not null);
-                    if (mapperOption is not null)
-                    {
-                        mapperOptions[(profile, sourceType, destinationType)] = mapperOption;
-                    }
                 }
 
                 if (mapperOption is null)
@@ -163,15 +159,15 @@ namespace Smart.Mapper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TDestination Map<TSource, TDestination>(TSource source, object parameter) =>
+        public TDestination Map<TSource, TDestination>(TSource source, object? parameter) =>
             FindTypeInfo<TSource, TDestination>().ParameterMapFunc(source, parameter);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Map<TSource, TDestination>(TSource source, TDestination destination, object parameter) =>
+        public void Map<TSource, TDestination>(TSource source, TDestination destination, object? parameter) =>
             FindTypeInfo<TSource, TDestination>().ParameterMapAction(source, destination, parameter);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TDestination MapAlso<TSource, TDestination>(TSource source, TDestination destination, object parameter)
+        public TDestination MapAlso<TSource, TDestination>(TSource source, TDestination destination, object? parameter)
         {
             FindTypeInfo<TSource, TDestination>().ParameterMapAction(source, destination, parameter);
             return destination;
@@ -195,15 +191,15 @@ namespace Smart.Mapper
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TDestination Map<TSource, TDestination>(string profile, TSource source, object parameter) =>
+        public TDestination Map<TSource, TDestination>(string profile, TSource source, object? parameter) =>
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapFunc(source, parameter);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Map<TSource, TDestination>(string profile, TSource source, TDestination destination, object parameter) =>
+        public void Map<TSource, TDestination>(string profile, TSource source, TDestination destination, object? parameter) =>
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapAction(source, destination, parameter);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TDestination MapAlso<TSource, TDestination>(string profile, TSource source, TDestination destination, object parameter)
+        public TDestination MapAlso<TSource, TDestination>(string profile, TSource source, TDestination destination, object? parameter)
         {
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapAction(source, destination, parameter);
             return destination;

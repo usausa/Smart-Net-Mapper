@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Helpers
+namespace Smart.Mapper.Helpers
 {
     using System;
     using System.Linq.Expressions;
@@ -6,7 +6,7 @@
 
     internal static class ExpressionHelper
     {
-        public static PropertyInfo? GetPrpPropertyInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
+        public static PropertyInfo? GetPropertyInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
         {
             if (expression.Body is MemberExpression memberExpression)
             {

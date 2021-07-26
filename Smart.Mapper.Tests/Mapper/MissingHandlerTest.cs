@@ -42,6 +42,7 @@ namespace Smart.Mapper
             using var mapper = new MapperConfig().ToMapper();
 
             Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>(new Source { Value = 1 }));
+            Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>("dummy", new Source { Value = 1 }));
         }
 
         //--------------------------------------------------------------------------------

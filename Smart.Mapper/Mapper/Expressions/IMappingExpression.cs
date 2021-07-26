@@ -50,7 +50,7 @@ namespace Smart.Mapper.Expressions
         // Match
         //--------------------------------------------------------------------------------
 
-        // TODO IMappingExpression<TSource, TDestination> MatchMember(Func<string, string?> matcher);
+        IMappingExpression<TSource, TDestination> MatchMember(Func<string, string?> matcher);
 
         //--------------------------------------------------------------------------------
         // Member
@@ -58,7 +58,7 @@ namespace Smart.Mapper.Expressions
 
         IMappingExpression<TSource, TDestination> ForAllMember(Action<IAllMemberExpression> option);
 
-        // TODO IMappingExpression<TSource, TDestination> ForMember<TMember>(Expression<Func<TDestination, TMember>> expression, Action<IMemberExpression<TSource, TDestination, TMember>> option);
+        IMappingExpression<TSource, TDestination> ForMember<TMember>(Expression<Func<TDestination, TMember>> expression, Action<IMemberExpression<TSource, TDestination, TMember>> option);
 
         //--------------------------------------------------------------------------------
         // Default

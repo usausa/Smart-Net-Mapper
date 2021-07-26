@@ -138,7 +138,7 @@ namespace Smart.Mapper.Expressions
 
         public IMappingExpression<TSource, TDestination> ForMember<TMember>(Expression<Func<TDestination, TMember>> expression, Action<IMemberExpression<TSource, TDestination, TMember>> option)
         {
-            var pi = ExpressionHelper.GetPrpPropertyInfo(expression);
+            var pi = ExpressionHelper.GetPropertyInfo(expression);
             if (pi is null)
             {
                 throw new ArgumentException("Invalid destination member expression.");

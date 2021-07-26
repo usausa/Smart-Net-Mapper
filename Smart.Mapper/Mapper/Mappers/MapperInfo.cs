@@ -16,10 +16,10 @@ namespace Smart.Mapper.Mappers
         public Func<TSource, TDestination> MapFunc;
 
         [AllowNull]
-        public Action<TSource, TDestination, object> ParameterMapAction;
+        public Action<TSource, TDestination, object?> ParameterMapAction;
 
         [AllowNull]
-        public Func<TSource, object, TDestination> ParameterMapFunc;
+        public Func<TSource, object?, TDestination> ParameterMapFunc;
     }
 #pragma warning restore 8618
 #pragma warning restore 0649

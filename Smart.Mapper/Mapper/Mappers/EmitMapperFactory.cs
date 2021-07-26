@@ -345,6 +345,7 @@ namespace Smart.Mapper.Mappers
 
         private static void EmitPrepare(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
         {
+            // Destination
             if (work.IsFunction && holderInfo.HasDestinationParameter)
             {
                 work.DestinationLocal = ilGenerator.DeclareLocal(context.DestinationType);
@@ -356,6 +357,7 @@ namespace Smart.Mapper.Mappers
                 work.ContextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
 
                 ilGenerator.Emit(work.HasParameter ? OpCodes.Ldarg_2 : OpCodes.Ldnull);
+                ilGenerator.Emit(OpCodes.Ldarg_0);
                 ilGenerator.Emit(OpCodes.Ldfld, GetMapperField(holderInfo.Holder.GetType()));
                 ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
                 ilGenerator.EmitStloc(work.ContextLocal);

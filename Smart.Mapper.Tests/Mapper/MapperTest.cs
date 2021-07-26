@@ -4,6 +4,10 @@ namespace Smart.Mapper
 
     public class MapperTest
     {
+        //--------------------------------------------------------------------------------
+        // Mapper
+        //--------------------------------------------------------------------------------
+
         private static ObjectMapper CreateMapper()
         {
             var config = new MapperConfig();
@@ -33,6 +37,10 @@ namespace Smart.Mapper
 
             Assert.Equal(1, destination.Value);
         }
+
+        //--------------------------------------------------------------------------------
+        // Data
+        //--------------------------------------------------------------------------------
 
         public class Source
         {

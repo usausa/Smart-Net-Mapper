@@ -10,10 +10,9 @@ namespace Smart.Mapper.Expressions
         // Factory
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //IDefaultExpression FactoryUsingServiceProvider();
+        IDefaultExpression FactoryUsingServiceProvider();
 
-        //IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
+        IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
 
         //--------------------------------------------------------------------------------
         // Convert

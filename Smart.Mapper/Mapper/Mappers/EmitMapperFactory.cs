@@ -116,7 +116,7 @@ namespace Smart.Mapper.Mappers
             }
 
             // AfterMap
-            var afterMaps = context.BeforeMaps.Select(ResolveAction).ToList();
+            var afterMaps = context.AfterMaps.Select(ResolveAction).ToList();
             for (var i = 0; i < afterMaps.Count; i++)
             {
                 typeBuilder.DefineField($"afterMap{i}", afterMaps[i].GetType(), FieldAttributes.Public);
@@ -253,7 +253,7 @@ namespace Smart.Mapper.Mappers
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
             EmitMemberMapping(ilGenerator, context, workTable);
-            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
@@ -277,7 +277,7 @@ namespace Smart.Mapper.Mappers
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
             EmitMemberMapping(ilGenerator, context, workTable);
-            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
@@ -303,7 +303,7 @@ namespace Smart.Mapper.Mappers
             EmitConstructor(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
             EmitMemberMapping(ilGenerator, context, workTable);
-            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
@@ -328,7 +328,7 @@ namespace Smart.Mapper.Mappers
             EmitConstructor(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
             EmitMemberMapping(ilGenerator, context, workTable);
-            EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetAfterMapField);
+            EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
             return dynamicMethod.CreateDelegate(
@@ -479,8 +479,7 @@ namespace Smart.Mapper.Mappers
                     // Can set
                     if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
                     {
-                        // TODO local ?
-                        ilGenerator.Emit(work.IsFunction ? OpCodes.Dup : OpCodes.Ldarg_2);
+                        EmitStackDestination(ilGenerator, work);
                         ilGenerator.Emit(OpCodes.Ldarg_1);
                         ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
                         ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
@@ -506,9 +505,16 @@ namespace Smart.Mapper.Mappers
 
         private static void EmitStackDestination(ILGenerator ilGenerator, WorkTable work)
         {
-            if (work.DestinationLocal is not null)
+            if (work.IsFunction)
             {
-                ilGenerator.EmitLdloc(work.DestinationLocal);
+                if (work.DestinationLocal is not null)
+                {
+                    ilGenerator.EmitLdloc(work.DestinationLocal);
+                }
+                else
+                {
+                    ilGenerator.Emit(OpCodes.Dup);
+                }
             }
             else
             {

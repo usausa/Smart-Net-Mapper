@@ -48,7 +48,7 @@ namespace Smart.Mapper
             var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.Value2);
+            Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
         //--------------------------------------------------------------------------------
@@ -59,53 +59,53 @@ namespace Smart.Mapper
         public void FactoryUsingDefaultFunc()
         {
             var config = new MapperConfig()
-                .Default(opt => opt.FactoryUsing(() => new Destination { Value2 = 2 }));
+                .Default(opt => opt.FactoryUsing(() => new Destination { ValueDestinationOnly = 2 }));
             config.CreateMap<Source, Destination>();
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.Value2);
+            Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
         [Fact]
         public void FactoryUsingFunc()
         {
             var config = new MapperConfig();
-            config.CreateMap<Source, Destination>().FactoryUsing(() => new Destination { Value2 = 2 });
+            config.CreateMap<Source, Destination>().FactoryUsing(() => new Destination { ValueDestinationOnly = 2 });
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.Value2);
+            Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
         [Fact]
         public void FactoryUsingFuncWithSource()
         {
             var config = new MapperConfig();
-            config.CreateMap<Source, Destination>().FactoryUsing(s => new Destination { Value2 = s.Value3 });
+            config.CreateMap<Source, Destination>().FactoryUsing(s => new Destination { ValueDestinationOnly = s.ValueSourceOnly });
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, Value3 = 3 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(3, destination.Value2);
+            Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
         [Fact]
         public void FactoryUsingFuncWithContext()
         {
             var config = new MapperConfig();
-            config.CreateMap<Source, Destination>().FactoryUsing((_, c) => new Destination { Value2 = (int)c.Parameter! });
+            config.CreateMap<Source, Destination>().FactoryUsing((_, c) => new Destination { ValueDestinationOnly = (int)c.Parameter! });
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, -1);
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(-1, destination.Value2);
+            Assert.Equal(-1, destination.ValueDestinationOnly);
         }
 
         [Fact]
@@ -115,23 +115,23 @@ namespace Smart.Mapper
             config.CreateMap<Source, Destination>().FactoryUsing<CustomObjectFactory>();
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, Value3 = 3 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(3, destination.Value2);
+            Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
         [Fact]
         public void FactoryUsingObjectFactory2()
         {
             var config = new MapperConfig();
-            config.CreateMap<Source, Destination>().FactoryUsing<CustomObjectFactory>();
+            config.CreateMap<Source, Destination>().FactoryUsing(new CustomObjectFactory());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, Value3 = 3 }, -1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 }, -1);
 
             Assert.Equal(1, destination.Value);
-            Assert.Equal(-1, destination.Value2);
+            Assert.Equal(-1, destination.ValueDestinationOnly);
         }
 
         //--------------------------------------------------------------------------------
@@ -142,25 +142,25 @@ namespace Smart.Mapper
         {
             public int Value { get; set; }
 
-            public int Value3 { get; set; }
+            public int ValueSourceOnly { get; set; }
         }
 
         public class Destination
         {
             public int Value { get; set; }
 
-            public int Value2 { get; set; }
+            public int ValueDestinationOnly { get; set; }
         }
 
         public sealed class CustomServiceProvider : IServiceProvider
         {
-            public object GetService(Type serviceType) => new Destination { Value2 = 2 };
+            public object GetService(Type serviceType) => new Destination { ValueDestinationOnly = 2 };
         }
 
         public sealed class CustomObjectFactory : IObjectFactory<Source, Destination>
         {
             public Destination Create(Source source, ResolutionContext context) =>
-                new() { Value2 = (int?)context.Parameter ?? source.Value3 };
+                new() { ValueDestinationOnly = (int?)context.Parameter ?? source.ValueSourceOnly };
         }
     }
 }

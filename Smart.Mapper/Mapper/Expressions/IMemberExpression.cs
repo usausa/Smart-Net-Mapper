@@ -4,7 +4,6 @@ namespace Smart.Mapper.Expressions
     using System.Linq.Expressions;
     using System.Reflection;
 
-    using Smart.Mapper.Components;
     using Smart.Mapper.Functions;
 
     public interface IMemberExpression<TSource, out TDestination, in TMember>
@@ -25,7 +24,7 @@ namespace Smart.Mapper.Expressions
         // Nest
         //--------------------------------------------------------------------------------
 
-        // TODO IMemberExpression<TSource, TDestination, TMember> Nested();
+        IMemberExpression<TSource, TDestination, TMember> Nested();
 
         //--------------------------------------------------------------------------------
         // Order
@@ -37,60 +36,57 @@ namespace Smart.Mapper.Expressions
         // Condition
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, bool> condition);
+        IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, bool> condition);
 
-        //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, ResolutionContext, bool> condition);
+        IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, ResolutionContext, bool> condition);
 
-        //IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, ResolutionContext, bool> condition);
+        IMemberExpression<TSource, TDestination, TMember> Condition(Func<TSource, TDestination, ResolutionContext, bool> condition);
 
-        //IMemberExpression<TSource, TDestination, TMember> Condition(IMemberCondition<TSource, TDestination> condition);
+        IMemberExpression<TSource, TDestination, TMember> Condition(IMemberCondition<TSource, TDestination> condition);
 
-        //IMemberExpression<TSource, TDestination, TMember> Condition<TMemberCondition>()
-        //    where TMemberCondition : IMemberCondition<TSource, TDestination>;
+        IMemberExpression<TSource, TDestination, TMember> Condition<TMemberCondition>()
+            where TMemberCondition : IMemberCondition<TSource, TDestination>;
 
         //--------------------------------------------------------------------------------
         // MapFrom
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, TSourceMember>> expression);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, TSourceMember>> expression);
 
-        //IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> expression);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> expression);
 
-        //IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueResolver<TSource, TDestination, TMember> resolver);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueResolver<TSource, TDestination, TMember> resolver);
 
-        //IMemberExpression<TSource, TDestination, TMember> MapFrom<TValueResolver>()
-        //    where TValueResolver : IValueResolver<TSource, TDestination, TMember>;
+        IMemberExpression<TSource, TDestination, TMember> MapFrom<TValueResolver>()
+            where TValueResolver : IValueResolver<TSource, TDestination, TMember>;
 
-        //IMemberExpression<TSource, TDestination, TMember> MapFrom(string sourcePath);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom(string sourcePath);
 
         //--------------------------------------------------------------------------------
         // Convert
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, TMember> converter);
+        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, TMember> converter);
 
-        //IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, ResolutionContext, TMember> converter);
+        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, ResolutionContext, TMember> converter);
 
-        //IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(IValueConverter<TSourceMember, TMember> converter);
+        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(IValueConverter<TSourceMember, TMember> converter);
 
-        //IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember, TValueConverter>()
-        //    where TValueConverter : IValueConverter<TSourceMember, TMember>;
+        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember, TValueConverter>()
+            where TValueConverter : IValueConverter<TSourceMember, TMember>;
 
         //--------------------------------------------------------------------------------
         // Constant
         //--------------------------------------------------------------------------------
 
-        // TODO IMemberExpression<TSource, TDestination, TMember> Const(TMember value);
+        IMemberExpression<TSource, TDestination, TMember> Const(TMember value);
 
         //--------------------------------------------------------------------------------
         // Null
         //--------------------------------------------------------------------------------
 
-        // TODO IMemberExpression<TSource, TDestination, TMember> NullIf(TMember value);
+        IMemberExpression<TSource, TDestination, TMember> NullIf(TMember value);
 
-        // TODO IMemberExpression<TSource, TDestination, TMember> NullIgnore();
+        IMemberExpression<TSource, TDestination, TMember> NullIgnore();
     }
 }

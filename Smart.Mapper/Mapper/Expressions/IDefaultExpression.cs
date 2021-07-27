@@ -18,28 +18,27 @@ namespace Smart.Mapper.Expressions
         // Convert
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
+        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
 
-        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter);
+        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter);
 
-        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
+        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
 
-        //IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-        //    where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
+        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
 
         //--------------------------------------------------------------------------------
         // Constant
         //--------------------------------------------------------------------------------
 
-        // TODO IDefaultExpression Const<TMember>(TMember value);
+        IDefaultExpression Const<TMember>(TMember value);
 
         //--------------------------------------------------------------------------------
         // Null
         //--------------------------------------------------------------------------------
 
-        // TODO IDefaultExpression NullIf<TMember>(TMember value);
+        IDefaultExpression NullIf<TMember>(TMember value);
 
-        // TODO IDefaultExpression NullIgnore(Type type);
+        IDefaultExpression NullIgnore(Type type);
     }
 }

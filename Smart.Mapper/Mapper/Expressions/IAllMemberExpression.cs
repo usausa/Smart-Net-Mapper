@@ -20,7 +20,7 @@ namespace Smart.Mapper.Expressions
         // Nest
         //--------------------------------------------------------------------------------
 
-        // TODO IAllMemberExpression Nested();
+        IAllMemberExpression Nested();
 
         //--------------------------------------------------------------------------------
         // Order
@@ -32,6 +32,6 @@ namespace Smart.Mapper.Expressions
         // Null
         //--------------------------------------------------------------------------------
 
-        // TODO IAllMemberExpression NullIgnore();
+        IAllMemberExpression NullIgnore();
     }
 }

@@ -14,20 +14,21 @@ namespace Smart.Mapper
 
     public sealed class ObjectMapper : DisposableObject
     {
-        private readonly MapperHashArray mapperCache = new(128);
-        private readonly ProfileMapperHashArray profileMapperCache = new(32);
-
         private readonly object sync = new();
 
         private readonly ComponentContainer components;
+
+        private readonly IMissingHandler[] handlers;
+
+        private readonly IMapperFactory factory;
 
         private readonly DefaultOption defaultOption;
 
         private readonly Dictionary<(string?, Type, Type), MappingOption> mapperOptions;
 
-        private readonly IMissingHandler[] handlers;
+        private readonly MapperHashArray mapperCache = new(128);
 
-        private readonly IMapperFactory factory;
+        private readonly ProfileMapperHashArray profileMapperCache = new(32);
 
         internal ObjectMapper(MapperConfig config)
         {
@@ -59,11 +60,16 @@ namespace Smart.Mapper
         {
             lock (sync)
             {
-                if (!mapperOptions.TryGetValue((profile, sourceType, destinationType), out var mapperOption))
+                var key = (profile, sourceType, destinationType);
+                if (!mapperOptions.TryGetValue(key, out var mapperOption))
                 {
                     mapperOption = handlers
                         .Select(x => x.Handle(sourceType, destinationType))
                         .FirstOrDefault(x => x is not null);
+                }
+                else
+                {
+                    mapperOptions.Remove(key);
                 }
 
                 if (mapperOption is null)

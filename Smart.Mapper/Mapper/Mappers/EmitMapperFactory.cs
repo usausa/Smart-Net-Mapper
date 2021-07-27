@@ -122,7 +122,13 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"afterMap{i}", afterMaps[i].GetType(), FieldAttributes.Public);
             }
 
-            // TODO Define field
+            // Const
+            foreach (var member in context.Members.Where(x => x.IsConst))
+            {
+                typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+            }
+
+            // TODO Define field : const, cond, converter, null?
 
             var typeInfo = typeBuilder.CreateTypeInfo()!;
             var holderType = typeInfo.AsType();
@@ -154,6 +160,12 @@ namespace Smart.Mapper.Mappers
             for (var i = 0; i < afterMaps.Count; i++)
             {
                 GetAfterMapField(holderType, i).SetValue(holder, afterMaps[i]);
+            }
+
+            // Const
+            foreach (var member in context.Members.Where(x => x.IsConst))
+            {
+                GetConstValueField(holderType, member.No).SetValue(holder, member.ConstValue);
             }
 
             // TODO Set field
@@ -235,6 +247,8 @@ namespace Smart.Mapper.Mappers
 
         private static FieldInfo GetAfterMapField(Type holderType, int index) => holderType.GetField($"afterMap{index}")!;
 
+        private static FieldInfo GetConstValueField(Type holderType, int index) => holderType.GetField($"constValue{index}")!;
+
         //--------------------------------------------------------------------------------
         // Method
         //--------------------------------------------------------------------------------
@@ -252,7 +266,7 @@ namespace Smart.Mapper.Mappers
             var workTable = new WorkTable(false, false);
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
-            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMemberMapping(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
@@ -276,7 +290,7 @@ namespace Smart.Mapper.Mappers
             var workTable = new WorkTable(false, true);
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
-            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMemberMapping(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
@@ -302,7 +316,7 @@ namespace Smart.Mapper.Mappers
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitConstructor(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
-            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMemberMapping(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
@@ -327,7 +341,7 @@ namespace Smart.Mapper.Mappers
             EmitPrepare(ilGenerator, context, holderInfo, workTable);
             EmitConstructor(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.BeforeMaps, holderInfo, workTable, GetBeforeMapField);
-            EmitMemberMapping(ilGenerator, context, workTable);
+            EmitMemberMapping(ilGenerator, context, holderInfo, workTable);
             EmitMapActions(ilGenerator, context.AfterMaps, holderInfo, workTable, GetAfterMapField);
             EmitReturn(ilGenerator, workTable);
 
@@ -468,12 +482,25 @@ namespace Smart.Mapper.Mappers
             }
         }
 
-        private static void EmitMemberMapping(ILGenerator ilGenerator, MapperCreateContext context, WorkTable work)
+        private static void EmitMemberMapping(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
         {
+            // TODO source, cond | nullIf, nullIgnore | toNullable/fromNullable, conv-cast, conv-converter
             foreach (var member in context.Members)
             {
+                // TODO cond
+
+                // Const
+                if (member.IsConst)
+                {
+                    EmitStackDestination(ilGenerator, work);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, GetConstValueField(holderInfo.Holder.GetType(), member.No));
+                    ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
+                    continue;
+                }
+
                 // by Property
-                if (member.MapFrom.Type == FromType.Property)
+                if (member.MapFrom!.Type == FromType.Property)
                 {
                     var sourceProperty = (PropertyInfo)member.MapFrom.Value;
                     // Can set
@@ -486,9 +513,14 @@ namespace Smart.Mapper.Mappers
                     }
                     else
                     {
-                        // Need convert
+                        // TODO Need convert
                         throw new NotImplementedException();
                     }
+                }
+                else
+                {
+                    // TODO others
+                    throw new NotImplementedException();
                 }
             }
         }

@@ -64,6 +64,6 @@ namespace Smart.Mapper.Expressions
         // Default
         //--------------------------------------------------------------------------------
 
-        IMappingExpression<TSource, TDestination> Default(Action<IMappingDefaultExpression> action);
+        IMappingExpression<TSource, TDestination> Default(Action<IMappingDefaultExpression> option);
     }
 }

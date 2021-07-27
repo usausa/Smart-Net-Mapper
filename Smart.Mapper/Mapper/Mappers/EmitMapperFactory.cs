@@ -185,7 +185,7 @@ namespace Smart.Mapper.Mappers
                 return true;
             }
 
-            return context.Members.Any(x => x.MapFrom.Type.HasDestinationParameter() ||
+            return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
                                             ((x.Condition is not null) && x.Condition.Type.HasDestinationParameter()));
         }
 
@@ -202,7 +202,7 @@ namespace Smart.Mapper.Mappers
                 return true;
             }
 
-            return context.Members.Any(x => x.MapFrom.Type.HasContext() ||
+            return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
                                             ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
                                             ((x.Converter is not null) && x.Converter.Type.HasContext()));
         }

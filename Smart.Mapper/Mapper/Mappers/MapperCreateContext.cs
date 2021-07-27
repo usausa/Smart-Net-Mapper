@@ -18,7 +18,7 @@ namespace Smart.Mapper.Mappers
 
         public TypeEntry<ConditionType>? Condition { get; }
 
-        public TypeEntry<FromType> MapFrom { get; }
+        public TypeEntry<FromType>? MapFrom { get; }
 
         public TypeEntry<ConverterType>? Converter { get; }
 
@@ -37,7 +37,7 @@ namespace Smart.Mapper.Mappers
             PropertyInfo property,
             bool isNested,
             TypeEntry<ConditionType>? condition,
-            TypeEntry<FromType> mapFrom,
+            TypeEntry<FromType>? mapFrom,
             TypeEntry<ConverterType>? converter,
             bool isConst,
             object? constValue,
@@ -117,10 +117,6 @@ namespace Smart.Mapper.Mappers
             foreach (var memberOption in this.mappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
             {
                 var mapFrom = ResolveMapFrom(memberOption, matcher);
-                if (mapFrom is null)
-                {
-                    continue;
-                }
 
                 bool isConst;
                 object? constValue;
@@ -131,7 +127,17 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    isConst = defaultOption.TryGetConstValue(memberOption.Property.PropertyType, out constValue);
+                    isConst = mappingOption.TryGetConstValue(memberOption.Property.PropertyType, out constValue);
+                    if (!isConst)
+                    {
+                        isConst = defaultOption.TryGetConstValue(memberOption.Property.PropertyType, out constValue);
+                    }
+                }
+
+                // Exclude target
+                if ((mapFrom is null) && !isConst)
+                {
+                    continue;
                 }
 
                 bool isNullIf;
@@ -143,7 +149,11 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                    isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                    if (!isNullIf)
+                    {
+                        isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                    }
                 }
 
                 members.Add(new MemberMapping(

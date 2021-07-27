@@ -158,9 +158,9 @@ namespace Smart.Mapper.Expressions
         // Default
         //--------------------------------------------------------------------------------
 
-        public IMappingExpression<TSource, TDestination> Default(Action<IMappingDefaultExpression> action)
+        public IMappingExpression<TSource, TDestination> Default(Action<IMappingDefaultExpression> option)
         {
-            action(new MappingDefaultExpression(mappingOption));
+            option(new MappingDefaultExpression(mappingOption));
             return this;
         }
     }

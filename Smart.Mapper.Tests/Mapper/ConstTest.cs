@@ -15,12 +15,80 @@ namespace Smart.Mapper
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .ForMember(x => x.StringValue, opt => opt.Const("x"));
+                .ForMember(x => x.StringValue, opt => opt.Const("x"))
+                .ForMember(x => x.IntValue, opt => opt.Const(1))
+                .ForMember(x => x.EnumValue, opt => opt.Const(MyEnum.One))
+                .ForMember(x => x.DateTimeValue, opt => opt.Const(new DateTime(2000, 1, 1)))
+                .ForMember(x => x.NullableIntValue, opt => opt.Const(2))
+                .ForMember(x => x.NullableEnumValue, opt => opt.Const(MyEnum.Two))
+                .ForMember(x => x.NullableDateTimeValue, opt => opt.Const(new DateTime(2000, 12, 31)));
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source());
 
             Assert.Equal("x", destination.StringValue);
+            Assert.Equal(1, destination.IntValue);
+            Assert.Equal(MyEnum.One, destination.EnumValue);
+            Assert.Equal(new DateTime(2000, 1, 1), destination.DateTimeValue);
+            Assert.Equal(2, destination.NullableIntValue);
+            Assert.Equal(MyEnum.Two, destination.NullableEnumValue);
+            Assert.Equal(new DateTime(2000, 12, 31), destination.NullableDateTimeValue);
+        }
+
+        [Fact]
+        public void ConstByMappingDefault()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<Source, Destination>()
+                .Default(opt =>
+                {
+                    opt.Const("x");
+                    opt.Const(1);
+                    opt.Const(MyEnum.One);
+                    opt.Const(new DateTime(2000, 1, 1));
+                    opt.Const<int?>(2);
+                    opt.Const<MyEnum?>(MyEnum.Two);
+                    opt.Const<DateTime?>(new DateTime(2000, 12, 31));
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source());
+
+            Assert.Equal("x", destination.StringValue);
+            Assert.Equal(1, destination.IntValue);
+            Assert.Equal(MyEnum.One, destination.EnumValue);
+            Assert.Equal(new DateTime(2000, 1, 1), destination.DateTimeValue);
+            Assert.Equal(2, destination.NullableIntValue);
+            Assert.Equal(MyEnum.Two, destination.NullableEnumValue);
+            Assert.Equal(new DateTime(2000, 12, 31), destination.NullableDateTimeValue);
+        }
+
+        [Fact]
+        public void ConstByDefault()
+        {
+            var config = new MapperConfig();
+            config.Default(opt =>
+            {
+                opt.Const("x");
+                opt.Const(1);
+                opt.Const(MyEnum.One);
+                opt.Const(new DateTime(2000, 1, 1));
+                opt.Const<int?>(2);
+                opt.Const<MyEnum?>(MyEnum.Two);
+                opt.Const<DateTime?>(new DateTime(2000, 12, 31));
+            });
+            config.CreateMap<Source, Destination>();
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source());
+
+            Assert.Equal("x", destination.StringValue);
+            Assert.Equal(1, destination.IntValue);
+            Assert.Equal(MyEnum.One, destination.EnumValue);
+            Assert.Equal(new DateTime(2000, 1, 1), destination.DateTimeValue);
+            Assert.Equal(2, destination.NullableIntValue);
+            Assert.Equal(MyEnum.Two, destination.NullableEnumValue);
+            Assert.Equal(new DateTime(2000, 12, 31), destination.NullableDateTimeValue);
         }
 
         //--------------------------------------------------------------------------------
@@ -35,69 +103,24 @@ namespace Smart.Mapper
         {
             public string? StringValue { get; set; }
 
-            //public bool BoolValue { get; set; }
-            //public byte ByteValue { get; set; }
-            //public sbyte SByteValue { get; set; }
-            //public char CharValue { get; set; }
-            //public short ShortValue { get; set; }
-            //public ushort UShortValue { get; set; }
-            //public int IntValue { get; set; }
-            //public uint UIntValue { get; set; }
-            //public long LongValue { get; set; }
-            //public ulong ULongValue { get; set; }
-            //public float FloatValue { get; set; }
-            //public double DoubleValue { get; set; }
-            //public decimal DecimalValue { get; set; }
-            //public IntPtr IntPtrValue { get; set; }
-            //public UIntPtr UIntPtrValue { get; set; }
+            public int IntValue { get; set; }
 
-            //public MyEnum EnumValue { get; set; }
-            //public MyEnumShort EnumShortValue { get; set; }
-            //public MyEnumByte EnumByteValue { get; set; }
+            public MyEnum EnumValue { get; set; }
 
-            //public DateTime DateTimeValue { get; set; }
-            //public DateTimeOffset DateTimeOffsetValue { get; set; }
+            public DateTime DateTimeValue { get; set; }
 
-            //public bool? NullableBoolValue { get; set; }
-            //public byte? NullableByteValue { get; set; }
-            //public sbyte? NullableSByteValue { get; set; }
-            //public char? NullableCharValue { get; set; }
-            //public short? NullableShortValue { get; set; }
-            //public ushort? NullableUShortValue { get; set; }
-            //public int? NullableIntValue { get; set; }
-            //public uint? NullableUIntValue { get; set; }
-            //public long? NullableLongValue { get; set; }
-            //public ulong? NullableULongValue { get; set; }
-            //public float? NullableFloatValue { get; set; }
-            //public double? NullableDoubleValue { get; set; }
-            //public decimal? NullableDecimalValue { get; set; }
-            //public IntPtr? NullableIntPtrValue { get; set; }
-            //public UIntPtr? NullableUIntPtrValue { get; set; }
+            public int? NullableIntValue { get; set; }
 
-            //public MyEnum? NullableEnumValue { get; set; }
-            //public MyEnumShort? NullableEnumShortValue { get; set; }
-            //public MyEnumByte? NullableEnumByteValue { get; set; }
+            public MyEnum? NullableEnumValue { get; set; }
 
-            //public DateTime? NullableDateTimeValue { get; set; }
-            //public DateTimeOffset? NullableDateTimeOffsetValue { get; set; }
+            public DateTime? NullableDateTimeValue { get; set; }
         }
 
         public enum MyEnum
         {
             Zero,
-            One
-        }
-
-        public enum MyEnumShort : short
-        {
-            Zero,
-            One
-        }
-
-        public enum MyEnumByte : byte
-        {
-            Zero,
-            One
+            One,
+            Two
         }
     }
 }

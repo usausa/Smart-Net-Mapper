@@ -166,10 +166,12 @@ namespace Smart.Mapper
 
         public sealed class CustomMappingAction : IMappingAction<Source, Destination>
         {
+#pragma warning disable CA1508
             public void Process(Source source, Destination destination, ResolutionContext context)
             {
                 destination.ValueDestinationOnly = (int?)context.Parameter ?? source.ValueSourceOnly;
             }
+#pragma warning restore CA1508
         }
     }
 }

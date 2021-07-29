@@ -4,7 +4,6 @@ namespace Smart.Mapper
     using System.Collections.Generic;
 
     using Smart.ComponentModel;
-    using Smart.Converter;
     using Smart.Mapper.Components;
     using Smart.Mapper.Expressions;
     using Smart.Mapper.Mappers;
@@ -29,9 +28,6 @@ namespace Smart.Mapper
             {
                 config.Add<IMapperFactory, ReflectionMapperFactory>();
             }
-
-            config.Add<IConverterResolver, StandardConverterResolver>();
-            config.Add<IObjectConverter>(ObjectConverter.Default);
 
             config.Add<IServiceProvider, StandardServiceProvider>();
         }

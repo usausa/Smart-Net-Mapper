@@ -13,8 +13,6 @@ namespace Smart.Mapper.Mappers
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
     internal class EmitMapperFactory : IMapperFactory
     {
-        private readonly IConverterResolver converterResolver;
-
         private readonly IServiceProvider serviceProvider;
 
         private int typeNo;
@@ -40,11 +38,8 @@ namespace Smart.Mapper.Mappers
             }
         }
 
-        public EmitMapperFactory(
-            IConverterResolver converterResolver,
-            IServiceProvider serviceProvider)
+        public EmitMapperFactory(IServiceProvider serviceProvider)
         {
-            this.converterResolver = converterResolver;
             this.serviceProvider = serviceProvider;
         }
 
@@ -128,7 +123,16 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
             }
 
-            // TODO Define field : const, cond, converter, null?
+            // Condition
+            var conditions = context.Members.Where(x => x.Condition is not null)
+                .Select(x => new { Member = x, Condition = ResolveCondition(x.Condition!) })
+                .ToList();
+            foreach (var condition in conditions)
+            {
+                typeBuilder.DefineField($"condition{condition.Member.No}", condition.Condition.GetType(), FieldAttributes.Public);
+            }
+
+            // TODO Define field : converter, null?
 
             var typeInfo = typeBuilder.CreateTypeInfo()!;
             var holderType = typeInfo.AsType();
@@ -166,6 +170,12 @@ namespace Smart.Mapper.Mappers
             foreach (var member in context.Members.Where(x => x.IsConst))
             {
                 GetConstValueField(holderType, member.No).SetValue(holder, member.ConstValue);
+            }
+
+            // Condition
+            foreach (var condition in conditions)
+            {
+                GetConditionField(holderType, condition.Member.No).SetValue(holder, condition.Condition);
             }
 
             // TODO Set field
@@ -217,22 +227,17 @@ namespace Smart.Mapper.Mappers
                 return null;
             }
 
-            if (entry.Type == FactoryType.InterfaceType)
-            {
-                return serviceProvider.GetService((Type)entry.Value);
-            }
-
-            return entry.Value;
+            return entry.Type == FactoryType.InterfaceType ? serviceProvider.GetService((Type)entry.Value) : entry.Value;
         }
 
         private object ResolveAction(TypeEntry<ActionType> entry)
         {
-            if (entry.Type == ActionType.InterfaceType)
-            {
-                return serviceProvider.GetService((Type)entry.Value)!;
-            }
+            return entry.Type == ActionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
+        }
 
-            return entry.Value;
+        private object ResolveCondition(TypeEntry<ConditionType> entry)
+        {
+            return entry.Type == ConditionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
         }
 
         //--------------------------------------------------------------------------------
@@ -248,6 +253,8 @@ namespace Smart.Mapper.Mappers
         private static FieldInfo GetAfterMapField(Type holderType, int index) => holderType.GetField($"afterMap{index}")!;
 
         private static FieldInfo GetConstValueField(Type holderType, int index) => holderType.GetField($"constValue{index}")!;
+
+        private static FieldInfo GetConditionField(Type holderType, int index) => holderType.GetField($"condition{index}")!;
 
         //--------------------------------------------------------------------------------
         // Method
@@ -395,32 +402,26 @@ namespace Smart.Mapper.Mappers
             else if (context.Factory is not null)
             {
                 var field = GetFactoryField(holderInfo.Holder.GetType());
+                ilGenerator.Emit(OpCodes.Ldarg_0);
+                ilGenerator.Emit(OpCodes.Ldfld, field);
                 switch (context.Factory.Type)
                 {
                     case FactoryType.FuncDestination:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.FuncSourceDestination:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
                         ilGenerator.Emit(OpCodes.Ldarg_1);
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.FuncSourceContextDestination:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
                         ilGenerator.Emit(OpCodes.Ldarg_1);
                         ilGenerator.EmitLdloc(work.ContextLocal!);
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.Interface:
                     case FactoryType.InterfaceType:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                        ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Create")!);
                         break;
                     default:
@@ -450,30 +451,26 @@ namespace Smart.Mapper.Mappers
             for (var i = 0; i < actions.Count; i++)
             {
                 var field = resolver(holderInfo.Holder.GetType(), i)!;
+                ilGenerator.Emit(OpCodes.Ldarg_0);
+                ilGenerator.Emit(OpCodes.Ldfld, field);
                 switch (actions[i].Type)
                 {
                     case ActionType.Action:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        EmitStackDestination(ilGenerator, work);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                        EmitStackDestination(ilGenerator, work);    // Destination
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
                         break;
                     case ActionType.ActionContext:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        EmitStackDestination(ilGenerator, work);
-                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                        EmitStackDestination(ilGenerator, work);    // Destination
+                        ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
                         break;
                     case ActionType.Interface:
                     case ActionType.InterfaceType:
-                        ilGenerator.Emit(OpCodes.Ldarg_0);
-                        ilGenerator.Emit(OpCodes.Ldfld, field);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        EmitStackDestination(ilGenerator, work);
-                        ilGenerator.EmitLdloc(work.ContextLocal!);
+                        ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                        EmitStackDestination(ilGenerator, work);    // Destination
+                        ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                         ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Process")!);
                         break;
                     default:
@@ -484,43 +481,86 @@ namespace Smart.Mapper.Mappers
 
         private static void EmitMemberMapping(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
         {
-            // TODO source, cond | nullIf, nullIgnore | toNullable/fromNullable, conv-cast, conv-converter
+            // TODO source ***
+            // TODO nullIf
+            // TODO nullIgnore
+            // TODO toNullable/fromNullable, conv-cast, conv-converter
             foreach (var member in context.Members)
             {
-                // TODO cond
+                var nextLabel = (member.Condition is not null) ? ilGenerator.DefineLabel() : default;
+                if (member.Condition is not null)
+                {
+                    var field = GetConditionField(holderInfo.Holder.GetType(), member.No);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, field);
+                    switch (member.Condition.Type)
+                    {
+                        case ConditionType.FuncSource:
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                            break;
+                        case ConditionType.FuncSourceContext:
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                            ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                            break;
+                        case ConditionType.FuncSourceDestinationContext:
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            EmitStackDestination(ilGenerator, work);    // Destination
+                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                            ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                            break;
+                        case ConditionType.Interface:
+                        case ConditionType.InterfaceType:
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            EmitStackDestination(ilGenerator, work);    // Destination
+                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                            ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Eval")!);
+                            break;
+                    }
 
-                // Const
+                    ilGenerator.Emit(OpCodes.Brfalse_S, nextLabel);
+                }
+
                 if (member.IsConst)
                 {
+                    // Const
                     EmitStackDestination(ilGenerator, work);
                     ilGenerator.Emit(OpCodes.Ldarg_0);
                     ilGenerator.Emit(OpCodes.Ldfld, GetConstValueField(holderInfo.Holder.GetType(), member.No));
                     ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
-                    continue;
-                }
-
-                // by Property
-                if (member.MapFrom!.Type == FromType.Property)
-                {
-                    var sourceProperty = (PropertyInfo)member.MapFrom.Value;
-                    // Can set
-                    if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
-                    {
-                        EmitStackDestination(ilGenerator, work);
-                        ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
-                        ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
-                    }
-                    else
-                    {
-                        // TODO Need convert
-                        throw new NotImplementedException();
-                    }
                 }
                 else
                 {
-                    // TODO others
-                    throw new NotImplementedException();
+                    // by Property
+                    if (member.MapFrom!.Type == FromType.Property)
+                    {
+                        var sourceProperty = (PropertyInfo)member.MapFrom.Value;
+                        // Can set
+                        if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
+                        {
+                            EmitStackDestination(ilGenerator, work);
+                            ilGenerator.Emit(OpCodes.Ldarg_1);
+                            ilGenerator.Emit(OpCodes.Callvirt, sourceProperty.GetMethod!);
+                            ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
+                        }
+                        else
+                        {
+                            // TODO Need convert
+                            throw new NotImplementedException();
+                        }
+                    }
+                    else
+                    {
+                        // TODO others
+                        throw new NotImplementedException();
+                    }
+                }
+
+                if (member.Condition is not null)
+                {
+                    // Condition next:
+                    ilGenerator.MarkLabel(nextLabel);
                 }
             }
         }

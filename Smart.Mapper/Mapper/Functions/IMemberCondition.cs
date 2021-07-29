@@ -1,7 +1,7 @@
-﻿namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions
 {
-    public interface IMemberCondition<in TSourceMember, in TDestinationMember>
+    public interface IMemberCondition<in TSource, in TDestination>
     {
-        bool Eval(TSourceMember source, TDestinationMember destination, ResolutionContext context);
+        bool Eval(TSource source, TDestination destination, ResolutionContext context);
     }
 }

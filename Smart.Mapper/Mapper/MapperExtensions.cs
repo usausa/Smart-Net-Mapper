@@ -2,7 +2,6 @@ namespace Smart.Mapper
 {
     using System;
 
-    using Smart.Mapper.Components;
     using Smart.Mapper.Handlers;
 
     public static class MapperExtensions
@@ -23,19 +22,6 @@ namespace Smart.Mapper
         public static MapperConfig UseServiceProvider(this MapperConfig config, IServiceProvider serviceProvider)
         {
             config.Configure(c => c.Add(serviceProvider));
-            return config;
-        }
-
-        public static MapperConfig UseConverterResolver<TConverterResolver>(this MapperConfig config)
-            where TConverterResolver : IConverterResolver
-        {
-            config.Configure(c => c.Add<IConverterResolver, TConverterResolver>());
-            return config;
-        }
-
-        public static MapperConfig UseConverterResolver(this MapperConfig config, IConverterResolver converterResolver)
-        {
-            config.Configure(c => c.Add(converterResolver));
             return config;
         }
 

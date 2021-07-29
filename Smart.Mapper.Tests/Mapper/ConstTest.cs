@@ -116,6 +116,7 @@ namespace Smart.Mapper
             public DateTime? NullableDateTimeValue { get; set; }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix", Justification = "Ignore")]
         public enum MyEnum
         {
             Zero,

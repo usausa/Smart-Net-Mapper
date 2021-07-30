@@ -61,12 +61,12 @@ namespace Smart.Mapper.Benchmark.Mappers
 
     public sealed class ActionMapperFactory
     {
-        private readonly TypePairHashArray<IActionMapper> mappers = new TypePairHashArray<IActionMapper>();
+        private readonly TypePairHashArray<IActionMapper> mappers = new();
 
         public void AddMapper(Type sourceType, Type destinationType, IActionMapper mapper)
         {
             // MEMO 本物ではAddのみ(immutableなIFで)
-            mappers.AddIfNotExist(sourceType, destinationType, (s, d) => mapper);
+            mappers.AddIfNotExist(sourceType, destinationType, (_, _) => mapper);
         }
 
         public TDestination Map<TSource, TDestination>(TSource source)

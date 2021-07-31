@@ -7,6 +7,7 @@ namespace Smart.Mapper.Options
     using System.Reflection;
 
     using Smart.Mapper.Functions;
+    using Smart.Mapper.Helpers;
     using Smart.Mapper.Mappers;
 
     public class MappingOption
@@ -29,7 +30,7 @@ namespace Smart.Mapper.Options
 
         // Default
 
-        private Dictionary<Tuple<Type, Type>, object>? converters;
+        private ConverterRepository? converters;
 
         private Dictionary<Type, object?>? constValues;
 
@@ -126,22 +127,22 @@ namespace Smart.Mapper.Options
         //--------------------------------------------------------------------------------
 
         public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> value) =>
-            SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), value);
+            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), new TypeEntry<ConverterType>(ConverterType.FuncSource, value));
 
         public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> value) =>
-            SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), value);
+            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), new TypeEntry<ConverterType>(ConverterType.FuncSourceContext, value));
 
         public void SetConverter<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> value) =>
-            SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), value);
+            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), new TypeEntry<ConverterType>(ConverterType.Interface, value));
 
         public void SetConverter<TSourceMember, TDestinationMember, TValueConverter>()
             where TValueConverter : IValueConverter<TSourceMember, TDestinationMember> =>
-            SetConverterInternal(new Tuple<Type, Type>(typeof(TSourceMember), typeof(TDestinationMember)), typeof(TValueConverter));
+            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), new TypeEntry<ConverterType>(ConverterType.InterfaceType, typeof(TValueConverter)));
 
-        private void SetConverterInternal(Tuple<Type, Type> pair, object value)
+        private void SetConverterInternal(Type sourceType, Type destinationType, TypeEntry<ConverterType> entry)
         {
-            converters ??= new Dictionary<Tuple<Type, Type>, object>();
-            converters[pair] = value;
+            converters ??= new ConverterRepository();
+            converters.Set(sourceType, destinationType, entry);
         }
 
         //--------------------------------------------------------------------------------
@@ -186,15 +187,9 @@ namespace Smart.Mapper.Options
 
         // Default
 
-        internal bool TryGetConverter(Tuple<Type, Type> pair, [NotNullWhen(true)] out object? value)
+        internal TypeEntry<ConverterType>? GetConverter(Type sourceType, Type destinationType)
         {
-            if ((converters is not null) && converters.TryGetValue(pair, out value))
-            {
-                return true;
-            }
-
-            value = null;
-            return false;
+            return (converters is not null) && converters.TryGetConverter(sourceType, destinationType, out var entry) ? entry : null;
         }
 
         internal bool TryGetConstValue(Type type, out object? value)

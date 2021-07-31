@@ -131,7 +131,16 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"condition{condition.Member.No}", condition.Condition.GetType(), FieldAttributes.Public);
             }
 
-            // TODO Define field : converter, null?
+            // Converter
+            var converters = context.Members.Where(x => x.Converter is not null)
+                .Select(x => new { Member = x, Converter = ResolveConverter(x.Converter!) })
+                .ToList();
+            foreach (var converter in converters)
+            {
+                typeBuilder.DefineField($"converter{converter.Member.No}", converter.Converter.GetType(), FieldAttributes.Public);
+            }
+
+            // TODO Define field :  null?
 
             var typeInfo = typeBuilder.CreateTypeInfo()!;
             var holderType = typeInfo.AsType();
@@ -177,6 +186,12 @@ namespace Smart.Mapper.Mappers
                 GetConditionField(holderType, condition.Member.No).SetValue(holder, condition.Condition);
             }
 
+            // Converter
+            foreach (var converter in converters)
+            {
+                GetConverterField(holderType, converter.Member.No).SetValue(holder, converter.Converter);
+            }
+
             // TODO Set field
 
             return new HolderInfo(holder, hasDestinationParameter, hasContext);
@@ -207,9 +222,9 @@ namespace Smart.Mapper.Mappers
                 return true;
             }
 
-            // TODO Converter
-            return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
-                                            ((x.Condition is not null) && x.Condition.Type.HasContext()));
+            return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasContext()) ||
+                                            ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
+                                            ((x.Converter is not null) && x.Converter.Type.HasContext()));
         }
 
         private static bool IsNestedExist(MapperCreateContext context) =>
@@ -235,6 +250,11 @@ namespace Smart.Mapper.Mappers
             return entry.Type == ConditionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
         }
 
+        private object ResolveConverter(TypeEntry<ConverterType> entry)
+        {
+            return entry.Type == ConverterType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
+        }
+
         //--------------------------------------------------------------------------------
         // Field
         //--------------------------------------------------------------------------------
@@ -251,7 +271,9 @@ namespace Smart.Mapper.Mappers
 
         private static FieldInfo GetConditionField(Type holderType, int index) => holderType.GetField($"condition{index}")!;
 
-        // TODO Converterは事前解決
+        private static FieldInfo GetConverterField(Type holderType, int index) => holderType.GetField($"converter{index}")!;
+
+        // TODO
 
         //--------------------------------------------------------------------------------
         // Method

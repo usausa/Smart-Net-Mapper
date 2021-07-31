@@ -2,7 +2,6 @@ namespace Smart.Mapper.Mappers
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Reflection;
 
@@ -24,6 +23,8 @@ namespace Smart.Mapper.Mappers
 
         public object? ConstValue { get; }
 
+        public TypeEntry<ConverterType>? Converter { get; }
+
         public bool IsNullIf { get; }
 
         public object? NullIfValue { get; }
@@ -38,6 +39,7 @@ namespace Smart.Mapper.Mappers
             FromTypeEntry? mapFrom,
             bool isConst,
             object? constValue,
+            TypeEntry<ConverterType>? converter,
             bool isNullIf,
             object? nullIfValue,
             bool isNullIgnore)
@@ -49,6 +51,7 @@ namespace Smart.Mapper.Mappers
             MapFrom = mapFrom;
             IsConst = isConst;
             ConstValue = constValue;
+            Converter = converter;
             IsNullIf = isNullIf;
             NullIfValue = nullIfValue;
             IsNullIgnore = isNullIgnore;
@@ -130,8 +133,16 @@ namespace Smart.Mapper.Mappers
                     }
                 }
 
-                // Exclude target
-                if ((mapFrom is null) && !isConst)
+                TypeEntry<ConverterType>? converter;
+                if (isConst)
+                {
+                    converter = (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.Property.PropertyType) : null;
+                }
+                else if (mapFrom is not null)
+                {
+                    converter = ResolveConverter(mapFrom.MemberType, memberOption.Property.PropertyType);
+                }
+                else
                 {
                     continue;
                 }
@@ -160,6 +171,7 @@ namespace Smart.Mapper.Mappers
                     mapFrom,
                     isConst,
                     constValue,
+                    converter,
                     isNullIf,
                     nullIfValue,
                     memberOption.IsNullIgnore() || defaultOption.IsNullIgnore(memberOption.Property.PropertyType)));
@@ -192,7 +204,15 @@ namespace Smart.Mapper.Mappers
             return new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
         }
 
-        public bool TryGetConverter(Tuple<Type, Type> pair, [NotNullWhen(true)] out object? value) =>
-            defaultOption.TryGetConverter(pair, out value);
+        private TypeEntry<ConverterType>? ResolveConverter(Type sourceType, Type destinationType)
+        {
+            if (!destinationType.IsAssignableFrom(sourceType))
+            {
+                return mappingOption.GetConverter(sourceType, destinationType) ??
+                       defaultOption.GetConverter(sourceType, destinationType);
+            }
+
+            return null;
+        }
     }
 }

@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Collections
+namespace Smart.Mapper.Helpers
 {
     using System;
     using System.Diagnostics.CodeAnalysis;

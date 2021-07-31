@@ -7,8 +7,8 @@ namespace Smart.Mapper
 
     using Smart.ComponentModel;
 
-    using Smart.Mapper.Collections;
     using Smart.Mapper.Handlers;
+    using Smart.Mapper.Helpers;
     using Smart.Mapper.Mappers;
     using Smart.Mapper.Options;
 

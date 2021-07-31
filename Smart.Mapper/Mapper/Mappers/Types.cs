@@ -40,15 +40,14 @@ namespace Smart.Mapper.Mappers
         InterfaceType,
     }
 
-    // TODO
-    //public enum ConverterType
-    //{
-    //    None,
-    //    FuncSource,
-    //    FuncSourceContext,
-    //    Interface,
-    //    InterfaceType
-    //}
+    public enum ConverterType
+    {
+        None,
+        FuncSource,
+        FuncSourceContext,
+        Interface,
+        InterfaceType
+    }
 
     public static class TypeExtensions
     {
@@ -75,11 +74,10 @@ namespace Smart.Mapper.Mappers
             type == FromType.Interface ||
             type == FromType.InterfaceType;
 
-        // TODO
-        //public static bool HasContext(this ConverterType type) =>
-        //    type == ConverterType.FuncSourceContext ||
-        //    type == ConverterType.Interface ||
-        //    type == ConverterType.InterfaceType;
+        public static bool HasContext(this ConverterType type) =>
+            type == ConverterType.FuncSourceContext ||
+            type == ConverterType.Interface ||
+            type == ConverterType.InterfaceType;
 
         // Destination parameter
 

@@ -15,4 +15,20 @@ namespace Smart.Mapper.Mappers
             Value = value;
         }
     }
+
+    internal sealed class FromTypeEntry
+    {
+        public FromType Type { get; }
+
+        public Type MemberType { get; }
+
+        public object Value { get; }
+
+        public FromTypeEntry(FromType type, Type memberType, object value)
+        {
+            Type = type;
+            MemberType = memberType;
+            Value = value;
+        }
+    }
 }

@@ -1,6 +1,7 @@
 namespace Smart.Mapper.Options
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq.Expressions;
     using System.Reflection;
 
@@ -19,7 +20,7 @@ namespace Smart.Mapper.Options
 
         private TypeEntry<ConditionType>? condition;
 
-        private TypeEntry<FromType>? mapFrom;
+        private FromTypeEntry? mapFrom;
 
         private bool useConst;
         private object? constValue;
@@ -80,9 +81,9 @@ namespace Smart.Mapper.Options
             if (value.Body is MemberExpression memberExpression)
             {
                 var type = typeof(TSource);
-                if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
+                if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type))
                 {
-                    mapFrom = new TypeEntry<FromType>(FromType.Property, pi);
+                    mapFrom = new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
                     return;
                 }
             }
@@ -94,40 +95,40 @@ namespace Smart.Mapper.Options
                 return;
             }
 
-            mapFrom = new TypeEntry<FromType>(FromType.Expression, new Lazy<Func<TSource, TSourceMember>>(value.Compile));
+            mapFrom = new FromTypeEntry(FromType.LazyFunc, typeof(TSourceMember), new Lazy<Func<TSource, TSourceMember>>(value.Compile));
         }
 
-        public void SetMapFrom<TSource, TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> value)
-        {
-            if (value.Body is MemberExpression memberExpression)
-            {
-                var type = typeof(TSource);
-                if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type) && type.IsSubclassOf(pi.ReflectedType))
-                {
-                    mapFrom = new TypeEntry<FromType>(FromType.Property, pi);
-                    return;
-                }
-            }
+        public void SetMapFrom<TSource, TDestination, TSourceMember>(Func<TSource, TDestination, TSourceMember> func) =>
+            mapFrom = new FromTypeEntry(FromType.Func, typeof(TSourceMember), func);
 
-            if (value.Body is ConstantExpression constantExpression)
-            {
-                useConst = true;
-                constValue = constantExpression.Value;
-                return;
-            }
-
-            mapFrom = new TypeEntry<FromType>(FromType.ExpressionContext, new Lazy<Func<TSource, ResolutionContext, TSourceMember>>(value.Compile));
-        }
+        public void SetMapFrom<TSource, TDestination, TSourceMember>(Func<TSource, TDestination, ResolutionContext, TSourceMember> func) =>
+            mapFrom = new FromTypeEntry(FromType.FuncContext, typeof(TSourceMember), func);
 
         public void SetMapFrom<TSource, TDestination, TMember>(IValueResolver<TSource, TDestination, TMember> value) =>
-            mapFrom = new TypeEntry<FromType>(FromType.Interface, value);
+            mapFrom = new FromTypeEntry(FromType.Interface, typeof(TMember), value);
 
         public void SetMapFrom<TSource, TDestination, TMember, TValueResolver>()
             where TValueResolver : IValueResolver<TSource, TDestination, TMember> =>
-            mapFrom = new TypeEntry<FromType>(FromType.InterfaceType, typeof(TValueResolver));
+            mapFrom = new FromTypeEntry(FromType.InterfaceType, typeof(TMember), typeof(TValueResolver));
 
-        public void SetMapFrom(string value) =>
-            mapFrom = new TypeEntry<FromType>(FromType.Path, value);
+        public void SetMapFrom<TSource>(string sourcePath)
+        {
+            var type = typeof(TSource);
+            var properties = new List<PropertyInfo>();
+            foreach (var name in sourcePath.Split("."))
+            {
+                var pi = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                if (pi is null)
+                {
+                    throw new ArgumentException("Invalid source.", nameof(sourcePath));
+                }
+
+                properties.Add(pi);
+                type = pi.PropertyType;
+            }
+
+            mapFrom = new FromTypeEntry(FromType.Properties, properties[^1].PropertyType, properties);
+        }
 
         //--------------------------------------------------------------------------------
         // Const
@@ -163,7 +164,7 @@ namespace Smart.Mapper.Options
 
         internal TypeEntry<ConditionType>? GetCondition() => condition;
 
-        internal TypeEntry<FromType>? GetMapFrom() => mapFrom;
+        internal FromTypeEntry? GetMapFrom() => mapFrom;
 
         internal bool UseConst() => useConst;
 

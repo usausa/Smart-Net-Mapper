@@ -32,12 +32,12 @@ namespace Smart.Mapper.Mappers
     public enum FromType
     {
         None,
-        Property,
-        Expression,
-        ExpressionContext,
+        Properties,
+        LazyFunc,
+        Func,
+        FuncContext,
         Interface,
         InterfaceType,
-        Path
     }
 
     // TODO
@@ -71,7 +71,7 @@ namespace Smart.Mapper.Mappers
             type == ConditionType.InterfaceType;
 
         public static bool HasContext(this FromType type) =>
-            type == FromType.ExpressionContext ||
+            type == FromType.FuncContext ||
             type == FromType.Interface ||
             type == FromType.InterfaceType;
 

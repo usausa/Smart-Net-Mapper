@@ -529,10 +529,11 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    // by Property
-                    if (member.MapFrom!.Type == FromType.Property)
+                    // TODO
+                    // by Properties
+                    if (member.MapFrom!.Type == FromType.Properties)
                     {
-                        var sourceProperty = (PropertyInfo)member.MapFrom.Value;
+                        var sourceProperty = ((PropertyInfo[])member.MapFrom.Value)[0];
                         // Can set
                         if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
                         {

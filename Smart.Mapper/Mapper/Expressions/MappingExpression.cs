@@ -150,7 +150,7 @@ namespace Smart.Mapper.Expressions
                 throw new ArgumentException("Invalid destination member expression.");
             }
 
-            option(new MemberExpression<TSource, TDestination, TMember>(memberOption.Property, memberOption));
+            option(new MemberExpression<TSource, TDestination, TMember>(memberOption));
             return this;
         }
 

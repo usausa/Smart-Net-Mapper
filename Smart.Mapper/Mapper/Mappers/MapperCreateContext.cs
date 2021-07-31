@@ -18,7 +18,7 @@ namespace Smart.Mapper.Mappers
 
         public TypeEntry<ConditionType>? Condition { get; }
 
-        public TypeEntry<FromType>? MapFrom { get; }
+        public FromTypeEntry? MapFrom { get; }
 
         public bool IsConst { get; }
 
@@ -35,7 +35,7 @@ namespace Smart.Mapper.Mappers
             PropertyInfo property,
             bool isNested,
             TypeEntry<ConditionType>? condition,
-            TypeEntry<FromType>? mapFrom,
+            FromTypeEntry? mapFrom,
             bool isConst,
             object? constValue,
             bool isNullIf,
@@ -168,7 +168,7 @@ namespace Smart.Mapper.Mappers
             Members = members;
         }
 
-        private TypeEntry<FromType>? ResolveMapFrom(MemberOption memberOption, Func<string, string?> matcher)
+        private FromTypeEntry? ResolveMapFrom(MemberOption memberOption, Func<string, string?> matcher)
         {
             var mapFrom = memberOption.GetMapFrom();
             if (mapFrom is not null)
@@ -189,7 +189,7 @@ namespace Smart.Mapper.Mappers
                 return null;
             }
 
-            return new TypeEntry<FromType>(FromType.Property, pi);
+            return new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
         }
 
         public bool TryGetConverter(Tuple<Type, Type> pair, [NotNullWhen(true)] out object? value) =>

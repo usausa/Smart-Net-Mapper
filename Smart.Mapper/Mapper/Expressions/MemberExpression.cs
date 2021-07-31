@@ -11,11 +11,10 @@ namespace Smart.Mapper.Expressions
     {
         private readonly MemberOption memberOption;
 
-        public PropertyInfo DestinationMember { get; }
+        public PropertyInfo DestinationMember => memberOption.Property;
 
-        public MemberExpression(PropertyInfo property, MemberOption memberOption)
+        public MemberExpression(MemberOption memberOption)
         {
-            DestinationMember = property;
             this.memberOption = memberOption;
         }
 
@@ -94,9 +93,15 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
-        public IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> expression)
+        public IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Func<TSource, TDestination, TSourceMember> func)
         {
-            memberOption.SetMapFrom(expression);
+            memberOption.SetMapFrom(func);
+            return this;
+        }
+
+        public IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Func<TSource, TDestination, ResolutionContext, TSourceMember> func)
+        {
+            memberOption.SetMapFrom(func);
             return this;
         }
 
@@ -115,7 +120,7 @@ namespace Smart.Mapper.Expressions
 
         public IMemberExpression<TSource, TDestination, TMember> MapFrom(string sourcePath)
         {
-            memberOption.SetMapFrom(sourcePath);
+            memberOption.SetMapFrom<TSource>(sourcePath);
             return this;
         }
 

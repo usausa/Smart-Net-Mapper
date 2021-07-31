@@ -53,7 +53,9 @@ namespace Smart.Mapper.Expressions
 
         IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, TSourceMember>> expression);
 
-        IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Expression<Func<TSource, ResolutionContext, TSourceMember>> expression);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Func<TSource, TDestination, TSourceMember> func);
+
+        IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Func<TSource, TDestination, ResolutionContext, TSourceMember> func);
 
         IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueResolver<TSource, TDestination, TMember> resolver);
 

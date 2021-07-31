@@ -1,7 +1,7 @@
-﻿namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions
 {
-    public interface IValueResolver<in TSource, in TDestination, out TDestinationMember>
+    public interface IValueResolver<in TSource, in TDestination, out TMember>
     {
-        TDestinationMember Resolve(TSource source, TDestination destination, ResolutionContext context);
+        TMember Resolve(TSource source, TDestination destination, ResolutionContext context);
     }
 }

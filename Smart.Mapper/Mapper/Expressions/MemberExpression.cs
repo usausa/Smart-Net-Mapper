@@ -120,35 +120,6 @@ namespace Smart.Mapper.Expressions
         }
 
         //--------------------------------------------------------------------------------
-        // Convert
-        //--------------------------------------------------------------------------------
-
-        public IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, TMember> converter)
-        {
-            memberOption.SetConverter(converter);
-            return this;
-        }
-
-        public IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, ResolutionContext, TMember> converter)
-        {
-            memberOption.SetConverter(converter);
-            return this;
-        }
-
-        public IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(IValueConverter<TSourceMember, TMember> converter)
-        {
-            memberOption.SetConverter(converter);
-            return this;
-        }
-
-        public IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TMember>
-        {
-            memberOption.SetConverter<TSourceMember, TMember, TValueConverter>();
-            return this;
-        }
-
-        //--------------------------------------------------------------------------------
         // Const
         //--------------------------------------------------------------------------------
 

@@ -7,7 +7,6 @@ namespace Smart.Mapper.Mappers
     using System.Reflection.Emit;
 
     using Smart.Linq;
-    using Smart.Mapper.Components;
     using Smart.Reflection.Emit;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
@@ -180,11 +179,7 @@ namespace Smart.Mapper.Mappers
 
             // TODO Set field
 
-            return new HolderInfo(
-                holder,
-                hasDestinationParameter,
-                hasContext,
-                hasNestedMapper);
+            return new HolderInfo(holder, hasDestinationParameter, hasContext);
         }
 
         private static bool IsDestinationParameterRequired(MapperCreateContext context)
@@ -212,9 +207,9 @@ namespace Smart.Mapper.Mappers
                 return true;
             }
 
+            // TODO Converter
             return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
-                                            ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
-                                            ((x.Converter is not null) && x.Converter.Type.HasContext()));
+                                            ((x.Condition is not null) && x.Condition.Type.HasContext()));
         }
 
         private static bool IsNestedExist(MapperCreateContext context) =>
@@ -255,6 +250,8 @@ namespace Smart.Mapper.Mappers
         private static FieldInfo GetConstValueField(Type holderType, int index) => holderType.GetField($"constValue{index}")!;
 
         private static FieldInfo GetConditionField(Type holderType, int index) => holderType.GetField($"condition{index}")!;
+
+        // TODO Converterは事前解決
 
         //--------------------------------------------------------------------------------
         // Method
@@ -606,18 +603,17 @@ namespace Smart.Mapper.Mappers
 
             public bool HasContext { get; }
 
-            public bool HasNestedMapper { get; }
+            // TODO 優先再チェック NestはあるけどContextがないパターン あえて判別はいらないか？
+            //public bool HasNestedMapper { get; }
 
             public HolderInfo(
                 object holder,
                 bool hasDestinationParameter,
-                bool hasContext,
-                bool hasNestedMapper)
+                bool hasContext)
             {
                 Holder = holder;
                 HasDestinationParameter = hasDestinationParameter;
                 HasContext = hasContext;
-                HasNestedMapper = hasNestedMapper;
             }
         }
 

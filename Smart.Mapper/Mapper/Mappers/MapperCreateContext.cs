@@ -20,8 +20,6 @@ namespace Smart.Mapper.Mappers
 
         public TypeEntry<FromType>? MapFrom { get; }
 
-        public TypeEntry<ConverterType>? Converter { get; }
-
         public bool IsConst { get; }
 
         public object? ConstValue { get; }
@@ -38,7 +36,6 @@ namespace Smart.Mapper.Mappers
             bool isNested,
             TypeEntry<ConditionType>? condition,
             TypeEntry<FromType>? mapFrom,
-            TypeEntry<ConverterType>? converter,
             bool isConst,
             object? constValue,
             bool isNullIf,
@@ -50,7 +47,6 @@ namespace Smart.Mapper.Mappers
             IsNested = isNested;
             Condition = condition;
             MapFrom = mapFrom;
-            Converter = converter;
             IsConst = isConst;
             ConstValue = constValue;
             IsNullIf = isNullIf;
@@ -162,7 +158,6 @@ namespace Smart.Mapper.Mappers
                     memberOption.IsNested(),
                     memberOption.GetCondition(),
                     mapFrom,
-                    memberOption.GetConverter(),
                     isConst,
                     constValue,
                     isNullIf,

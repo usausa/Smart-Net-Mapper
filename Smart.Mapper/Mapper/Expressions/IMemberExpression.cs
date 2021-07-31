@@ -63,19 +63,6 @@ namespace Smart.Mapper.Expressions
         IMemberExpression<TSource, TDestination, TMember> MapFrom(string sourcePath);
 
         //--------------------------------------------------------------------------------
-        // Convert
-        //--------------------------------------------------------------------------------
-
-        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, TMember> converter);
-
-        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(Func<TSourceMember, ResolutionContext, TMember> converter);
-
-        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember>(IValueConverter<TSourceMember, TMember> converter);
-
-        IMemberExpression<TSource, TDestination, TMember> ConvertUsing<TSourceMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TMember>;
-
-        //--------------------------------------------------------------------------------
         // Constant
         //--------------------------------------------------------------------------------
 

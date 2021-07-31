@@ -21,8 +21,6 @@ namespace Smart.Mapper.Options
 
         private TypeEntry<FromType>? mapFrom;
 
-        private TypeEntry<ConverterType>? converter;
-
         private bool useConst;
         private object? constValue;
 
@@ -132,23 +130,6 @@ namespace Smart.Mapper.Options
             mapFrom = new TypeEntry<FromType>(FromType.Path, value);
 
         //--------------------------------------------------------------------------------
-        // Convert
-        //--------------------------------------------------------------------------------
-
-        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, TMember> value) =>
-            converter = new TypeEntry<ConverterType>(ConverterType.FuncSource, value);
-
-        public void SetConverter<TSourceMember, TMember>(Func<TSourceMember, ResolutionContext, TMember> value) =>
-            converter = new TypeEntry<ConverterType>(ConverterType.FuncSourceContext, value);
-
-        public void SetConverter<TSourceMember, TMember>(IValueConverter<TSourceMember, TMember> value) =>
-            converter = new TypeEntry<ConverterType>(ConverterType.Interface, value);
-
-        public void SetConverter<TSourceMember, TMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TMember> =>
-            converter = new TypeEntry<ConverterType>(ConverterType.InterfaceType, typeof(TValueConverter));
-
-        //--------------------------------------------------------------------------------
         // Const
         //--------------------------------------------------------------------------------
 
@@ -183,8 +164,6 @@ namespace Smart.Mapper.Options
         internal TypeEntry<ConditionType>? GetCondition() => condition;
 
         internal TypeEntry<FromType>? GetMapFrom() => mapFrom;
-
-        internal TypeEntry<ConverterType>? GetConverter() => converter;
 
         internal bool UseConst() => useConst;
 

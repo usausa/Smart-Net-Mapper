@@ -42,8 +42,6 @@ namespace Smart.Mapper.Mappers
             this.serviceProvider = serviceProvider;
         }
 
-        // IConverterResolver, IFactoryResolver, IFunctionActivatorはDI
-
         public object Create(MapperCreateContext context)
         {
             // Mapper
@@ -116,12 +114,6 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"afterMap{i}", afterMaps[i].GetType(), FieldAttributes.Public);
             }
 
-            // Const
-            foreach (var member in context.Members.Where(x => x.IsConst))
-            {
-                typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
-            }
-
             // Condition
             var conditions = context.Members.Where(x => x.Condition is not null)
                 .Select(x => new { Member = x, Condition = ResolveCondition(x.Condition!) })
@@ -129,6 +121,18 @@ namespace Smart.Mapper.Mappers
             foreach (var condition in conditions)
             {
                 typeBuilder.DefineField($"condition{condition.Member.No}", condition.Condition.GetType(), FieldAttributes.Public);
+            }
+
+            // Const
+            foreach (var member in context.Members.Where(x => x.IsConst))
+            {
+                typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+            }
+
+            // NullIf
+            foreach (var member in context.Members.Where(x => x.IsNullIf))
+            {
+                typeBuilder.DefineField($"nullIftValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
             }
 
             // Converter
@@ -140,8 +144,7 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"converter{converter.Member.No}", converter.Converter.GetType(), FieldAttributes.Public);
             }
 
-            // TODO Define field :  null?
-
+            // Create holder
             var typeInfo = typeBuilder.CreateTypeInfo()!;
             var holderType = typeInfo.AsType();
             var holder = Activator.CreateInstance(holderType)!;
@@ -174,16 +177,22 @@ namespace Smart.Mapper.Mappers
                 GetAfterMapField(holderType, i).SetValue(holder, afterMaps[i]);
             }
 
+            // Condition
+            foreach (var condition in conditions)
+            {
+                GetConditionField(holderType, condition.Member.No).SetValue(holder, condition.Condition);
+            }
+
             // Const
             foreach (var member in context.Members.Where(x => x.IsConst))
             {
                 GetConstValueField(holderType, member.No).SetValue(holder, member.ConstValue);
             }
 
-            // Condition
-            foreach (var condition in conditions)
+            // NullIf
+            foreach (var member in context.Members.Where(x => x.IsNullIf))
             {
-                GetConditionField(holderType, condition.Member.No).SetValue(holder, condition.Condition);
+                GetNullIfValueField(holderType, member.No).SetValue(holder, member.NullIfValue);
             }
 
             // Converter
@@ -191,8 +200,6 @@ namespace Smart.Mapper.Mappers
             {
                 GetConverterField(holderType, converter.Member.No).SetValue(holder, converter.Converter);
             }
-
-            // TODO Set field
 
             return new HolderInfo(holder, hasDestinationParameter, hasContext);
         }
@@ -267,9 +274,11 @@ namespace Smart.Mapper.Mappers
 
         private static FieldInfo GetAfterMapField(Type holderType, int index) => holderType.GetField($"afterMap{index}")!;
 
+        private static FieldInfo GetConditionField(Type holderType, int index) => holderType.GetField($"condition{index}")!;
+
         private static FieldInfo GetConstValueField(Type holderType, int index) => holderType.GetField($"constValue{index}")!;
 
-        private static FieldInfo GetConditionField(Type holderType, int index) => holderType.GetField($"condition{index}")!;
+        private static FieldInfo GetNullIfValueField(Type holderType, int index) => holderType.GetField($"nullIfValue{index}")!;
 
         private static FieldInfo GetConverterField(Type holderType, int index) => holderType.GetField($"converter{index}")!;
 

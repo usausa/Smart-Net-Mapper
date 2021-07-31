@@ -88,12 +88,12 @@ namespace Smart.Mapper.Options
                 }
             }
 
-            if (value.Body is ConstantExpression constantExpression)
-            {
-                useConst = true;
-                constValue = constantExpression.Value;
-                return;
-            }
+            //if (value.Body is ConstantExpression constantExpression)
+            //{
+            //    useConst = true;
+            //    constValue = constantExpression.Value;
+            //    return;
+            //}
 
             mapFrom = new FromTypeEntry(FromType.LazyFunc, typeof(TSourceMember), new Lazy<Func<TSource, TSourceMember>>(value.Compile));
         }

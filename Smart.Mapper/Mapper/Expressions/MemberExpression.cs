@@ -135,18 +135,12 @@ namespace Smart.Mapper.Expressions
         }
 
         //--------------------------------------------------------------------------------
-        // NullIf
+        // Null
         //--------------------------------------------------------------------------------
 
         public IMemberExpression<TSource, TDestination, TMember> NullIf(TMember value)
         {
             memberOption.SetNullIfValue(value);
-            return this;
-        }
-
-        public IMemberExpression<TSource, TDestination, TMember> NullIgnore()
-        {
-            memberOption.SetNullIgnore();
             return this;
         }
     }

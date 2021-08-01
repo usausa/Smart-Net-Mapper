@@ -28,8 +28,6 @@ namespace Smart.Mapper.Options
         private bool useNullIf;
         private object? nullIfValue;
 
-        private bool nullIgnore;
-
         public MemberOption(PropertyInfo property)
         {
             Property = property;
@@ -150,8 +148,6 @@ namespace Smart.Mapper.Options
             nullIfValue = value;
         }
 
-        public void SetNullIgnore() => nullIgnore = true;
-
         //--------------------------------------------------------------------------------
         // Internal
         //--------------------------------------------------------------------------------
@@ -173,7 +169,5 @@ namespace Smart.Mapper.Options
         internal bool UseNullIf() => useNullIf;
 
         internal object? GetNullIfValue() => nullIfValue;
-
-        internal bool IsNullIgnore() => nullIgnore;
     }
 }

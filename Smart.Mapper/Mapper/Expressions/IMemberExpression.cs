@@ -75,7 +75,5 @@ namespace Smart.Mapper.Expressions
         //--------------------------------------------------------------------------------
 
         IMemberExpression<TSource, TDestination, TMember> NullIf(TMember value);
-
-        IMemberExpression<TSource, TDestination, TMember> NullIgnore();
     }
 }

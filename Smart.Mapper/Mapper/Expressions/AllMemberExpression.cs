@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions
 {
     using System.Reflection;
 
@@ -30,12 +30,6 @@
         public IAllMemberExpression Order(int order)
         {
             memberOption.SetOrder(order);
-            return this;
-        }
-
-        public IAllMemberExpression NullIgnore()
-        {
-            memberOption.SetNullIgnore();
             return this;
         }
     }

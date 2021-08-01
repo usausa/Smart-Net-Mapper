@@ -17,44 +17,40 @@ namespace Smart.Mapper.Mappers
 
         public FromTypeEntry? MapFrom { get; }
 
+        public bool IsNested { get; }
+
         public bool IsConst { get; }
 
         public object? ConstValue { get; }
 
-        public bool IsNullIgnore { get; }
+        public TypeEntry<ConverterType>? Converter { get; }
 
         public bool IsNullIf { get; }
 
         public object? NullIfValue { get; }
-
-        public bool IsNested { get; }
-
-        public TypeEntry<ConverterType>? Converter { get; }
 
         public MemberMapping(
             int no,
             PropertyInfo property,
             TypeEntry<ConditionType>? condition,
             FromTypeEntry? mapFrom,
+            bool isNested,
             bool isConst,
             object? constValue,
-            bool isNullIgnore,
+            TypeEntry<ConverterType>? converter,
             bool isNullIf,
-            object? nullIfValue,
-            bool isNested,
-            TypeEntry<ConverterType>? converter)
+            object? nullIfValue)
         {
             No = no;
             Property = property;
             Condition = condition;
             MapFrom = mapFrom;
+            IsNested = isNested;
             IsConst = isConst;
             ConstValue = constValue;
-            IsNullIgnore = isNullIgnore;
+            Converter = converter;
             IsNullIf = isNullIf;
             NullIfValue = nullIfValue;
-            IsNested = isNested;
-            Converter = converter;
         }
     }
 
@@ -115,8 +111,6 @@ namespace Smart.Mapper.Mappers
             var members = new List<MemberMapping>();
             foreach (var memberOption in this.mappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
             {
-                var mapFrom = ResolveMapFrom(memberOption, matcher);
-
                 bool isConst;
                 object? constValue;
                 if (memberOption.UseConst())
@@ -139,45 +133,47 @@ namespace Smart.Mapper.Mappers
                         members.Count,
                         memberOption.Property,
                         memberOption.GetCondition(),
-                        mapFrom,
-                        isConst,
-                        constValue,
-                        false,
-                        false,
                         null,
                         false,
-                        (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.Property.PropertyType) : null));
-                }
-                else if (mapFrom is not null)
-                {
-                    bool isNullIf;
-                    object? nullIfValue;
-                    if (memberOption.UseNullIf())
-                    {
-                        isNullIf = true;
-                        nullIfValue = memberOption.GetNullIfValue();
-                    }
-                    else
-                    {
-                        isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
-                        if (!isNullIf)
-                        {
-                            isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
-                        }
-                    }
-
-                    members.Add(new MemberMapping(
-                        members.Count,
-                        memberOption.Property,
-                        memberOption.GetCondition(),
-                        mapFrom,
-                        isConst,
+                        true,
                         constValue,
-                        memberOption.IsNullIgnore() || defaultOption.IsNullIgnore(memberOption.Property.PropertyType),
-                        isNullIf,
-                        nullIfValue,
-                        memberOption.IsNested(),
-                        ResolveConverter(mapFrom.MemberType, memberOption.Property.PropertyType)));
+                        (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.Property.PropertyType) : null,
+                        false,
+                        null));
+                }
+                else
+                {
+                    var mapFrom = ResolveMapFrom(memberOption, matcher);
+                    if (mapFrom is not null)
+                    {
+                        bool isNullIf;
+                        object? nullIfValue;
+                        if (memberOption.UseNullIf())
+                        {
+                            isNullIf = true;
+                            nullIfValue = memberOption.GetNullIfValue();
+                        }
+                        else
+                        {
+                            isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                            if (!isNullIf)
+                            {
+                                isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                            }
+                        }
+
+                        members.Add(new MemberMapping(
+                            members.Count,
+                            memberOption.Property,
+                            memberOption.GetCondition(),
+                            mapFrom,
+                            memberOption.IsNested(),
+                            false,
+                            null,
+                            ResolveConverter(mapFrom.MemberType, memberOption.Property.PropertyType),
+                            isNullIf,
+                            nullIfValue));
+                    }
                 }
             }
 

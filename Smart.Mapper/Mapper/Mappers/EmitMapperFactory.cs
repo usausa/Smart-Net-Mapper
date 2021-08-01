@@ -81,13 +81,14 @@ namespace Smart.Mapper.Mappers
 
             var hasDestinationParameter = IsDestinationParameterRequired(context);
             var hasContext = IsContextRequired(context);
-            var hasNestedMapper = hasContext || IsNestedExist(context);
 
             // Nested mapper
-            if (hasNestedMapper)
+            if (hasContext)
             {
                 typeBuilder.DefineField("mapper", typeof(INestedMapper), FieldAttributes.Public);
             }
+
+            // TODO Nested
 
             // Factory
             var factory = ResolveFactory(context.Factory);
@@ -129,12 +130,6 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
             }
 
-            // NullIf
-            foreach (var member in context.Members.Where(x => x.IsNullIf))
-            {
-                typeBuilder.DefineField($"nullIftValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
-            }
-
             // Converter
             var converters = context.Members.Where(x => x.Converter is not null)
                 .Select(x => new { Member = x, Converter = ResolveConverter(x.Converter!) })
@@ -144,16 +139,24 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"converter{converter.Member.No}", converter.Converter.GetType(), FieldAttributes.Public);
             }
 
+            // NullIf
+            foreach (var member in context.Members.Where(x => x.IsNullIf))
+            {
+                typeBuilder.DefineField($"nullIftValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+            }
+
             // Create holder
             var typeInfo = typeBuilder.CreateTypeInfo()!;
             var holderType = typeInfo.AsType();
             var holder = Activator.CreateInstance(holderType)!;
 
             // Nested mapper
-            if (hasNestedMapper)
+            if (hasContext)
             {
                 GetMapperField(holderType).SetValue(holder, context.NexMapper);
             }
+
+            // TODO Nested
 
             // Factory
             if (context.IsFactoryUseServiceProvider)
@@ -189,16 +192,16 @@ namespace Smart.Mapper.Mappers
                 GetConstValueField(holderType, member.No).SetValue(holder, member.ConstValue);
             }
 
-            // NullIf
-            foreach (var member in context.Members.Where(x => x.IsNullIf))
-            {
-                GetNullIfValueField(holderType, member.No).SetValue(holder, member.NullIfValue);
-            }
-
             // Converter
             foreach (var converter in converters)
             {
                 GetConverterField(holderType, converter.Member.No).SetValue(holder, converter.Converter);
+            }
+
+            // NullIf
+            foreach (var member in context.Members.Where(x => x.IsNullIf))
+            {
+                GetNullIfValueField(holderType, member.No).SetValue(holder, member.NullIfValue);
             }
 
             return new HolderInfo(holder, hasDestinationParameter, hasContext);
@@ -234,9 +237,6 @@ namespace Smart.Mapper.Mappers
                                             ((x.Converter is not null) && x.Converter.Type.HasContext()));
         }
 
-        private static bool IsNestedExist(MapperCreateContext context) =>
-            context.Members.Any(x => x.IsNested);
-
         private object? ResolveFactory(TypeEntry<FactoryType>? entry)
         {
             if (entry is null)
@@ -247,20 +247,14 @@ namespace Smart.Mapper.Mappers
             return entry.Type == FactoryType.InterfaceType ? serviceProvider.GetService((Type)entry.Value) : entry.Value;
         }
 
-        private object ResolveAction(TypeEntry<ActionType> entry)
-        {
-            return entry.Type == ActionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
-        }
+        private object ResolveAction(TypeEntry<ActionType> entry) =>
+            entry.Type == ActionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
 
-        private object ResolveCondition(TypeEntry<ConditionType> entry)
-        {
-            return entry.Type == ConditionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
-        }
+        private object ResolveCondition(TypeEntry<ConditionType> entry) =>
+            entry.Type == ConditionType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
 
-        private object ResolveConverter(TypeEntry<ConverterType> entry)
-        {
-            return entry.Type == ConverterType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
-        }
+        private object ResolveConverter(TypeEntry<ConverterType> entry) =>
+             entry.Type == ConverterType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
 
         //--------------------------------------------------------------------------------
         // Field
@@ -278,11 +272,9 @@ namespace Smart.Mapper.Mappers
 
         private static FieldInfo GetConstValueField(Type holderType, int index) => holderType.GetField($"constValue{index}")!;
 
-        private static FieldInfo GetNullIfValueField(Type holderType, int index) => holderType.GetField($"nullIfValue{index}")!;
-
         private static FieldInfo GetConverterField(Type holderType, int index) => holderType.GetField($"converter{index}")!;
 
-        // TODO
+        private static FieldInfo GetNullIfValueField(Type holderType, int index) => holderType.GetField($"nullIfValue{index}")!;
 
         //--------------------------------------------------------------------------------
         // Method
@@ -509,13 +501,11 @@ namespace Smart.Mapper.Mappers
 
         private static void EmitMemberMapping(ILGenerator ilGenerator, MapperCreateContext context, HolderInfo holderInfo, WorkTable work)
         {
-            // TODO source ***
-            // TODO nullIf
-            // TODO nullIgnore
-            // TODO toNullable/fromNullable, conv-cast, conv-converter
             foreach (var member in context.Members)
             {
                 var nextLabel = (member.Condition is not null) ? ilGenerator.DefineLabel() : default;
+
+                // Condition
                 if (member.Condition is not null)
                 {
                     var field = GetConditionField(holderInfo.Holder.GetType(), member.No);
@@ -550,6 +540,7 @@ namespace Smart.Mapper.Mappers
                     ilGenerator.Emit(OpCodes.Brfalse_S, nextLabel);
                 }
 
+                // Value expression
                 if (member.IsConst)
                 {
                     // Const
@@ -560,7 +551,11 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    // TODO
+                    // TODO source ***
+                    // TODO nullIf
+                    // TODO toNullable/fromNullable, conv-cast, conv-converter
+                    // TODO Nest
+
                     // by Properties
                     if (member.MapFrom!.Type == FromType.Properties)
                     {
@@ -634,9 +629,6 @@ namespace Smart.Mapper.Mappers
             public bool HasDestinationParameter { get; }
 
             public bool HasContext { get; }
-
-            // TODO 優先再チェック NestはあるけどContextがないパターン あえて判別はいらないか？
-            //public bool HasNestedMapper { get; }
 
             public HolderInfo(
                 object holder,

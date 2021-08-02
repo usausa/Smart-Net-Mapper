@@ -86,13 +86,6 @@ namespace Smart.Mapper.Options
                 }
             }
 
-            //if (value.Body is ConstantExpression constantExpression)
-            //{
-            //    useConst = true;
-            //    constValue = constantExpression.Value;
-            //    return;
-            //}
-
             mapFrom = new FromTypeEntry(FromType.LazyFunc, typeof(TSourceMember), new Lazy<Func<TSource, TSourceMember>>(value.Compile));
         }
 
@@ -102,11 +95,11 @@ namespace Smart.Mapper.Options
         public void SetMapFrom<TSource, TDestination, TSourceMember>(Func<TSource, TDestination, ResolutionContext, TSourceMember> func) =>
             mapFrom = new FromTypeEntry(FromType.FuncContext, typeof(TSourceMember), func);
 
-        public void SetMapFrom<TSource, TDestination, TMember>(IValueResolver<TSource, TDestination, TMember> value) =>
+        public void SetMapFrom<TSource, TDestination, TMember>(IValueProvider<TSource, TDestination, TMember> value) =>
             mapFrom = new FromTypeEntry(FromType.Interface, typeof(TMember), value);
 
         public void SetMapFrom<TSource, TDestination, TMember, TValueResolver>()
-            where TValueResolver : IValueResolver<TSource, TDestination, TMember> =>
+            where TValueResolver : IValueProvider<TSource, TDestination, TMember> =>
             mapFrom = new FromTypeEntry(FromType.InterfaceType, typeof(TMember), typeof(TValueResolver));
 
         public void SetMapFrom<TSource>(string sourcePath)

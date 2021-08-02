@@ -57,10 +57,10 @@ namespace Smart.Mapper.Expressions
 
         IMemberExpression<TSource, TDestination, TMember> MapFrom<TSourceMember>(Func<TSource, TDestination, ResolutionContext, TSourceMember> func);
 
-        IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueResolver<TSource, TDestination, TMember> resolver);
+        IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueProvider<TSource, TDestination, TMember> resolver);
 
         IMemberExpression<TSource, TDestination, TMember> MapFrom<TValueResolver>()
-            where TValueResolver : IValueResolver<TSource, TDestination, TMember>;
+            where TValueResolver : IValueProvider<TSource, TDestination, TMember>;
 
         IMemberExpression<TSource, TDestination, TMember> MapFrom(string sourcePath);
 

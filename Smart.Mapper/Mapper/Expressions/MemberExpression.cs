@@ -105,14 +105,14 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
-        public IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueResolver<TSource, TDestination, TMember> resolver)
+        public IMemberExpression<TSource, TDestination, TMember> MapFrom(IValueProvider<TSource, TDestination, TMember> resolver)
         {
             memberOption.SetMapFrom(resolver);
             return this;
         }
 
         public IMemberExpression<TSource, TDestination, TMember> MapFrom<TValueResolver>()
-            where TValueResolver : IValueResolver<TSource, TDestination, TMember>
+            where TValueResolver : IValueProvider<TSource, TDestination, TMember>
         {
             memberOption.SetMapFrom<TSource, TDestination, TMember, TValueResolver>();
             return this;

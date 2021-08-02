@@ -152,7 +152,7 @@ namespace Smart.Mapper.Mappers
             // NullIf
             foreach (var member in context.Members.Where(x => x.IsNullIf))
             {
-                typeBuilder.DefineField($"nullIftValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+                typeBuilder.DefineField($"nullIfValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
             }
 
             // Create holder
@@ -424,6 +424,7 @@ namespace Smart.Mapper.Mappers
             // Destination
             if (work.IsFunction && holderInfo.HasDestinationParameter)
             {
+                // TODO Struct
                 work.DestinationLocal = ilGenerator.DeclareLocal(context.DestinationType);
             }
 
@@ -437,6 +438,15 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Ldfld, GetMapperField(holderInfo.Holder.GetType()));
                 ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
                 ilGenerator.EmitStloc(work.ContextLocal);
+            }
+
+            // Temporary
+            foreach (var member in context.Members)
+            {
+                if (member.IsNullIf && !member.Property.PropertyType.IsClass && !work.TemporaryLocals.ContainsKey(member.Property.PropertyType))
+                {
+                    work.TemporaryLocals[member.Property.PropertyType] = ilGenerator.DeclareLocal(member.Property.PropertyType);
+                }
             }
         }
 
@@ -565,54 +575,74 @@ namespace Smart.Mapper.Mappers
                 {
                     EmitStackDestination(ilGenerator, work);
 
-                    switch (member.MapFrom!.Type)
-                    {
-                        case FromType.Properties:
-                            ilGenerator.Emit(OpCodes.Ldarg_1);  // Source
-                            foreach (var pi in (PropertyInfo[])member.MapFrom.Value)
-                            {
-                                ilGenerator.EmitCallMethod(pi.GetMethod!);
-                            }
-                            break;
-                        case FromType.LazyFunc:
-                            var lazyFuncField = GetProviderField(holderInfo.Holder.GetType(), member.No);
-                            ilGenerator.Emit(OpCodes.Ldarg_0);
-                            ilGenerator.Emit(OpCodes.Ldfld, lazyFuncField);
-                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
-                            ilGenerator.EmitCallMethod(lazyFuncField.FieldType.GetMethod("Invoke")!);
-                            break;
-                        case FromType.Func:
-                            var funcField = GetProviderField(holderInfo.Holder.GetType(), member.No);
-                            ilGenerator.Emit(OpCodes.Ldarg_0);
-                            ilGenerator.Emit(OpCodes.Ldfld, funcField);
-                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
-                            EmitStackDestination(ilGenerator, work);    // Destination
-                            ilGenerator.EmitCallMethod(funcField.FieldType.GetMethod("Invoke")!);
-                            break;
-                        case FromType.FuncContext:
-                            var funcContextField = GetProviderField(holderInfo.Holder.GetType(), member.No);
-                            ilGenerator.Emit(OpCodes.Ldarg_0);
-                            ilGenerator.Emit(OpCodes.Ldfld, funcContextField);
-                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
-                            EmitStackDestination(ilGenerator, work);    // Destination
-                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
-                            ilGenerator.EmitCallMethod(funcContextField.FieldType.GetMethod("Invoke")!);
-                            break;
-                        case FromType.Interface:
-                        case FromType.InterfaceType:
-                            var interfaceField = GetProviderField(holderInfo.Holder.GetType(), member.No);
-                            ilGenerator.Emit(OpCodes.Ldarg_0);
-                            ilGenerator.Emit(OpCodes.Ldfld, interfaceField);
-                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
-                            EmitStackDestination(ilGenerator, work);    // Destination
-                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
-                            ilGenerator.EmitCallMethod(interfaceField.FieldType.GetMethod("Provide")!);
-                            break;
-                    }
+                    EmitStackSourceMember(ilGenerator, holderInfo, work, member);
 
                     // TODO toNullable/fromNullable, conv-cast, conv-converter
+                    if (member.Condition is not null)
+                    {
+                        // TODO
+                    }
+                    else if (member.IsNullIf)
+                    {
+                        var convert = !member.Property.PropertyType.IsAssignableFrom(member.MapFrom!.MemberType);
+                        var setLabel = ilGenerator.DefineLabel();
 
-                    // TODO nullIf
+                        if (member.Property.PropertyType.IsClass)
+                        {
+                            var reloadLabel = convert ? ilGenerator.DefineLabel() : default;
+
+                            // Branch
+                            ilGenerator.Emit(OpCodes.Dup);
+                            ilGenerator.Emit(OpCodes.Brtrue_S, convert ? reloadLabel : setLabel);
+
+                            // Null if
+                            ilGenerator.Emit(OpCodes.Pop);
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, GetNullIfValueField(holderInfo.Holder.GetType(), member.No));
+                            if (convert)
+                            {
+                                // TODO S?
+                                ilGenerator.Emit(OpCodes.Br_S, setLabel);
+
+                                // Convert
+                                ilGenerator.MarkLabel(reloadLabel);
+
+                                throw new NotImplementedException();
+                            }
+                        }
+                        else
+                        {
+                            var reloadLabel = ilGenerator.DefineLabel();
+                            var temporaryLocal = work.TemporaryLocals[member.Property.PropertyType];
+
+                            ilGenerator.EmitStloc(temporaryLocal);
+
+                            // Branch
+                            ilGenerator.EmitLdloca(temporaryLocal);
+                            ilGenerator.Emit(OpCodes.Call, member.Property.PropertyType.GetProperty("HasValue")!.GetMethod!);
+                            ilGenerator.Emit(OpCodes.Brtrue_S, reloadLabel);
+
+                            // Null if
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, GetNullIfValueField(holderInfo.Holder.GetType(), member.No));
+                            ilGenerator.Emit(OpCodes.Br_S, setLabel);
+
+                            // Non null
+                            ilGenerator.MarkLabel(reloadLabel);
+                            ilGenerator.EmitLdloc(temporaryLocal);
+
+                            if (convert)
+                            {
+                                throw new NotImplementedException();
+                            }
+                        }
+
+                        ilGenerator.MarkLabel(setLabel);
+                    }
+                    else
+                    {
+                        // TODO
+                    }
 
                     ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
@@ -634,47 +664,90 @@ namespace Smart.Mapper.Mappers
             switch (member.Condition!.Type)
             {
                 case ConditionType.FuncSource:
-                    ilGenerator.Emit(OpCodes.Ldarg_1); // Source
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
                     ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.FuncSourceContext:
-                    ilGenerator.Emit(OpCodes.Ldarg_1); // Source
-                    ilGenerator.EmitLdloc(work.ContextLocal!); // Context
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                     ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.FuncSourceDestinationContext:
                     ilGenerator.Emit(OpCodes.Ldarg_1); // Source
-                    EmitStackDestination(ilGenerator, work); // Destination
-                    ilGenerator.EmitLdloc(work.ContextLocal!); // Context
+                    EmitStackDestination(ilGenerator, work);    // Destination
+                    ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                     ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.Interface:
                 case ConditionType.InterfaceType:
-                    ilGenerator.Emit(OpCodes.Ldarg_1); // Source
-                    EmitStackDestination(ilGenerator, work); // Destination
-                    ilGenerator.EmitLdloc(work.ContextLocal!); // Context
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    EmitStackDestination(ilGenerator, work);    // Destination
+                    ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
                     ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Eval")!);
                     break;
             }
 
             // TODO S check
-            ilGenerator.Emit(OpCodes.Brfalse_S, nextLabel);
+            //ilGenerator.Emit(OpCodes.Brfalse_S, nextLabel);
+            ilGenerator.Emit(OpCodes.Brfalse, nextLabel);
+        }
+
+        private static void EmitStackSourceMember(ILGenerator ilGenerator, HolderInfo holderInfo, WorkTable work, MemberMapping member)
+        {
+            switch (member.MapFrom!.Type)
+            {
+                case FromType.Properties:
+                    ilGenerator.Emit(OpCodes.Ldarg_1); // Source
+                    foreach (var pi in (PropertyInfo[])member.MapFrom.Value)
+                    {
+                        ilGenerator.EmitCallMethod(pi.GetMethod!);
+                    }
+
+                    break;
+                case FromType.LazyFunc:
+                    var lazyFuncField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, lazyFuncField);
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    ilGenerator.EmitCallMethod(lazyFuncField.FieldType.GetMethod("Invoke")!);
+                    break;
+                case FromType.Func:
+                    var funcField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, funcField);
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    EmitStackDestination(ilGenerator, work);    // Destination
+                    ilGenerator.EmitCallMethod(funcField.FieldType.GetMethod("Invoke")!);
+                    break;
+                case FromType.FuncContext:
+                    var funcContextField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, funcContextField);
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    EmitStackDestination(ilGenerator, work);    // Destination
+                    ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                    ilGenerator.EmitCallMethod(funcContextField.FieldType.GetMethod("Invoke")!);
+                    break;
+                case FromType.Interface:
+                case FromType.InterfaceType:
+                    var interfaceField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                    ilGenerator.Emit(OpCodes.Ldarg_0);
+                    ilGenerator.Emit(OpCodes.Ldfld, interfaceField);
+                    ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                    EmitStackDestination(ilGenerator, work);    // Destination
+                    ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                    ilGenerator.EmitCallMethod(interfaceField.FieldType.GetMethod("Provide")!);
+                    break;
+            }
         }
 
         //--------------------------------------------------------------------------------
         // Helper
         //--------------------------------------------------------------------------------
 
-        private static void EmitReturn(ILGenerator ilGenerator, WorkTable work)
-        {
-            if (work.DestinationLocal is not null)
-            {
-                ilGenerator.EmitLdloc(work.DestinationLocal);
-            }
+        // TODO Source こっちも2つか？
 
-            ilGenerator.Emit(OpCodes.Ret);
-        }
-
+        // TODO structで引数用とコール用？
         private static void EmitStackDestination(ILGenerator ilGenerator, WorkTable work)
         {
             if (work.IsFunction)
@@ -692,6 +765,16 @@ namespace Smart.Mapper.Mappers
             {
                 ilGenerator.Emit(OpCodes.Ldarg_2);
             }
+        }
+
+        private static void EmitReturn(ILGenerator ilGenerator, WorkTable work)
+        {
+            if (work.DestinationLocal is not null)
+            {
+                ilGenerator.EmitLdloc(work.DestinationLocal);
+            }
+
+            ilGenerator.Emit(OpCodes.Ret);
         }
 
         //--------------------------------------------------------------------------------
@@ -726,6 +809,8 @@ namespace Smart.Mapper.Mappers
             public LocalBuilder? DestinationLocal { get; set; }
 
             public LocalBuilder? ContextLocal { get; set; }
+
+            public Dictionary<Type, LocalBuilder> TemporaryLocals { get; } = new();
 
             public WorkTable(bool isFunction, bool hasParameter)
             {

@@ -137,7 +137,7 @@ namespace Smart.Mapper.Mappers
                 .ToList();
             foreach (var provider in providers)
             {
-                typeBuilder.DefineField($"converter{provider.Member.No}", provider.Provider!.GetType(), FieldAttributes.Public);
+                typeBuilder.DefineField($"provider{provider.Member.No}", provider.Provider!.GetType(), FieldAttributes.Public);
             }
 
             // Converter
@@ -432,7 +432,7 @@ namespace Smart.Mapper.Mappers
             {
                 work.ContextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
 
-                ilGenerator.Emit(work.HasParameter ? OpCodes.Ldarg_2 : OpCodes.Ldnull);
+                ilGenerator.Emit(work.HasParameter ? (work.IsFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3) : OpCodes.Ldnull);
                 ilGenerator.Emit(OpCodes.Ldarg_0);
                 ilGenerator.Emit(OpCodes.Ldfld, GetMapperField(holderInfo.Holder.GetType()));
                 ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
@@ -451,7 +451,7 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Ldtoken, context.DestinationType);
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))!);
                 var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
-                ilGenerator.Emit(OpCodes.Callvirt, method);
+                ilGenerator.EmitCallMethod(method);
                 ilGenerator.Emit(OpCodes.Castclass, context.DestinationType);
             }
             else if (context.Factory is not null)
@@ -463,22 +463,22 @@ namespace Smart.Mapper.Mappers
                 switch (context.Factory.Type)
                 {
                     case FactoryType.FuncDestination:
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.FuncSourceDestination:
                         ilGenerator.Emit(OpCodes.Ldarg_1);
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.FuncSourceContextDestination:
                         ilGenerator.Emit(OpCodes.Ldarg_1);
                         ilGenerator.EmitLdloc(work.ContextLocal!);
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                         break;
                     case FactoryType.Interface:
                     case FactoryType.InterfaceType:
                         ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
                         ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Create")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Create")!);
                         break;
                     default:
                         throw new InvalidOperationException($"Unsupported factory. type=[{field.FieldType}]");
@@ -515,20 +515,20 @@ namespace Smart.Mapper.Mappers
                     case ActionType.Action:
                         ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
                         EmitStackDestination(ilGenerator, work);    // Destination
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                         break;
                     case ActionType.ActionContext:
                         ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
                         EmitStackDestination(ilGenerator, work);    // Destination
                         ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                         break;
                     case ActionType.Interface:
                     case ActionType.InterfaceType:
                         ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
                         EmitStackDestination(ilGenerator, work);    // Destination
                         ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
-                        ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Process")!);
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Process")!);
                         break;
                     default:
                         throw new InvalidOperationException($"Unsupported action map. type=[{field.FieldType}]");
@@ -555,7 +555,11 @@ namespace Smart.Mapper.Mappers
                     EmitStackDestination(ilGenerator, work);
                     ilGenerator.Emit(OpCodes.Ldarg_0);
                     ilGenerator.Emit(OpCodes.Ldfld, GetConstValueField(holderInfo.Holder.GetType(), member.No));
-                    ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
+                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
+                }
+                else if (member.IsNested)
+                {
+                    // TODO Nest
                 }
                 else
                 {
@@ -567,29 +571,50 @@ namespace Smart.Mapper.Mappers
                             ilGenerator.Emit(OpCodes.Ldarg_1);  // Source
                             foreach (var pi in (PropertyInfo[])member.MapFrom.Value)
                             {
-                                ilGenerator.Emit(OpCodes.Callvirt, pi.GetMethod!);
+                                ilGenerator.EmitCallMethod(pi.GetMethod!);
                             }
                             break;
                         case FromType.LazyFunc:
+                            var lazyFuncField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, lazyFuncField);
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            ilGenerator.EmitCallMethod(lazyFuncField.FieldType.GetMethod("Invoke")!);
                             break;
                         case FromType.Func:
+                            var funcField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, funcField);
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            EmitStackDestination(ilGenerator, work);    // Destination
+                            ilGenerator.EmitCallMethod(funcField.FieldType.GetMethod("Invoke")!);
                             break;
                         case FromType.FuncContext:
+                            var funcContextField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, funcContextField);
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            EmitStackDestination(ilGenerator, work);    // Destination
+                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                            ilGenerator.EmitCallMethod(funcContextField.FieldType.GetMethod("Invoke")!);
                             break;
                         case FromType.Interface:
                         case FromType.InterfaceType:
+                            var interfaceField = GetProviderField(holderInfo.Holder.GetType(), member.No);
+                            ilGenerator.Emit(OpCodes.Ldarg_0);
+                            ilGenerator.Emit(OpCodes.Ldfld, interfaceField);
+                            ilGenerator.Emit(OpCodes.Ldarg_1);          // Source
+                            EmitStackDestination(ilGenerator, work);    // Destination
+                            ilGenerator.EmitLdloc(work.ContextLocal!);  // Context
+                            ilGenerator.EmitCallMethod(interfaceField.FieldType.GetMethod("Provide")!);
                             break;
                     }
 
-                    ilGenerator.Emit(OpCodes.Callvirt, member.Property.SetMethod!);
-
-                    // TODO source ***
-                    // TODO nullIf
                     // TODO toNullable/fromNullable, conv-cast, conv-converter
-                    // TODO Nest
 
-                    //    // Can set
-                    //    if (member.Property.PropertyType.IsAssignableFrom(sourceProperty.PropertyType))
+                    // TODO nullIf
+
+                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
 
                 if (member.Condition is not null)
@@ -610,25 +635,25 @@ namespace Smart.Mapper.Mappers
             {
                 case ConditionType.FuncSource:
                     ilGenerator.Emit(OpCodes.Ldarg_1); // Source
-                    ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.FuncSourceContext:
                     ilGenerator.Emit(OpCodes.Ldarg_1); // Source
                     ilGenerator.EmitLdloc(work.ContextLocal!); // Context
-                    ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.FuncSourceDestinationContext:
                     ilGenerator.Emit(OpCodes.Ldarg_1); // Source
                     EmitStackDestination(ilGenerator, work); // Destination
                     ilGenerator.EmitLdloc(work.ContextLocal!); // Context
-                    ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Invoke")!);
+                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     break;
                 case ConditionType.Interface:
                 case ConditionType.InterfaceType:
                     ilGenerator.Emit(OpCodes.Ldarg_1); // Source
                     EmitStackDestination(ilGenerator, work); // Destination
                     ilGenerator.EmitLdloc(work.ContextLocal!); // Context
-                    ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod("Eval")!);
+                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Eval")!);
                     break;
             }
 

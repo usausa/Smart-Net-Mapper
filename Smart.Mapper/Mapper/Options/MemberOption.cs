@@ -118,7 +118,7 @@ namespace Smart.Mapper.Options
                 type = pi.PropertyType;
             }
 
-            mapFrom = new FromTypeEntry(FromType.Properties, properties[^1].PropertyType, properties);
+            mapFrom = new FromTypeEntry(FromType.Properties, properties[^1].PropertyType, properties.ToArray());
         }
 
         //--------------------------------------------------------------------------------

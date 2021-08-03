@@ -1,8 +1,8 @@
-namespace Smart.Mapper
+namespace Smart.Mapper.Struct
 {
     using Xunit;
 
-    public class StructTest
+    public class StructMapperTest
     {
         //--------------------------------------------------------------------------------
         // Mapper
@@ -16,14 +16,15 @@ namespace Smart.Mapper
         }
 
         [Fact]
-        public void MapByAction()
+        public void MapByActionNotWork()
         {
             using var mapper = CreateMapper();
 
-            var destination = new StructDestination();
+            var destination = default(StructDestination);
             mapper.Map(new StructSource { Value = 1 }, destination);
 
-            Assert.Equal(1, destination.Value);
+            // Copy not work
+            Assert.Equal(0, destination.Value);
         }
 
         [Fact]
@@ -37,14 +38,15 @@ namespace Smart.Mapper
         }
 
         [Fact]
-        public void MapByParameterAction()
+        public void MapByParameterActionNotWork()
         {
             using var mapper = CreateMapper();
 
-            var destination = new StructDestination();
+            var destination = default(StructDestination);
             mapper.Map(new StructSource { Value = 1 }, destination, 0);
 
-            Assert.Equal(1, destination.Value);
+            // Copy not work
+            Assert.Equal(0, destination.Value);
         }
 
         [Fact]
@@ -61,12 +63,12 @@ namespace Smart.Mapper
         // Data
         //--------------------------------------------------------------------------------
 
-        public class StructSource
+        public struct StructSource
         {
             public int Value { get; set; }
         }
 
-        public class StructDestination
+        public struct StructDestination
         {
             public int Value { get; set; }
         }

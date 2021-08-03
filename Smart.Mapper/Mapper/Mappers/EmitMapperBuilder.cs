@@ -108,6 +108,11 @@ namespace Smart.Mapper.Mappers
                 var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
                 ilGenerator.EmitCallMethod(method);
                 ilGenerator.EmitTypeConversion(context.DestinationType);
+
+                if (destinationLocal is not null)
+                {
+                    ilGenerator.EmitStloc(destinationLocal);
+                }
             }
             else if (context.Factory is not null)
             {
@@ -139,6 +144,11 @@ namespace Smart.Mapper.Mappers
                     default:
                         throw new InvalidOperationException($"Unsupported factory. type=[{field.FieldType}]");
                 }
+
+                if (destinationLocal is not null)
+                {
+                    ilGenerator.EmitStloc(destinationLocal);
+                }
             }
             else
             {
@@ -152,18 +162,18 @@ namespace Smart.Mapper.Mappers
                     }
 
                     ilGenerator.Emit(OpCodes.Newobj, ctor);
+
+                    if (destinationLocal is not null)
+                    {
+                        ilGenerator.EmitStloc(destinationLocal);
+                    }
                 }
                 else
                 {
                     // Struct
-                    ilGenerator.EmitLdloca(contextLocal!);
+                    ilGenerator.EmitLdloca(destinationLocal!);
                     ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
                 }
-            }
-
-            if (destinationLocal is not null)
-            {
-                ilGenerator.EmitStloc(destinationLocal);
             }
         }
 

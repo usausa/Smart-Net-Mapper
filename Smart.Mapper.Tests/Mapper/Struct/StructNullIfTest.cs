@@ -19,7 +19,7 @@ namespace Smart.Mapper.Struct
             var destination1 = mapper.Map<ClassSource, ClassDestination>(new ClassSource { Value = "x" });
             Assert.Equal("x", destination1.Value);
 
-            var destination2 = mapper.Map<ClassSource, ClassDestination>(new ClassSource());
+            var destination2 = mapper.Map<ClassSource, ClassDestination>(default);
             Assert.Equal("-", destination2.Value);
         }
 
@@ -34,7 +34,7 @@ namespace Smart.Mapper.Struct
             var destination1 = mapper.Map<NullableSource, NullableDestination>(new NullableSource { Value = 1 });
             Assert.Equal(1, destination1.Value);
 
-            var destination2 = mapper.Map<NullableSource, NullableDestination>(new NullableSource());
+            var destination2 = mapper.Map<NullableSource, NullableDestination>(default);
             Assert.Equal(-1, destination2.Value);
         }
 

@@ -1,5 +1,11 @@
 # Smart-Net-Mapper
 
+## TODO
+
+- Type conversion
+- Nested mapper
+- Struct support
+
 ## Benchmark
 
 ``` ini

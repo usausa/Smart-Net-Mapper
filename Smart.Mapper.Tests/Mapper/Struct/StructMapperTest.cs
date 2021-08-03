@@ -11,7 +11,7 @@ namespace Smart.Mapper.Struct
         private static ObjectMapper CreateMapper()
         {
             var config = new MapperConfig();
-            config.CreateMap<StructSource, StructDestination>();
+            config.CreateMap<Source, Destination>();
             return config.ToMapper();
         }
 
@@ -20,8 +20,8 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = default(StructDestination);
-            mapper.Map(new StructSource { Value = 1 }, destination);
+            var destination = default(Destination);
+            mapper.Map(new Source { Value = 1 }, destination);
 
             // Copy not work
             Assert.Equal(0, destination.Value);
@@ -32,7 +32,7 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = mapper.Map<StructSource, StructDestination>(new StructSource { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
 
             Assert.Equal(1, destination.Value);
         }
@@ -42,8 +42,8 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = default(StructDestination);
-            mapper.Map(new StructSource { Value = 1 }, destination, 0);
+            var destination = default(Destination);
+            mapper.Map(new Source { Value = 1 }, destination, 0);
 
             // Copy not work
             Assert.Equal(0, destination.Value);
@@ -54,7 +54,7 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = mapper.Map<StructSource, StructDestination>(new StructSource { Value = 1 }, 0);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, 0);
 
             Assert.Equal(1, destination.Value);
         }
@@ -63,12 +63,12 @@ namespace Smart.Mapper.Struct
         // Data
         //--------------------------------------------------------------------------------
 
-        public struct StructSource
+        public struct Source
         {
             public int Value { get; set; }
         }
 
-        public struct StructDestination
+        public struct Destination
         {
             public int Value { get; set; }
         }

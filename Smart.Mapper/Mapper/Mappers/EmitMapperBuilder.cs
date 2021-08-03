@@ -107,9 +107,7 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))!);
                 var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
                 ilGenerator.EmitCallMethod(method);
-                ilGenerator.Emit(OpCodes.Castclass, context.DestinationType);
-
-                // TODO struct?
+                ilGenerator.EmitTypeConversion(context.DestinationType);
             }
             else if (context.Factory is not null)
             {
@@ -141,8 +139,6 @@ namespace Smart.Mapper.Mappers
                     default:
                         throw new InvalidOperationException($"Unsupported factory. type=[{field.FieldType}]");
                 }
-
-                // TODO struct? non?
             }
             else
             {
@@ -156,19 +152,18 @@ namespace Smart.Mapper.Mappers
                     }
 
                     ilGenerator.Emit(OpCodes.Newobj, ctor);
-
-                    if (destinationLocal is not null)
-                    {
-                        ilGenerator.EmitStloc(destinationLocal);
-                    }
                 }
                 else
                 {
                     // Struct
                     ilGenerator.EmitLdloca(contextLocal!);
                     ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
-                    // TODO struct? non?
                 }
+            }
+
+            if (destinationLocal is not null)
+            {
+                ilGenerator.EmitStloc(destinationLocal);
             }
         }
 
@@ -251,7 +246,7 @@ namespace Smart.Mapper.Mappers
                     EmitStackSourceMember(member);
 
                     // TODO toNullable/fromNullable, conv-cast, conv-converter
-                    if (member.Condition is not null)
+                    if (member.Converter is not null)
                     {
                         // TODO
                     }
@@ -312,11 +307,8 @@ namespace Smart.Mapper.Mappers
 
                         ilGenerator.MarkLabel(setLabel);
                     }
-                    else
-                    {
-                        // TODO
-                    }
 
+                    // Set
                     ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
 

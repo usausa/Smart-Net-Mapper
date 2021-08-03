@@ -30,6 +30,10 @@ namespace Smart.Mapper
 
         private readonly ProfileMapperHashArray profileMapperCache = new(32);
 
+        private readonly NestedMapper nestedMapper;
+
+        private readonly Dictionary<string, ProfileNestedMapper> profileNestedMappers = new();
+
         internal ObjectMapper(MapperConfig config)
         {
             components = config.GetComponentContainer();
@@ -40,6 +44,8 @@ namespace Smart.Mapper
 
             handlers = components.GetAll<IMissingHandler>().OrderByDescending(x => x.Priority).ToArray();
             factory = components.Get<IMapperFactory>();
+
+            nestedMapper = new NestedMapper(this);
         }
 
         protected override void Dispose(bool disposing)
@@ -79,8 +85,20 @@ namespace Smart.Mapper
                         : $"Mapper not found. profile=[{profile}], sourceType=[{sourceType}], destinationType=[{destinationType}]");
                 }
 
-                // TODO
-                return factory.Create(new MapperCreateContext(defaultOption, mapperOption, null!));
+                if (String.IsNullOrEmpty(profile))
+                {
+                    return factory.Create(new MapperCreateContext(defaultOption, mapperOption, nestedMapper));
+                }
+                else
+                {
+                    if (!profileNestedMappers.TryGetValue(profile, out var profileNestedMapper))
+                    {
+                        profileNestedMapper = new ProfileNestedMapper(this, profile);
+                        profileNestedMappers[profile] = profileNestedMapper;
+                    }
+
+                    return factory.Create(new MapperCreateContext(defaultOption, mapperOption, profileNestedMapper));
+                }
             }
         }
 
@@ -209,6 +227,81 @@ namespace Smart.Mapper
         {
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapAction(source, destination, parameter);
             return destination;
+        }
+
+        //--------------------------------------------------------------------------------
+        // Nested mapper
+        //--------------------------------------------------------------------------------
+
+        private sealed class NestedMapper : INestedMapper
+        {
+            private readonly ObjectMapper mapper;
+
+            public NestedMapper(ObjectMapper mapper)
+            {
+                this.mapper = mapper;
+            }
+
+            public Action<TSource, TDestination> GetMapperAction<TSource, TDestination>() =>
+                mapper.GetMapperAction<TSource, TDestination>();
+
+            public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>() =>
+                mapper.GetParameterMapperAction<TSource, TDestination>();
+
+            public Func<TSource, TDestination> GetMapperFunc<TSource, TDestination>() =>
+                mapper.GetMapperFunc<TSource, TDestination>();
+
+            public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
+                mapper.GetParameterMapperFunc<TSource, TDestination>();
+
+            public TDestination Map<TSource, TDestination>(TSource source) =>
+                mapper.Map<TSource, TDestination>(source);
+
+            public void Map<TSource, TDestination>(TSource source, TDestination destination) =>
+                mapper.Map(source, destination);
+
+            public TDestination Map<TSource, TDestination>(TSource source, object? parameter) =>
+                mapper.Map<TSource, TDestination>(source, parameter);
+
+            public void Map<TSource, TDestination>(TSource source, TDestination destination, object? parameter) =>
+                mapper.Map(source, destination, parameter);
+        }
+
+        private sealed class ProfileNestedMapper : INestedMapper
+        {
+            private readonly ObjectMapper mapper;
+
+            private readonly string profile;
+
+            public ProfileNestedMapper(ObjectMapper mapper, string profile)
+            {
+                this.mapper = mapper;
+                this.profile = profile;
+            }
+
+            public Action<TSource, TDestination> GetMapperAction<TSource, TDestination>() =>
+                mapper.GetMapperAction<TSource, TDestination>(profile);
+
+            public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>() =>
+                mapper.GetParameterMapperAction<TSource, TDestination>(profile);
+
+            public Func<TSource, TDestination> GetMapperFunc<TSource, TDestination>() =>
+                mapper.GetMapperFunc<TSource, TDestination>(profile);
+
+            public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
+                mapper.GetParameterMapperFunc<TSource, TDestination>(profile);
+
+            public TDestination Map<TSource, TDestination>(TSource source) =>
+                mapper.Map<TSource, TDestination>(profile, source);
+
+            public void Map<TSource, TDestination>(TSource source, TDestination destination) =>
+                mapper.Map(profile, source, destination);
+
+            public TDestination Map<TSource, TDestination>(TSource source, object? parameter) =>
+                mapper.Map<TSource, TDestination>(profile, source, parameter);
+
+            public void Map<TSource, TDestination>(TSource source, TDestination destination, object? parameter) =>
+                mapper.Map(profile, source, destination, parameter);
         }
     }
 }

@@ -78,11 +78,5 @@ namespace Smart.Mapper.Expressions
             defaultOption.SetNullIfValue(value);
             return this;
         }
-
-        public IDefaultExpression NullIgnore(Type type)
-        {
-            defaultOption.SetNullIgnore(type);
-            return this;
-        }
     }
 }

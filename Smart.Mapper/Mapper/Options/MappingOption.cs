@@ -35,8 +35,6 @@ namespace Smart.Mapper.Options
 
         private Dictionary<Type, object?>? nullIfValues;
 
-        private HashSet<Type>? nullIgnores;
-
         // Member
 
         public IReadOnlyList<MemberOption> MemberOptions { get; }
@@ -164,12 +162,6 @@ namespace Smart.Mapper.Options
             nullIfValues[typeof(TMember)] = value;
         }
 
-        public void SetNullIgnore(Type type)
-        {
-            nullIgnores ??= new HashSet<Type>();
-            nullIgnores.Add(type);
-        }
-
         //--------------------------------------------------------------------------------
         // Internal
         //--------------------------------------------------------------------------------
@@ -211,11 +203,6 @@ namespace Smart.Mapper.Options
 
             value = null;
             return false;
-        }
-
-        internal bool IsNullIgnore(Type type)
-        {
-            return (nullIgnores is not null) && nullIgnores.Contains(type);
         }
     }
 }

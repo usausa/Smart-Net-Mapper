@@ -38,7 +38,5 @@ namespace Smart.Mapper.Expressions
         //--------------------------------------------------------------------------------
 
         IDefaultExpression NullIf<TMember>(TMember value);
-
-        IDefaultExpression NullIgnore(Type type);
     }
 }

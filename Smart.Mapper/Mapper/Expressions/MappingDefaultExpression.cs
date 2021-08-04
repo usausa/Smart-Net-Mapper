@@ -62,11 +62,5 @@ namespace Smart.Mapper.Expressions
             mappingOption.SetNullIfValue(value);
             return this;
         }
-
-        public IMappingDefaultExpression NullIgnore(Type type)
-        {
-            mappingOption.SetNullIgnore(type);
-            return this;
-        }
     }
 }

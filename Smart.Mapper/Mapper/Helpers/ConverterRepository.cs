@@ -8,7 +8,17 @@ namespace Smart.Mapper.Helpers
 
     internal sealed class ConverterRepository
     {
-        private readonly Dictionary<Tuple<Type, Type>, TypeEntry<ConverterType>> converters = new();
+        private readonly Dictionary<Tuple<Type, Type>, TypeEntry<ConverterType>> converters;
+
+        public ConverterRepository()
+        {
+            converters = new Dictionary<Tuple<Type, Type>, TypeEntry<ConverterType>>();
+        }
+
+        public ConverterRepository(Dictionary<Tuple<Type, Type>, TypeEntry<ConverterType>> converters)
+        {
+            this.converters = new Dictionary<Tuple<Type, Type>, TypeEntry<ConverterType>>(converters);
+        }
 
         public void Set(Type sourceType, Type destinationType, TypeEntry<ConverterType> func)
         {

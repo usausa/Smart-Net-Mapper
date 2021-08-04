@@ -13,7 +13,7 @@ namespace Smart.Mapper.Options
 
         private Dictionary<Type, object>? factories;
 
-        private ConverterRepository? converters;
+        private readonly ConverterRepository converters = new(DefaultConverters.Entries);
 
         private Dictionary<Type, object?>? constValues;
 
@@ -54,7 +54,6 @@ namespace Smart.Mapper.Options
 
         private void SetConverterInternal(Type sourceType, Type destinationType, TypeEntry<ConverterType> entry)
         {
-            converters ??= new ConverterRepository();
             converters.Set(sourceType, destinationType, entry);
         }
 
@@ -102,7 +101,7 @@ namespace Smart.Mapper.Options
 
         internal TypeEntry<ConverterType>? GetConverter(Type sourceType, Type destinationType)
         {
-            return (converters is not null) && converters.TryGetConverter(sourceType, destinationType, out var entry) ? entry : null;
+            return converters.TryGetConverter(sourceType, destinationType, out var entry) ? entry : null;
         }
 
         internal bool TryGetConstValue(Type type, out object? value)

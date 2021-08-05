@@ -51,6 +51,20 @@ namespace Smart.Mapper
             Assert.Equal(2, destination.ValueDestinationOnly);
         }
 
+        [Fact]
+        public void FactoryUsingCustomServiceProvider2()
+        {
+            var config = new MapperConfig();
+            config.UseServiceProvider(new CustomServiceProvider());
+            config.CreateMap<Source, Destination>().FactoryUsingServiceProvider();
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+
+            Assert.Equal(1, destination.Value);
+            Assert.Equal(2, destination.ValueDestinationOnly);
+        }
+
         //--------------------------------------------------------------------------------
         // Factory
         //--------------------------------------------------------------------------------

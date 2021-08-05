@@ -110,7 +110,7 @@ namespace Smart.Mapper
                 info = mapperCache.AddIfNotExist(typeof(TSource), typeof(TDestination), (ts, td) => CreateTypeInfo(null, ts, td));
             }
 
-            return (MapperInfo<TSource, TDestination>)info!;
+            return (MapperInfo<TSource, TDestination>)info;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

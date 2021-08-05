@@ -221,7 +221,7 @@ namespace Smart.Mapper.Helpers
                 // Double checked locking
                 if (TryGetValue(profile, sourceType, targetType, out var currentValue))
                 {
-                    return currentValue!;
+                    return currentValue;
                 }
 
                 var value = valueFactory(profile, sourceType, targetType);
@@ -229,7 +229,7 @@ namespace Smart.Mapper.Helpers
                 // Check if added by recursive
                 if (TryGetValue(profile, sourceType, targetType, out currentValue))
                 {
-                    return currentValue!;
+                    return currentValue;
                 }
 
                 AddNode(new Node(profile, sourceType, targetType, value));

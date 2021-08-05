@@ -38,6 +38,30 @@ namespace Smart.Mapper
             Assert.Equal(-1, destination2.Value);
         }
 
+        [Fact]
+        public void NullIfByDefault()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.NullIf("-"));
+            config.CreateMap<ClassSource, ClassDestination>();
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<ClassSource, ClassDestination>(new ClassSource());
+            Assert.Equal("-", destination.Value);
+        }
+
+        [Fact]
+        public void NullIfByMapping()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<ClassSource, ClassDestination>()
+                .Default(opt => opt.NullIf("-"));
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<ClassSource, ClassDestination>(new ClassSource());
+            Assert.Equal("-", destination.Value);
+        }
+
         //--------------------------------------------------------------------------------
         // Data
         //--------------------------------------------------------------------------------

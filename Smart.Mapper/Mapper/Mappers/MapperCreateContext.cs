@@ -85,7 +85,7 @@ namespace Smart.Mapper.Mappers
 
         // Mapper
 
-        public INestedMapper NexMapper { get; }
+        public INestedMapper NestedMapper { get; }
 
         public MapperCreateContext(
             DefaultOption defaultOption,
@@ -94,7 +94,7 @@ namespace Smart.Mapper.Mappers
         {
             this.defaultOption = defaultOption;
             this.mappingOption = mappingOption;
-            NexMapper = nestedMapper;
+            NestedMapper = nestedMapper;
 
             Factory = mappingOption.GetFactory();
             if (Factory is null)

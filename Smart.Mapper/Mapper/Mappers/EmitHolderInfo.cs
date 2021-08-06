@@ -21,13 +21,11 @@ namespace Smart.Mapper.Mappers
             HasDestinationParameter = IsDestinationParameterRequired(context);
             HasContext = IsContextRequired(context);
 
-            // Nested mapper
+            // Mapper
             if (HasContext)
             {
                 typeBuilder.DefineField("mapper", typeof(INestedMapper), FieldAttributes.Public);
             }
-
-            // TODO Nested
 
             // Factory
             var factory = ResolveFactory(serviceProvider, context.Factory);
@@ -79,6 +77,23 @@ namespace Smart.Mapper.Mappers
                 typeBuilder.DefineField($"provider{provider.Member.No}", provider.Provider!.GetType(), FieldAttributes.Public);
             }
 
+            // Nested
+            var nestedMappers = context.Members.Where(x => x.IsNested)
+                .Select(x => new { Member = x, Mapper = ResolveNestedMapper(context, x, false) })
+                .ToList();
+            foreach (var nestedMapper in nestedMappers)
+            {
+                typeBuilder.DefineField($"nestedMapper{nestedMapper.Member.No}", nestedMapper.Mapper.GetType(), FieldAttributes.Public);
+            }
+
+            var parameterNestedMappers = context.Members.Where(x => x.IsNested)
+                .Select(x => new { Member = x, Mapper = ResolveNestedMapper(context, x, true) })
+                .ToList();
+            foreach (var nestedMapper in parameterNestedMappers)
+            {
+                typeBuilder.DefineField($"parameterNestedMapper{nestedMapper.Member.No}", nestedMapper.Mapper.GetType(), FieldAttributes.Public);
+            }
+
             // Converter
             var converters = context.Members.Where(x => x.Converter is not null)
                 .Select(x => new { Member = x, Converter = ResolveConverter(serviceProvider, x.Converter!) })
@@ -99,13 +114,11 @@ namespace Smart.Mapper.Mappers
             var holderType = typeInfo.AsType();
             Instance = Activator.CreateInstance(holderType)!;
 
-            // Nested mapper
+            // Mapper
             if (HasContext)
             {
-                GetMapperField().SetValue(Instance, context.NexMapper);
+                GetMapperField().SetValue(Instance, context.NestedMapper);
             }
-
-            // TODO Nested
 
             // Factory
             if (context.IsFactoryUseServiceProvider)
@@ -145,6 +158,17 @@ namespace Smart.Mapper.Mappers
             foreach (var provider in providers)
             {
                 GetProviderField(provider.Member.No).SetValue(Instance, provider.Provider);
+            }
+
+            // Nested
+            foreach (var nestedMapper in nestedMappers)
+            {
+                GetNestedMapperField(nestedMapper.Member.No).SetValue(Instance, nestedMapper.Mapper);
+            }
+
+            foreach (var nestedMapper in parameterNestedMappers)
+            {
+                GetParameterNestedMapperField(nestedMapper.Member.No).SetValue(Instance, nestedMapper.Mapper);
             }
 
             // Converter
@@ -227,6 +251,15 @@ namespace Smart.Mapper.Mappers
             return null;
         }
 
+        private static object ResolveNestedMapper(MapperCreateContext context, MemberMapping member, bool hasParameter)
+        {
+            var method = hasParameter
+                ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!
+                : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!;
+            var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.Property.PropertyType)!;
+            return genericMethod.Invoke(context.NestedMapper, null)!;
+        }
+
         private static object ResolveConverter(IServiceProvider serviceProvider, TypeEntry<ConverterType> entry) =>
              entry.Type == ConverterType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
 
@@ -247,6 +280,10 @@ namespace Smart.Mapper.Mappers
         public FieldInfo GetConstValueField(int index) => Instance.GetType().GetField($"constValue{index}")!;
 
         public FieldInfo GetProviderField(int index) => Instance.GetType().GetField($"provider{index}")!;
+
+        public FieldInfo GetNestedMapperField(int index) => Instance.GetType().GetField($"nestedMapper{index}")!;
+
+        public FieldInfo GetParameterNestedMapperField(int index) => Instance.GetType().GetField($"parameterNestedMapper{index}")!;
 
         public FieldInfo GetConverterField(int index) => Instance.GetType().GetField($"converter{index}")!;
 

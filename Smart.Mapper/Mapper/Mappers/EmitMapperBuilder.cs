@@ -241,13 +241,51 @@ namespace Smart.Mapper.Mappers
                 {
                     // Const
                     EmitStackDestinationCall();
-                    ilGenerator.Emit(OpCodes.Ldarg_0);
-                    ilGenerator.Emit(OpCodes.Ldfld, holder.GetConstValueField(member.No));
+
+                    EmitLoadField(holder.GetConstValueField(member.No));
+
                     ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
                 else if (member.IsNested)
                 {
-                    // TODO Nest
+                    EmitStackDestinationCall();
+
+                    if (member.MapFrom!.MemberType.IsClass)
+                    {
+                        // TODO null branch
+                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
+                        EmitLoadField(field);
+
+                        EmitStackSourceMember(member);
+                        EmitStackParameter();
+
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    }
+                    else if (member.MapFrom.MemberType.IsNullableType())
+                    {
+                        // TODO nullable branch
+                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
+                        EmitLoadField(field);
+
+                        EmitStackSourceMember(member);
+                        EmitStackParameter();
+
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    }
+                    else
+                    {
+                        // TODO ?
+                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
+                        EmitLoadField(field);
+
+                        EmitStackSourceMember(member);
+                        EmitStackParameter();
+
+                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    }
+
+                    // Set
+                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
                 else
                 {
@@ -275,8 +313,7 @@ namespace Smart.Mapper.Mappers
 
                             // Null if
                             ilGenerator.Emit(OpCodes.Pop);
-                            ilGenerator.Emit(OpCodes.Ldarg_0);
-                            ilGenerator.Emit(OpCodes.Ldfld, holder.GetNullIfValueField(member.No));
+                            EmitLoadField(holder.GetNullIfValueField(member.No));
                             if (convert)
                             {
                                 // TODO S?
@@ -499,6 +536,14 @@ namespace Smart.Mapper.Mappers
                 {
                     ilGenerator.Emit(OpCodes.Ldarga_S, 2);
                 }
+            }
+        }
+
+        private void EmitStackParameter()
+        {
+            if (hasParameter)
+            {
+                ilGenerator.Emit(isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3);
             }
         }
 

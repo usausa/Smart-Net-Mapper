@@ -254,8 +254,8 @@ namespace Smart.Mapper.Mappers
         private static object ResolveNestedMapper(MapperCreateContext context, MemberMapping member, bool hasParameter)
         {
             var method = hasParameter
-                ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!
-                : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!;
+                ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!
+                : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!;
             var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.Property.PropertyType)!;
             return genericMethod.Invoke(context.NestedMapper, null)!;
         }

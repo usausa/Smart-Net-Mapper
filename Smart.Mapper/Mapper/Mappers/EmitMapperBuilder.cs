@@ -48,7 +48,9 @@ namespace Smart.Mapper.Mappers
 
         public void Build()
         {
-            EmitPrepare();
+            DeclareVariables();
+            EmitGuard();
+            EmitContext();
             if (isFunction)
             {
                 EmitNewDestination();
@@ -63,7 +65,7 @@ namespace Smart.Mapper.Mappers
         // Prepare
         //--------------------------------------------------------------------------------
 
-        private void EmitPrepare()
+        private void DeclareVariables()
         {
             // Destination
             if (isFunction && (holder.HasDestinationParameter || !context.DestinationType.IsClass))
@@ -75,11 +77,6 @@ namespace Smart.Mapper.Mappers
             if (holder.HasContext)
             {
                 contextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
-
-                ilGenerator.Emit(hasParameter ? (isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3) : OpCodes.Ldnull);
-                EmitLoadField(holder.GetMapperField());
-                ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
-                ilGenerator.EmitStloc(contextLocal);
             }
 
             // Temporary
@@ -94,6 +91,43 @@ namespace Smart.Mapper.Mappers
                 {
                     temporaryLocals[member.MapFrom.MemberType] = ilGenerator.DeclareLocal(member.MapFrom.MemberType);
                 }
+            }
+        }
+
+        private void EmitGuard()
+        {
+            if (context.SourceType.IsClass)
+            {
+                var hasValueLabel = ilGenerator.DefineLabel();
+
+                EmitStackSourceArgument();
+                ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
+                EmitReturnDefault();
+
+                ilGenerator.MarkLabel(hasValueLabel);
+            }
+            else if (context.SourceType.IsNullableType())
+            {
+                var hasValueLabel = ilGenerator.DefineLabel();
+
+                EmitStackSourceCall();
+                ilGenerator.Emit(OpCodes.Call, context.SourceType.GetProperty("HasValue")!.GetMethod!);
+                ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
+                EmitReturnDefault();
+
+                ilGenerator.MarkLabel(hasValueLabel);
+            }
+        }
+
+        private void EmitContext()
+        {
+            // Context
+            if (contextLocal is not null)
+            {
+                ilGenerator.Emit(hasParameter ? (isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3) : OpCodes.Ldnull);
+                EmitLoadField(holder.GetMapperField());
+                ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
+                ilGenerator.EmitStloc(contextLocal);
             }
         }
 
@@ -559,6 +593,24 @@ namespace Smart.Mapper.Mappers
             {
                 ilGenerator.Emit(isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3);
             }
+        }
+
+        private void EmitReturnDefault()
+        {
+            if (isFunction)
+            {
+                if (context.DestinationType.IsClass)
+                {
+                    ilGenerator.Emit(OpCodes.Ldnull);
+                }
+                else
+                {
+                    ilGenerator.EmitLdloca(destinationLocal!);
+                    ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
+                }
+            }
+
+            ilGenerator.Emit(OpCodes.Ret);
         }
 
         private void EmitReturn()

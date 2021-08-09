@@ -9,7 +9,7 @@ namespace Smart.Mapper
         //--------------------------------------------------------------------------------
 
         [Fact]
-        public void Nested()
+        public void NestedClass()
         {
             var config = new MapperConfig();
             config.CreateMap<SourceInner, DestinationInner>();
@@ -19,11 +19,24 @@ namespace Smart.Mapper
 
             var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
 
-            // TODO
             Assert.Equal(1, destination.Inner!.Value);
         }
 
-        // TODO Misc...
+        [Fact]
+        public void NestedClassNull()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>();
+            config.CreateMap<Source, Destination>()
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = null });
+
+            Assert.Null(destination.Inner);
+        }
+
+        // TODO nullable, struct, manual
 
         //--------------------------------------------------------------------------------
         // Data

@@ -89,6 +89,11 @@ namespace Smart.Mapper.Mappers
                 {
                     temporaryLocals[member.Property.PropertyType] = ilGenerator.DeclareLocal(member.Property.PropertyType);
                 }
+
+                if (member.IsNested && !temporaryLocals.ContainsKey(member.MapFrom!.MemberType))
+                {
+                    temporaryLocals[member.MapFrom.MemberType] = ilGenerator.DeclareLocal(member.MapFrom.MemberType);
+                }
             }
         }
 
@@ -231,35 +236,50 @@ namespace Smart.Mapper.Mappers
                 {
                     EmitEvalCondition(member);
 
-                    // TODO S check
-                    //ilGenerator.Emit(OpCodes.Brfalse_S, nextLabel);
                     ilGenerator.Emit(OpCodes.Brfalse, nextLabel);
                 }
+
+                // Destination for set
+                EmitStackDestinationCall();
 
                 // Value expression
                 if (member.IsConst)
                 {
                     // Const
-                    EmitStackDestinationCall();
-
                     EmitLoadField(holder.GetConstValueField(member.No));
-
-                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
                 else if (member.IsNested)
                 {
-                    EmitStackDestinationCall();
-
                     if (member.MapFrom!.MemberType.IsClass)
                     {
-                        // TODO null branch
+                        var setLabel = ilGenerator.DefineLabel();
+                        var nullLabel = ilGenerator.DefineLabel();
+                        var temporaryLocal = temporaryLocals[member.MapFrom.MemberType];
+
+                        // Source member
+                        EmitStackSourceMember(member);
+                        ilGenerator.EmitStloc(temporaryLocal);
+                        ilGenerator.EmitLdloc(temporaryLocal);
+
+                        // null branch
+                        ilGenerator.Emit(OpCodes.Brfalse_S, nullLabel);
+
+                        // nested
                         var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
                         EmitLoadField(field);
 
-                        EmitStackSourceMember(member);
+                        ilGenerator.EmitLdloc(temporaryLocal);
                         EmitStackParameter();
-
                         ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+
+                        ilGenerator.Emit(OpCodes.Br_S, setLabel);
+
+                        // null
+                        ilGenerator.MarkLabel(nullLabel);
+
+                        ilGenerator.Emit(OpCodes.Ldnull);
+
+                        ilGenerator.MarkLabel(setLabel);
                     }
                     else if (member.MapFrom.MemberType.IsNullableType())
                     {
@@ -274,7 +294,6 @@ namespace Smart.Mapper.Mappers
                     }
                     else
                     {
-                        // TODO ?
                         var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
                         EmitLoadField(field);
 
@@ -283,14 +302,9 @@ namespace Smart.Mapper.Mappers
 
                         ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                     }
-
-                    // Set
-                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
                 else
                 {
-                    EmitStackDestinationCall();
-
                     EmitStackSourceMember(member);
 
                     // TODO toNullable/fromNullable, conv-cast, conv-converter
@@ -354,10 +368,10 @@ namespace Smart.Mapper.Mappers
 
                         ilGenerator.MarkLabel(setLabel);
                     }
-
-                    // Set
-                    ilGenerator.EmitCallMethod(member.Property.SetMethod!);
                 }
+
+                // Set
+                ilGenerator.EmitCallMethod(member.Property.SetMethod!);
 
                 if (member.Condition is not null)
                 {

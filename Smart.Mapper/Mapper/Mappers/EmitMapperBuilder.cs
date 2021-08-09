@@ -284,58 +284,11 @@ namespace Smart.Mapper.Mappers
                 }
                 else if (member.IsNested)
                 {
-                    if (member.MapFrom!.MemberType.IsClass)
-                    {
-                        var setLabel = ilGenerator.DefineLabel();
-                        var nullLabel = ilGenerator.DefineLabel();
-                        var temporaryLocal = temporaryLocals[member.MapFrom.MemberType];
-
-                        // Source member
-                        EmitStackSourceMember(member);
-                        ilGenerator.EmitStloc(temporaryLocal);
-                        ilGenerator.EmitLdloc(temporaryLocal);
-
-                        // null branch
-                        ilGenerator.Emit(OpCodes.Brfalse_S, nullLabel);
-
-                        // nested
-                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
-                        EmitLoadField(field);
-
-                        ilGenerator.EmitLdloc(temporaryLocal);
-                        EmitStackParameter();
-                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
-
-                        ilGenerator.Emit(OpCodes.Br_S, setLabel);
-
-                        // null
-                        ilGenerator.MarkLabel(nullLabel);
-
-                        ilGenerator.Emit(OpCodes.Ldnull);
-
-                        ilGenerator.MarkLabel(setLabel);
-                    }
-                    else if (member.MapFrom.MemberType.IsNullableType())
-                    {
-                        // TODO nullable branch
-                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
-                        EmitLoadField(field);
-
-                        EmitStackSourceMember(member);
-                        EmitStackParameter();
-
-                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
-                    }
-                    else
-                    {
-                        var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
-                        EmitLoadField(field);
-
-                        EmitStackSourceMember(member);
-                        EmitStackParameter();
-
-                        ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
-                    }
+                    var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
+                    EmitLoadField(field);
+                    EmitStackSourceMember(member);
+                    EmitStackParameter();
+                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
                 }
                 else
                 {

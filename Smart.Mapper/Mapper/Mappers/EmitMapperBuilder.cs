@@ -607,6 +607,7 @@ namespace Smart.Mapper.Mappers
                 {
                     ilGenerator.EmitLdloca(destinationLocal!);
                     ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
+                    ilGenerator.EmitLdloc(destinationLocal!);
                 }
             }
 

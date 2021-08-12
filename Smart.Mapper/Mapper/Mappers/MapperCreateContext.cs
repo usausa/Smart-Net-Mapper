@@ -62,9 +62,15 @@ namespace Smart.Mapper.Mappers
 
         private readonly MappingOption mappingOption;
 
-        public Type SourceType => mappingOption.SourceType;
+        // TODO 名称仮
 
-        public Type DestinationType => mappingOption.DestinationType;
+        public Type DelegateSourceType { get; }
+
+        public Type DelegateDestinationType { get; }
+
+        public Type MapSourceType => mappingOption.SourceType;
+
+        public Type MapDestinationType => mappingOption.DestinationType;
 
         // Factory
 
@@ -88,10 +94,14 @@ namespace Smart.Mapper.Mappers
         public INestedMapper NestedMapper { get; }
 
         public MapperCreateContext(
+            Type sourceType,
+            Type destinationType,
             DefaultOption defaultOption,
             MappingOption mappingOption,
             INestedMapper nestedMapper)
         {
+            DelegateSourceType = sourceType;
+            DelegateDestinationType = destinationType;
             this.defaultOption = defaultOption;
             this.mappingOption = mappingOption;
             NestedMapper = nestedMapper;
@@ -99,7 +109,7 @@ namespace Smart.Mapper.Mappers
             Factory = mappingOption.GetFactory();
             if (Factory is null)
             {
-                var defaultFactory = defaultOption.GetFactory(DestinationType);
+                var defaultFactory = defaultOption.GetFactory(mappingOption.DestinationType);
                 if (defaultFactory is not null)
                 {
                     Factory = new TypeEntry<FactoryType>(FactoryType.FuncDestination, defaultFactory);

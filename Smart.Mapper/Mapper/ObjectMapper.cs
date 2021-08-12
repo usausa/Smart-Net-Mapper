@@ -66,18 +66,7 @@ namespace Smart.Mapper
         {
             lock (sync)
             {
-                var key = (profile, sourceType, destinationType);
-                if (!mapperOptions.TryGetValue(key, out var mapperOption))
-                {
-                    mapperOption = handlers
-                        .Select(x => x.Handle(sourceType, destinationType))
-                        .FirstOrDefault(x => x is not null);
-                }
-                else
-                {
-                    mapperOptions.Remove(key);
-                }
-
+                var mapperOption = FindMappingOption(profile, sourceType, destinationType);
                 if (mapperOption is null)
                 {
                     throw new InvalidOperationException(String.IsNullOrEmpty(profile)
@@ -87,7 +76,7 @@ namespace Smart.Mapper
 
                 if (String.IsNullOrEmpty(profile))
                 {
-                    return factory.Create(new MapperCreateContext(defaultOption, mapperOption, nestedMapper));
+                    return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, nestedMapper));
                 }
                 else
                 {
@@ -97,9 +86,43 @@ namespace Smart.Mapper
                         profileNestedMappers[profile] = profileNestedMapper;
                     }
 
-                    return factory.Create(new MapperCreateContext(defaultOption, mapperOption, profileNestedMapper));
+                    return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, profileNestedMapper));
                 }
             }
+        }
+
+        private MappingOption? FindMappingOption(string? profile, Type sourceType, Type destinationType)
+        {
+            if (mapperOptions.TryGetValue((profile, sourceType, destinationType), out var mapperOption))
+            {
+                return mapperOption;
+            }
+
+            var sourceNullableType = Nullable.GetUnderlyingType(sourceType);
+            var destinationNullableType = Nullable.GetUnderlyingType(destinationType);
+
+            if ((destinationNullableType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceType, destinationNullableType), out mapperOption))
+            {
+                return mapperOption;
+            }
+
+            if ((sourceNullableType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceNullableType, destinationType), out mapperOption))
+            {
+                return mapperOption;
+            }
+
+            if ((sourceNullableType is not null) &&
+                (destinationNullableType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceNullableType, destinationNullableType), out mapperOption))
+            {
+                return mapperOption;
+            }
+
+            return handlers
+                .Select(x => x.Handle(sourceType, destinationType))
+                .FirstOrDefault(x => x is not null);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

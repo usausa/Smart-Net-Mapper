@@ -64,7 +64,7 @@ namespace Smart.Mapper.Mappers
 
         private static object CreateMapperInfo(MapperCreateContext context)
         {
-            var type = typeof(MapperInfo<,>).MakeGenericType(context.SourceType, context.DestinationType);
+            var type = typeof(MapperInfo<,>).MakeGenericType(context.DelegateSourceType, context.DelegateDestinationType);
             return Activator.CreateInstance(type)!;
         }
 
@@ -78,7 +78,7 @@ namespace Smart.Mapper.Mappers
             var dynamicMethod = new DynamicMethod(
                 "MapAction",
                 typeof(void),
-                new[] { holder.Instance.GetType(), context.SourceType, context.DestinationType },
+                new[] { holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -87,8 +87,8 @@ namespace Smart.Mapper.Mappers
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,>).MakeGenericType(
-                    context.SourceType,
-                    context.DestinationType),
+                    context.DelegateSourceType,
+                    context.DelegateDestinationType),
                 holder.Instance);
         }
 
@@ -98,7 +98,7 @@ namespace Smart.Mapper.Mappers
             var dynamicMethod = new DynamicMethod(
                 "ParameterMapAction",
                 typeof(void),
-                new[] { holder.Instance.GetType(), context.SourceType, context.DestinationType, typeof(object) },
+                new[] { holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType, typeof(object) },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -107,8 +107,8 @@ namespace Smart.Mapper.Mappers
 
             return dynamicMethod.CreateDelegate(
                 typeof(Action<,,>).MakeGenericType(
-                    context.SourceType,
-                    context.DestinationType,
+                    context.DelegateSourceType,
+                    context.DelegateDestinationType,
                     typeof(object)),
                 holder.Instance);
         }
@@ -118,8 +118,8 @@ namespace Smart.Mapper.Mappers
             // Func
             var dynamicMethod = new DynamicMethod(
                 "MapFunc",
-                context.DestinationType,
-                new[] { holder.Instance.GetType(), context.SourceType },
+                context.DelegateDestinationType,
+                new[] { holder.Instance.GetType(), context.DelegateSourceType },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -128,8 +128,8 @@ namespace Smart.Mapper.Mappers
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,>).MakeGenericType(
-                    context.SourceType,
-                    context.DestinationType),
+                    context.DelegateSourceType,
+                    context.DelegateDestinationType),
                 holder.Instance);
         }
 
@@ -138,8 +138,8 @@ namespace Smart.Mapper.Mappers
             // Func
             var dynamicMethod = new DynamicMethod(
                 "MapFunc",
-                context.DestinationType,
-                new[] { holder.Instance.GetType(), context.SourceType, typeof(object) },
+                context.DelegateDestinationType,
+                new[] { holder.Instance.GetType(), context.DelegateSourceType, typeof(object) },
                 true);
             var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -148,9 +148,9 @@ namespace Smart.Mapper.Mappers
 
             return dynamicMethod.CreateDelegate(
                 typeof(Func<,,>).MakeGenericType(
-                    context.SourceType,
+                    context.DelegateSourceType,
                     typeof(object),
-                    context.DestinationType),
+                    context.DelegateDestinationType),
                 holder.Instance);
         }
     }

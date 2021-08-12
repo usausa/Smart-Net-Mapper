@@ -36,11 +36,70 @@ namespace Smart.Mapper
             Assert.Null(destination.Inner);
         }
 
-        // TODO nullable, struct, manual
+        //--------------------------------------------------------------------------------
+        // Nullable
+        //--------------------------------------------------------------------------------
+
+        // TODO
+        //[Fact]
+        //public void NestedNullable()
+        //{
+        //    var config = new MapperConfig();
+        //    config.CreateMap<NullableSourceInner, NullableDestinationInner>();
+        //    config.CreateMap<Source2, Destination2>()
+        //        .ForMember(x => x.Inner, opt => opt.Nested());
+        //    using var mapper = config.ToMapper();
+
+        //    var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = new NullableSourceInner { Value = 1 } });
+
+        //    Assert.Equal(1, destination.Inner!.Value.Value);
+        //}
+
+        // TODO
+
+        //--------------------------------------------------------------------------------
+        // Manual
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ManualNestByMap()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>();
+            config.CreateMap<Source, Destination>()
+                .AfterMap((s, d, c) =>
+                {
+                    d.Inner = new DestinationInner();
+                    c.Mapper.Map(s.Inner, d.Inner);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
+
+            Assert.Equal(1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByFunc()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>();
+            config.CreateMap<Source, Destination>()
+                .AfterMap((s, d, c) => d.Inner = c.Mapper.Map<SourceInner, DestinationInner>(s.Inner!));
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
+
+            Assert.Equal(1, destination.Inner!.Value);
+        }
+
+        // TODO manual
 
         //--------------------------------------------------------------------------------
         // Data
         //--------------------------------------------------------------------------------
+
+        // Class
 
         public class SourceInner
         {
@@ -60,6 +119,28 @@ namespace Smart.Mapper
         public class Destination
         {
             public DestinationInner? Inner { get; set; }
+        }
+
+        // Nullable
+
+        public struct NullableSourceInner
+        {
+            public int Value { get; set; }
+        }
+
+        public struct NullableDestinationInner
+        {
+            public int Value { get; set; }
+        }
+
+        public class Source2
+        {
+            public NullableSourceInner? Inner { get; set; }
+        }
+
+        public class Destination2
+        {
+            public NullableDestinationInner? Inner { get; set; }
         }
     }
 }

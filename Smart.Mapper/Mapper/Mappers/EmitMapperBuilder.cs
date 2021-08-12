@@ -68,9 +68,9 @@ namespace Smart.Mapper.Mappers
         private void DeclareVariables()
         {
             // Destination
-            if (isFunction && (holder.HasDestinationParameter || !context.DestinationType.IsClass))
+            if (isFunction && (holder.HasDestinationParameter || !context.MapDestinationType.IsClass))
             {
-                destinationLocal = ilGenerator.DeclareLocal(context.DestinationType);
+                destinationLocal = ilGenerator.DeclareLocal(context.MapDestinationType);
             }
 
             // Context
@@ -96,7 +96,7 @@ namespace Smart.Mapper.Mappers
 
         private void EmitGuard()
         {
-            if (context.SourceType.IsClass)
+            if (context.DelegateSourceType.IsClass)
             {
                 var hasValueLabel = ilGenerator.DefineLabel();
 
@@ -106,12 +106,12 @@ namespace Smart.Mapper.Mappers
 
                 ilGenerator.MarkLabel(hasValueLabel);
             }
-            else if (context.SourceType.IsNullableType())
+            else if (context.DelegateSourceType.IsNullableType())
             {
                 var hasValueLabel = ilGenerator.DefineLabel();
 
                 EmitStackSourceCall();
-                ilGenerator.Emit(OpCodes.Call, context.SourceType.GetProperty("HasValue")!.GetMethod!);
+                ilGenerator.Emit(OpCodes.Call, context.DelegateSourceType.GetProperty("HasValue")!.GetMethod!);
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
                 EmitReturnDefault();
 
@@ -142,11 +142,11 @@ namespace Smart.Mapper.Mappers
                 // IServiceProvider
                 var field = holder.GetFactoryField();
                 EmitLoadField(field);
-                ilGenerator.Emit(OpCodes.Ldtoken, context.DestinationType);
+                ilGenerator.Emit(OpCodes.Ldtoken, context.MapDestinationType);
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))!);
                 var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
                 ilGenerator.EmitCallMethod(method);
-                ilGenerator.EmitTypeConversion(context.DestinationType);
+                ilGenerator.EmitTypeConversion(context.MapDestinationType);
 
                 if (destinationLocal is not null)
                 {
@@ -191,13 +191,13 @@ namespace Smart.Mapper.Mappers
             }
             else
             {
-                if (context.DestinationType.IsClass)
+                if (context.MapDestinationType.IsClass)
                 {
                     // Default constructor
-                    var ctor = context.DestinationType.GetConstructor(Type.EmptyTypes);
+                    var ctor = context.MapDestinationType.GetConstructor(Type.EmptyTypes);
                     if (ctor is null)
                     {
-                        throw new InvalidOperationException($"Type has not default constructor. type=[{context.DestinationType}]");
+                        throw new InvalidOperationException($"Type has not default constructor. type=[{context.MapDestinationType}]");
                     }
 
                     ilGenerator.Emit(OpCodes.Newobj, ctor);
@@ -211,7 +211,7 @@ namespace Smart.Mapper.Mappers
                 {
                     // Struct
                     ilGenerator.EmitLdloca(destinationLocal!);
-                    ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
+                    ilGenerator.Emit(OpCodes.Initobj, context.MapDestinationType);
                 }
             }
         }
@@ -473,11 +473,13 @@ namespace Smart.Mapper.Mappers
 
         private void EmitStackSourceArgument()
         {
+            // TODO
             ilGenerator.Emit(OpCodes.Ldarg_1);
         }
 
         private void EmitStackDestinationArgument()
         {
+            // TODO
             if (isFunction)
             {
                 if (destinationLocal is not null)
@@ -497,7 +499,8 @@ namespace Smart.Mapper.Mappers
 
         private void EmitStackSourceCall()
         {
-            if (context.DestinationType.IsClass)
+            // TODO
+            if (context.DelegateDestinationType.IsClass)
             {
                 ilGenerator.Emit(OpCodes.Ldarg_1);
             }
@@ -511,7 +514,8 @@ namespace Smart.Mapper.Mappers
         {
             if (isFunction)
             {
-                if (context.DestinationType.IsClass)
+                // TODO
+                if (context.MapDestinationType.IsClass)
                 {
                     if (destinationLocal is not null)
                     {
@@ -529,7 +533,8 @@ namespace Smart.Mapper.Mappers
             }
             else
             {
-                if (context.DestinationType.IsClass)
+                // TODO
+                if (context.DelegateDestinationType.IsClass)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg_2);
                 }
@@ -550,16 +555,17 @@ namespace Smart.Mapper.Mappers
 
         private void EmitReturnDefault()
         {
+            // TODO
             if (isFunction)
             {
-                if (context.DestinationType.IsClass)
+                if (context.DelegateDestinationType.IsClass)
                 {
                     ilGenerator.Emit(OpCodes.Ldnull);
                 }
                 else
                 {
                     ilGenerator.EmitLdloca(destinationLocal!);
-                    ilGenerator.Emit(OpCodes.Initobj, context.DestinationType);
+                    ilGenerator.Emit(OpCodes.Initobj, context.DelegateDestinationType);
                     ilGenerator.EmitLdloc(destinationLocal!);
                 }
             }

@@ -98,24 +98,24 @@ namespace Smart.Mapper
                 return mapperOption;
             }
 
-            var sourceNullableType = Nullable.GetUnderlyingType(sourceType);
-            var destinationNullableType = Nullable.GetUnderlyingType(destinationType);
+            var sourceUnderlyingType = Nullable.GetUnderlyingType(sourceType);
+            var destinationUnderlyingType = Nullable.GetUnderlyingType(destinationType);
 
-            if ((destinationNullableType is not null) &&
-                mapperOptions.TryGetValue((profile, sourceType, destinationNullableType), out mapperOption))
+            if ((destinationUnderlyingType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceType, destinationUnderlyingType), out mapperOption))
             {
                 return mapperOption;
             }
 
-            if ((sourceNullableType is not null) &&
-                mapperOptions.TryGetValue((profile, sourceNullableType, destinationType), out mapperOption))
+            if ((sourceUnderlyingType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceUnderlyingType, destinationType), out mapperOption))
             {
                 return mapperOption;
             }
 
-            if ((sourceNullableType is not null) &&
-                (destinationNullableType is not null) &&
-                mapperOptions.TryGetValue((profile, sourceNullableType, destinationNullableType), out mapperOption))
+            if ((sourceUnderlyingType is not null) &&
+                (destinationUnderlyingType is not null) &&
+                mapperOptions.TryGetValue((profile, sourceUnderlyingType, destinationUnderlyingType), out mapperOption))
             {
                 return mapperOption;
             }

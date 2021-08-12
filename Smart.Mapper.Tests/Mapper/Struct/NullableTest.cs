@@ -1,4 +1,4 @@
-namespace Smart.Mapper
+namespace Smart.Mapper.Struct
 {
     using Xunit;
 

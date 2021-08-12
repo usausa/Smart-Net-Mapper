@@ -224,6 +224,7 @@ namespace Smart.Mapper.Mappers
 
         private TypeEntry<ConverterType>? ResolveConverter(Type sourceType, Type destinationType)
         {
+            // TODO nullable?
             if (!destinationType.IsAssignableFrom(sourceType))
             {
                 return mappingOption.GetConverter(sourceType, destinationType) ??

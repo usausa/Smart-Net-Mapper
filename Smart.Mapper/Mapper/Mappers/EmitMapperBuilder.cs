@@ -101,6 +101,7 @@ namespace Smart.Mapper.Mappers
                 var hasValueLabel = ilGenerator.DefineLabel();
 
                 EmitStackSourceArgument();
+                // TODO method?
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
                 EmitReturnDefault();
 
@@ -111,6 +112,7 @@ namespace Smart.Mapper.Mappers
                 var hasValueLabel = ilGenerator.DefineLabel();
 
                 EmitStackSourceCall();
+                // TODO method?
                 ilGenerator.Emit(OpCodes.Call, context.DelegateSourceType.GetProperty("HasValue")!.GetMethod!);
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
                 EmitReturnDefault();
@@ -284,6 +286,7 @@ namespace Smart.Mapper.Mappers
                 }
                 else if (member.IsNested)
                 {
+                    // Nested
                     var field = hasParameter ? holder.GetParameterNestedMapperField(member.No) : holder.GetNestedMapperField(member.No);
                     EmitLoadField(field);
                     EmitStackSourceMember(member);
@@ -294,23 +297,32 @@ namespace Smart.Mapper.Mappers
                 {
                     EmitStackSourceMember(member);
 
-                    // TODO toNullable/fromNullable, conv-cast, conv-converter
+                    // TODO stack型の保持＆移行書き換え？
+                    var stackedType = member.MapFrom!.MemberType;
+
+                    // TODO converter適用後にIsNullIf
                     if (member.Converter is not null)
                     {
-                        // TODO
+                        // TODO dが非nullは許可する！
+                        // sがnull入る
+                        //   nullならデフォルト
+                        // else
+                        //   Convert
+                        //   convertとdが違う?(nullable)
+                        //     型変換
                     }
                     else if (member.IsNullIf)
                     {
-                        var convert = !member.Property.PropertyType.IsAssignableFrom(member.MapFrom!.MemberType);
+                        var convert = !member.Property.PropertyType.IsAssignableFrom(stackedType);
                         var setLabel = ilGenerator.DefineLabel();
 
                         if (member.Property.PropertyType.IsClass)
                         {
-                            var reloadLabel = convert ? ilGenerator.DefineLabel() : default;
+                            var convertLabel = convert ? ilGenerator.DefineLabel() : default;
 
                             // Branch
                             ilGenerator.Emit(OpCodes.Dup);
-                            ilGenerator.Emit(OpCodes.Brtrue_S, convert ? reloadLabel : setLabel);
+                            ilGenerator.Emit(OpCodes.Brtrue_S, convert ? convertLabel : setLabel);
 
                             // Null if
                             ilGenerator.Emit(OpCodes.Pop);
@@ -321,7 +333,7 @@ namespace Smart.Mapper.Mappers
                                 ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
                                 // Convert
-                                ilGenerator.MarkLabel(reloadLabel);
+                                ilGenerator.MarkLabel(convertLabel);
 
                                 throw new NotImplementedException();
                             }
@@ -354,6 +366,11 @@ namespace Smart.Mapper.Mappers
                         }
 
                         ilGenerator.MarkLabel(setLabel);
+                    }
+                    else if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
+                    {
+                        // TODO convert 独立？
+                        throw new NotImplementedException();
                     }
                 }
 

@@ -109,7 +109,6 @@ namespace Smart.Mapper.Mappers
                 var hasValueLabel = ilGenerator.DefineLabel();
 
                 ilGenerator.Emit(OpCodes.Ldarg_1);
-                // TODO method?
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
                 if (isFunction)
                 {
@@ -124,12 +123,10 @@ namespace Smart.Mapper.Mappers
                 var hasValueLabel = ilGenerator.DefineLabel();
 
                 ilGenerator.Emit(OpCodes.Ldarga_S, 1);
-                // TODO method?
                 ilGenerator.Emit(OpCodes.Call, context.DelegateSourceType.GetProperty("HasValue")!.GetMethod!);
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
                 if (isFunction)
                 {
-                    // TODO nullable?
                     ilGenerator.EmitLdloca(destinationLocal!);
                     ilGenerator.Emit(OpCodes.Initobj, context.DelegateDestinationType);
                     ilGenerator.EmitLdloc(destinationLocal!);
@@ -441,7 +438,7 @@ namespace Smart.Mapper.Mappers
                     ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Eval")!);
                     break;
                 default:
-                    throw new InvalidOperationException($"Unsupported condition type. type=[{member.Condition.Type}]");
+                    throw new NotSupportedException($"Unsupported condition type. type=[{member.Condition.Type}]");
             }
         }
 
@@ -488,7 +485,7 @@ namespace Smart.Mapper.Mappers
                     EmitCallFieldMethod(interfaceField, "Provide");
                     break;
                 default:
-                    throw new InvalidOperationException($"Unsupported map from type. type=[{member.MapFrom!.Type}]");
+                    throw new NotSupportedException($"Unsupported map from type. type=[{member.MapFrom!.Type}]");
             }
         }
 
@@ -514,13 +511,11 @@ namespace Smart.Mapper.Mappers
 
         private void EmitStackSourceArgument()
         {
-            // TODO
             ilGenerator.Emit(OpCodes.Ldarg_1);
         }
 
         private void EmitStackDestinationArgument()
         {
-            // TODO
             if (isFunction)
             {
                 if (destinationLocal is not null)
@@ -540,7 +535,6 @@ namespace Smart.Mapper.Mappers
 
         private void EmitStackSourceCall()
         {
-            // TODO
             if (context.DelegateDestinationType.IsClass)
             {
                 ilGenerator.Emit(OpCodes.Ldarg_1);
@@ -562,7 +556,6 @@ namespace Smart.Mapper.Mappers
         {
             if (isFunction)
             {
-                // TODO
                 if (context.MapDestinationType.IsClass)
                 {
                     if (destinationLocal is not null)
@@ -581,7 +574,6 @@ namespace Smart.Mapper.Mappers
             }
             else
             {
-                // TODO
                 if (context.DelegateDestinationType.IsClass)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg_2);
@@ -619,7 +611,7 @@ namespace Smart.Mapper.Mappers
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Unsupported conversion. type=[{context.MapDestinationType}] to type=[{context.DelegateDestinationType}]");
+                        throw new NotSupportedException($"Unsupported conversion. type=[{context.MapDestinationType}] to type=[{context.DelegateDestinationType}]");
                     }
                 }
             }

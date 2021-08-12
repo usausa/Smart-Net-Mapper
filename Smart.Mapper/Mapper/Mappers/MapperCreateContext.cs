@@ -62,8 +62,6 @@ namespace Smart.Mapper.Mappers
 
         private readonly MappingOption mappingOption;
 
-        // TODO 名称仮
-
         public Type DelegateSourceType { get; }
 
         public Type DelegateDestinationType { get; }

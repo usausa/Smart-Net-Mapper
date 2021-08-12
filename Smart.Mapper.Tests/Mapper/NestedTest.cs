@@ -40,20 +40,19 @@ namespace Smart.Mapper
         // Nullable
         //--------------------------------------------------------------------------------
 
-        // TODO
-        //[Fact]
-        //public void NestedNullable()
-        //{
-        //    var config = new MapperConfig();
-        //    config.CreateMap<NullableSourceInner, NullableDestinationInner>();
-        //    config.CreateMap<Source2, Destination2>()
-        //        .ForMember(x => x.Inner, opt => opt.Nested());
-        //    using var mapper = config.ToMapper();
+        [Fact]
+        public void NestedNullable()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<StructSourceInner, StructDestinationInner>();
+            config.CreateMap<Source2, Destination2>()
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
 
-        //    var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = new NullableSourceInner { Value = 1 } });
+            var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = new StructSourceInner { Value = 1 } });
 
-        //    Assert.Equal(1, destination.Inner!.Value.Value);
-        //}
+            Assert.Equal(1, destination.Inner!.Value.Value);
+        }
 
         // TODO
 
@@ -121,26 +120,26 @@ namespace Smart.Mapper
             public DestinationInner? Inner { get; set; }
         }
 
-        // Nullable
+        // Struct
 
-        public struct NullableSourceInner
+        public struct StructSourceInner
         {
             public int Value { get; set; }
         }
 
-        public struct NullableDestinationInner
+        public struct StructDestinationInner
         {
             public int Value { get; set; }
         }
 
         public class Source2
         {
-            public NullableSourceInner? Inner { get; set; }
+            public StructSourceInner? Inner { get; set; }
         }
 
         public class Destination2
         {
-            public NullableDestinationInner? Inner { get; set; }
+            public StructDestinationInner? Inner { get; set; }
         }
     }
 }

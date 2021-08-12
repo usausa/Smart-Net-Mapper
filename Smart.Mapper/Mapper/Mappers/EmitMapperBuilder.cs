@@ -575,9 +575,19 @@ namespace Smart.Mapper.Mappers
 
         private void EmitReturn()
         {
-            if (destinationLocal is not null)
+            if (isFunction)
             {
-                ilGenerator.EmitLdloc(destinationLocal);
+                if (destinationLocal is not null)
+                {
+                    ilGenerator.EmitLdloc(destinationLocal);
+                }
+
+                if ((context.DelegateDestinationType != context.MapDestinationType) &&
+                    (Nullable.GetUnderlyingType(context.DelegateDestinationType) == context.MapDestinationType))
+                {
+                    var nullableCtor = context.DelegateDestinationType.GetConstructor(new[] { context.MapDestinationType });
+                    ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                }
             }
 
             ilGenerator.Emit(OpCodes.Ret);

@@ -23,6 +23,7 @@ namespace Smart.Mapper.Mappers
 
         // Work
 
+        private LocalBuilder? sourceLocal;
         private LocalBuilder? destinationLocal;
         private LocalBuilder? contextLocal;
 
@@ -67,10 +68,17 @@ namespace Smart.Mapper.Mappers
 
         private void DeclareVariables()
         {
+            // TODO re check
             // Destination
             if (isFunction && (holder.HasDestinationParameter || !context.MapDestinationType.IsClass))
             {
                 destinationLocal = ilGenerator.DeclareLocal(context.MapDestinationType);
+            }
+
+            // Source
+            if (context.DelegateSourceType.IsNullableType())
+            {
+                sourceLocal = ilGenerator.DeclareLocal(Nullable.GetUnderlyingType(context.DelegateSourceType)!);
             }
 
             // Context
@@ -129,6 +137,11 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Ret);
 
                 ilGenerator.MarkLabel(hasValueLabel);
+
+                // Source value
+                ilGenerator.Emit(OpCodes.Ldarga_S, 1);
+                ilGenerator.Emit(OpCodes.Call, context.DelegateSourceType.GetProperty("Value")!.GetMethod!);
+                ilGenerator.EmitStloc(sourceLocal!);
             }
         }
 
@@ -534,7 +547,14 @@ namespace Smart.Mapper.Mappers
             }
             else
             {
-                ilGenerator.Emit(OpCodes.Ldarga_S, 1);
+                if (sourceLocal is not null)
+                {
+                    ilGenerator.EmitLdloca(sourceLocal);
+                }
+                else
+                {
+                    ilGenerator.Emit(OpCodes.Ldarga_S, 1);
+                }
             }
         }
 

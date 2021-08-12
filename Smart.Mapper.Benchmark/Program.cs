@@ -50,6 +50,8 @@ namespace Smart.Mapper.Benchmark
         [AllowNull]
         private IMapper autoMapper;
 
+        private readonly DirectMapper directMapper = new();
+
         private readonly ActionMapperFactory instantActionMapperFactory = new();    // Boxed
 
         private readonly ActionMapperFactory rawActionMapperFactory = new();
@@ -230,9 +232,22 @@ namespace Smart.Mapper.Benchmark
             return ret;
         }
 
+        [Benchmark(OperationsPerInvoke = N)]
+        public SimpleDestination? SimpleDirect()
+        {
+            var m = directMapper;
+            var source = new SimpleSource();
+            var ret = default(SimpleDestination);
+            for (var i = 0; i < N; i++)
+            {
+                ret = m.Map(source);
+            }
+            return ret;
+        }
+
         // Max
         [Benchmark(OperationsPerInvoke = N)]
-        public SimpleDestination? SimpleHand()
+        public SimpleDestination? SimpleInline()
         {
             var source = new SimpleSource();
             var ret = default(SimpleDestination);
@@ -416,6 +431,24 @@ namespace Smart.Mapper.Benchmark
                 ret = m.Map<SingleSource, SingleDestination>(source);
             }
             return ret;
+        }
+    }
+
+    public sealed class DirectMapper
+    {
+        public SimpleDestination Map(SimpleSource source)
+        {
+            return new SimpleDestination
+            {
+                Value1 = source.Value1,
+                Value2 = source.Value2,
+                Value3 = source.Value3,
+                Value4 = source.Value4,
+                Value5 = source.Value5,
+                Value6 = source.Value6,
+                Value7 = source.Value7,
+                Value8 = source.Value8
+            };
         }
     }
 }

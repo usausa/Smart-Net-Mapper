@@ -256,7 +256,7 @@ namespace Smart.Mapper.Mappers
             var method = hasParameter
                 ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!
                 : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!;
-            var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.Property.PropertyType)!;
+            var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.Property.PropertyType);
             return genericMethod.Invoke(context.NestedMapper, null)!;
         }
 

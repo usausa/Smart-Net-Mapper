@@ -582,11 +582,17 @@ namespace Smart.Mapper.Mappers
                     ilGenerator.EmitLdloc(destinationLocal);
                 }
 
-                if ((context.DelegateDestinationType != context.MapDestinationType) &&
-                    (Nullable.GetUnderlyingType(context.DelegateDestinationType) == context.MapDestinationType))
+                if (context.DelegateDestinationType != context.MapDestinationType)
                 {
-                    var nullableCtor = context.DelegateDestinationType.GetConstructor(new[] { context.MapDestinationType });
-                    ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                    if (Nullable.GetUnderlyingType(context.DelegateDestinationType) == context.MapDestinationType)
+                    {
+                        var nullableCtor = context.DelegateDestinationType.GetConstructor(new[] { context.MapDestinationType });
+                        ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unsupported conversion. type=[{context.MapDestinationType}] to type=[{context.DelegateDestinationType}]");
+                    }
                 }
             }
 

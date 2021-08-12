@@ -18,9 +18,9 @@ namespace Smart.Mapper.Struct
                 .BeforeMap((s, d) => d.ValueDestinationOnly = s.ValueSourceOnly);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -33,9 +33,9 @@ namespace Smart.Mapper.Struct
                 .BeforeMap((_, d, c) => d.ValueDestinationOnly = (int)c.Parameter!);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, -1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -48,9 +48,9 @@ namespace Smart.Mapper.Struct
                 .BeforeMap<CustomMappingAction>();
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -63,9 +63,9 @@ namespace Smart.Mapper.Struct
                 .BeforeMap(new CustomMappingAction());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -82,9 +82,9 @@ namespace Smart.Mapper.Struct
                 .AfterMap((s, d) => d.ValueDestinationOnly = s.ValueSourceOnly);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -97,9 +97,9 @@ namespace Smart.Mapper.Struct
                 .AfterMap((_, d, c) => d.ValueDestinationOnly = (int)c.Parameter!);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, -1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -112,9 +112,9 @@ namespace Smart.Mapper.Struct
                 .AfterMap<CustomMappingAction>();
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -127,9 +127,9 @@ namespace Smart.Mapper.Struct
                 .AfterMap(new CustomMappingAction());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             // Copy not work
             Assert.Equal(0, destination.ValueDestinationOnly);
         }
@@ -143,10 +143,10 @@ namespace Smart.Mapper.Struct
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .BeforeMap((_, d) => d.ValueDestinationOnly += 1)
-                .BeforeMap((_, d, _) => d.ValueDestinationOnly += 10)
-                .AfterMap((_, d) => d.ValueDestinationOnly += 100)
-                .AfterMap((_, d, _) => d.ValueDestinationOnly += 1000);
+                .BeforeMap((_, d) => d.ValueDestinationOnly -= 1)
+                .BeforeMap((_, d, _) => d.ValueDestinationOnly -= 10)
+                .AfterMap((_, d) => d.ValueDestinationOnly -= 100)
+                .AfterMap((_, d, _) => d.ValueDestinationOnly -= 1000);
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(default);

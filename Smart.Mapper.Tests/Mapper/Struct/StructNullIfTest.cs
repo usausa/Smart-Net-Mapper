@@ -31,8 +31,8 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.NullIf(-1));
             using var mapper = config.ToMapper();
 
-            var destination1 = mapper.Map<NullableSource, NullableDestination>(new NullableSource { Value = 1 });
-            Assert.Equal(1, destination1.Value);
+            var destination1 = mapper.Map<NullableSource, NullableDestination>(new NullableSource { Value = -1 });
+            Assert.Equal(-1, destination1.Value);
 
             var destination2 = mapper.Map<NullableSource, NullableDestination>(default);
             Assert.Equal(-1, destination2.Value);

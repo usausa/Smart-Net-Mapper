@@ -16,10 +16,10 @@ namespace Smart.Mapper
                 .ForMember(x => x.Value1, opt => opt.Ignore());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value1 = 1, Value2 = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value1 = 1, Value2 = -2 });
 
             Assert.Equal(0, destination.Value1);
-            Assert.Equal(2, destination.Value2);
+            Assert.Equal(-2, destination.Value2);
         }
 
         [Fact]
@@ -30,7 +30,7 @@ namespace Smart.Mapper
                 .ForAllMember(opt => opt.Ignore());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value1 = 1, Value2 = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value1 = 1, Value2 = -2 });
 
             Assert.Equal(0, destination.Value1);
             Assert.Equal(0, destination.Value2);

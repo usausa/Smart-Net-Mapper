@@ -17,9 +17,9 @@ namespace Smart.Mapper
                 .ForMember(x => x.Inner, opt => opt.Nested());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = -1 } });
 
-            Assert.Equal(1, destination.Inner!.Value);
+            Assert.Equal(-1, destination.Inner!.Value);
         }
 
         [Fact]
@@ -40,20 +40,20 @@ namespace Smart.Mapper
         // Nullable
         //--------------------------------------------------------------------------------
 
-        // TODO Stack brake in Release mode
-        //[Fact]
-        //public void NestedNullable()
-        //{
-        //    var config = new MapperConfig();
-        //    config.CreateMap<StructSourceInner, StructDestinationInner>();
-        //    config.CreateMap<Source2, Destination2>()
-        //        .ForMember(x => x.Inner, opt => opt.Nested());
-        //    using var mapper = config.ToMapper();
+        // TODO Innerの引数がnullableアンマッチの時の考慮が必要！
+        [Fact]
+        public void NestedNullable()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<StructSourceInner, StructDestinationInner>();
+            config.CreateMap<Source2, Destination2>()
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
 
-        //    var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = new StructSourceInner { Value = 1 } });
+            var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = new StructSourceInner { Value = -1 } });
 
-        //    Assert.Equal(1, destination.Inner!.Value.Value);
-        //}
+            Assert.Equal(-1, destination.Inner!.Value.Value);
+        }
 
         // TODO
 
@@ -75,9 +75,9 @@ namespace Smart.Mapper
                 });
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = -1 } });
 
-            Assert.Equal(1, destination.Inner!.Value);
+            Assert.Equal(-1, destination.Inner!.Value);
         }
 
         [Fact]
@@ -90,9 +90,9 @@ namespace Smart.Mapper
                 .AfterMap((s, d, c) => d.Inner = c.Mapper.Map<SourceInner, DestinationInner>(s.Inner!));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = 1 } });
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = -1 } });
 
-            Assert.Equal(1, destination.Inner!.Value);
+            Assert.Equal(-1, destination.Inner!.Value);
         }
 
         // TODO manual

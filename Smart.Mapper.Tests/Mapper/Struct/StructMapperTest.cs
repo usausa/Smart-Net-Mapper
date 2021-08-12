@@ -21,7 +21,7 @@ namespace Smart.Mapper.Struct
             using var mapper = CreateMapper();
 
             var destination = default(Destination);
-            mapper.Map(new Source { Value = 1 }, destination);
+            mapper.Map(new Source { Value = -1 }, destination);
 
             // Copy not work
             Assert.Equal(0, destination.Value);
@@ -32,9 +32,9 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace Smart.Mapper.Struct
             using var mapper = CreateMapper();
 
             var destination = default(Destination);
-            mapper.Map(new Source { Value = 1 }, destination, 0);
+            mapper.Map(new Source { Value = -1 }, destination, 0);
 
             // Copy not work
             Assert.Equal(0, destination.Value);
@@ -54,9 +54,9 @@ namespace Smart.Mapper.Struct
         {
             using var mapper = CreateMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, 0);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, 0);
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         //--------------------------------------------------------------------------------

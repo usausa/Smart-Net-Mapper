@@ -18,9 +18,9 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.MapFrom(s => s.Value));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         [Fact]
@@ -28,12 +28,12 @@ namespace Smart.Mapper.Struct
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .ForMember(d => d.Value, opt => opt.MapFrom(s => s.Value + 1));
+                .ForMember(d => d.Value, opt => opt.MapFrom(s => s.Value - 1));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(2, destination.Value);
+            Assert.Equal(-2, destination.Value);
         }
 
         [Fact]
@@ -44,9 +44,9 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.MapFrom((s, _) => s.Value));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         [Fact]
@@ -57,9 +57,9 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.MapFrom((s, _, c) => s.Value + (int)c.Parameter!));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, 1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(2, destination.Value);
+            Assert.Equal(-2, destination.Value);
         }
 
         [Fact]
@@ -70,9 +70,9 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.MapFrom<CustomValueProvider>());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, 1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(2, destination.Value);
+            Assert.Equal(-2, destination.Value);
         }
 
         [Fact]
@@ -83,9 +83,9 @@ namespace Smart.Mapper.Struct
                 .ForMember(d => d.Value, opt => opt.MapFrom(new CustomValueProvider()));
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, 1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(2, destination.Value);
+            Assert.Equal(-2, destination.Value);
         }
 
         [Fact]

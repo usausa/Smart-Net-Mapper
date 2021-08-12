@@ -19,9 +19,9 @@ namespace Smart.Mapper
                 .AddDefaultMapper()
                 .ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         [Fact]
@@ -31,9 +31,9 @@ namespace Smart.Mapper
                 .AddMissingHandler(new DefaultMapperHandler { Priority = 0 })
                 .ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 });
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
         }
 
         [Fact]
@@ -41,8 +41,8 @@ namespace Smart.Mapper
         {
             using var mapper = new MapperConfig().ToMapper();
 
-            Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>(new Source { Value = 1 }));
-            Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>("dummy", new Source { Value = 1 }));
+            Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>(new Source { Value = -1 }));
+            Assert.Throws<InvalidOperationException>(() => mapper.Map<Source, Destination>("dummy", new Source { Value = -1 }));
         }
 
         //--------------------------------------------------------------------------------

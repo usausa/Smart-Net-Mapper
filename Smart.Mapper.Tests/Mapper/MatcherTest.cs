@@ -16,10 +16,10 @@ namespace Smart.Mapper
                 .MatchMember(d => "Source" + d[11..]);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { SourceValue1 = 1, SourceValue2 = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { SourceValue1 = -1, SourceValue2 = -2 });
 
-            Assert.Equal(1, destination.DestinationValue1);
-            Assert.Equal(2, destination.DestinationValue2);
+            Assert.Equal(-1, destination.DestinationValue1);
+            Assert.Equal(-2, destination.DestinationValue2);
         }
 
         //--------------------------------------------------------------------------------

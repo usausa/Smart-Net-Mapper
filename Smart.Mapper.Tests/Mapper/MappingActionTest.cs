@@ -18,10 +18,10 @@ namespace Smart.Mapper
                 .BeforeMap((s, d) => d.ValueDestinationOnly = s.ValueSourceOnly);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         [Fact]
@@ -32,9 +32,9 @@ namespace Smart.Mapper
                 .BeforeMap((_, d, c) => d.ValueDestinationOnly = (int)c.Parameter!);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, -1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             Assert.Equal(-1, destination.ValueDestinationOnly);
         }
 
@@ -46,10 +46,10 @@ namespace Smart.Mapper
                 .BeforeMap<CustomMappingAction>();
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         [Fact]
@@ -60,10 +60,10 @@ namespace Smart.Mapper
                 .BeforeMap(new CustomMappingAction());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         //--------------------------------------------------------------------------------
@@ -78,10 +78,10 @@ namespace Smart.Mapper
                 .AfterMap((s, d) => d.ValueDestinationOnly = s.ValueSourceOnly);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         [Fact]
@@ -92,9 +92,9 @@ namespace Smart.Mapper
                 .AfterMap((_, d, c) => d.ValueDestinationOnly = (int)c.Parameter!);
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1 }, -1);
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1 }, -1);
 
-            Assert.Equal(1, destination.Value);
+            Assert.Equal(-1, destination.Value);
             Assert.Equal(-1, destination.ValueDestinationOnly);
         }
 
@@ -106,10 +106,10 @@ namespace Smart.Mapper
                 .AfterMap<CustomMappingAction>();
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         [Fact]
@@ -120,10 +120,10 @@ namespace Smart.Mapper
                 .AfterMap(new CustomMappingAction());
             using var mapper = config.ToMapper();
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, ValueSourceOnly = 2 });
+            var destination = mapper.Map<Source, Destination>(new Source { Value = -1, ValueSourceOnly = -2 });
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(2, destination.ValueDestinationOnly);
+            Assert.Equal(-1, destination.Value);
+            Assert.Equal(-2, destination.ValueDestinationOnly);
         }
 
         //--------------------------------------------------------------------------------
@@ -135,15 +135,15 @@ namespace Smart.Mapper
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .BeforeMap((_, d) => d.ValueDestinationOnly += 1)
-                .BeforeMap((_, d, _) => d.ValueDestinationOnly += 10)
-                .AfterMap((_, d) => d.ValueDestinationOnly += 100)
-                .AfterMap((_, d, _) => d.ValueDestinationOnly += 1000);
+                .BeforeMap((_, d) => d.ValueDestinationOnly -= 1)
+                .BeforeMap((_, d, _) => d.ValueDestinationOnly -= 10)
+                .AfterMap((_, d) => d.ValueDestinationOnly -= 100)
+                .AfterMap((_, d, _) => d.ValueDestinationOnly -= 1000);
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source());
 
-            Assert.Equal(1111, destination.ValueDestinationOnly);
+            Assert.Equal(-1111, destination.ValueDestinationOnly);
         }
 
         //--------------------------------------------------------------------------------

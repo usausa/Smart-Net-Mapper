@@ -100,10 +100,14 @@ namespace Smart.Mapper.Mappers
             {
                 var hasValueLabel = ilGenerator.DefineLabel();
 
-                EmitStackSourceArgument();
+                ilGenerator.Emit(OpCodes.Ldarg_1);
                 // TODO method?
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
-                EmitReturnDefault();
+                if (isFunction)
+                {
+                    ilGenerator.Emit(OpCodes.Ldnull);
+                }
+                ilGenerator.Emit(OpCodes.Ret);
 
                 ilGenerator.MarkLabel(hasValueLabel);
             }
@@ -111,11 +115,18 @@ namespace Smart.Mapper.Mappers
             {
                 var hasValueLabel = ilGenerator.DefineLabel();
 
-                EmitStackSourceCall();
+                ilGenerator.Emit(OpCodes.Ldarga_S, 1);
                 // TODO method?
                 ilGenerator.Emit(OpCodes.Call, context.DelegateSourceType.GetProperty("HasValue")!.GetMethod!);
                 ilGenerator.Emit(OpCodes.Brtrue_S, hasValueLabel);
-                EmitReturnDefault();
+                if (isFunction)
+                {
+                    // TODO nullable?
+                    ilGenerator.EmitLdloca(destinationLocal!);
+                    ilGenerator.Emit(OpCodes.Initobj, context.DelegateDestinationType);
+                    ilGenerator.EmitLdloc(destinationLocal!);
+                }
+                ilGenerator.Emit(OpCodes.Ret);
 
                 ilGenerator.MarkLabel(hasValueLabel);
             }
@@ -568,26 +579,6 @@ namespace Smart.Mapper.Mappers
             {
                 ilGenerator.Emit(isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3);
             }
-        }
-
-        private void EmitReturnDefault()
-        {
-            // TODO
-            if (isFunction)
-            {
-                if (context.DelegateDestinationType.IsClass)
-                {
-                    ilGenerator.Emit(OpCodes.Ldnull);
-                }
-                else
-                {
-                    ilGenerator.EmitLdloca(destinationLocal!);
-                    ilGenerator.Emit(OpCodes.Initobj, context.DelegateDestinationType);
-                    ilGenerator.EmitLdloc(destinationLocal!);
-                }
-            }
-
-            ilGenerator.Emit(OpCodes.Ret);
         }
 
         private void EmitReturn()

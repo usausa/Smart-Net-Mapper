@@ -204,7 +204,7 @@ namespace Smart.Mapper.Mappers
                         EmitCallFieldMethod(field, "Create");
                         break;
                     default:
-                        throw new InvalidOperationException($"Unsupported factory. type=[{field.FieldType}]");
+                        throw new NotSupportedException($"Unsupported factory. type=[{context.Factory.Type}]");
                 }
 
                 if (destinationLocal is not null)
@@ -220,7 +220,7 @@ namespace Smart.Mapper.Mappers
                     var ctor = context.MapDestinationType.GetConstructor(Type.EmptyTypes);
                     if (ctor is null)
                     {
-                        throw new InvalidOperationException($"Type has not default constructor. type=[{context.MapDestinationType}]");
+                        throw new NotSupportedException($"Type has not default constructor. type=[{context.MapDestinationType}]");
                     }
 
                     ilGenerator.Emit(OpCodes.Newobj, ctor);
@@ -273,7 +273,7 @@ namespace Smart.Mapper.Mappers
                         EmitCallFieldMethod(field, "Process");
                         break;
                     default:
-                        throw new InvalidOperationException($"Unsupported action map. type=[{field.FieldType}]");
+                        throw new NotSupportedException($"Unsupported action map. type=[{field.FieldType}]");
                 }
             }
         }
@@ -316,27 +316,35 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    EmitStackSourceMember(member);
-
-                    // TODO stack型の保持＆移行書き換え？
-                    var stackedType = member.MapFrom!.MemberType;
-
-                    // TODO converter適用後にIsNullIf
+                    // Prepare converter
                     if (member.Converter is not null)
                     {
-                        // TODO dが非nullは許可する！
-                        // sがnull入る
-                        //   nullならデフォルト
-                        // else
-                        //   Convert
-                        //   convertとdが違う?(nullable)
-                        //     型変換
+                        var field = holder.GetConverterField(member.No);
+                        EmitLoadField(field);
                     }
-                    else if (member.IsNullIf)
+
+                    // Stack source
+                    EmitStackSourceMember(member);
+                    var stackedType = member.MapFrom!.MemberType;
+
+                    // Invoke converter
+                    if (member.Converter is not null)
+                    {
+                        EmitConvertNullable(stackedType, member.Converter.SourceType);
+
+                        EmitInvokeConverter(member);
+
+                        stackedType = member.Converter.DestinationType;
+                    }
+
+                    // v---------- 見直し
+                    // TODO null check, converterでint?:pに対してintの可能性あり
+                    if (member.IsNullIf && (stackedType.IsClass || stackedType.IsNullableType()))
                     {
                         var convert = !member.Property.PropertyType.IsAssignableFrom(stackedType);
                         var setLabel = ilGenerator.DefineLabel();
 
+                        // Stacked ?
                         if (member.Property.PropertyType.IsClass)
                         {
                             var convertLabel = convert ? ilGenerator.DefineLabel() : default;
@@ -350,12 +358,12 @@ namespace Smart.Mapper.Mappers
                             EmitLoadField(holder.GetNullIfValueField(member.No));
                             if (convert)
                             {
-                                // TODO S?
                                 ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
                                 // Convert
                                 ilGenerator.MarkLabel(convertLabel);
 
+                                // TODO ここで型変換が必要、注意Nullableの可能性？、nullではないことが保証
                                 throw new NotImplementedException();
                             }
                         }
@@ -382,6 +390,7 @@ namespace Smart.Mapper.Mappers
 
                             if (convert)
                             {
+                                // TODO 、nullではないことが保証
                                 throw new NotImplementedException();
                             }
                         }
@@ -390,9 +399,11 @@ namespace Smart.Mapper.Mappers
                     }
                     else if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
                     {
-                        // TODO convert 独立？
+                        // TODO convert 独立？、nullの場合がある-キャスト等？
                         throw new NotImplementedException();
                     }
+
+                    // ^---------- 見直し
                 }
 
                 // Set
@@ -439,6 +450,28 @@ namespace Smart.Mapper.Mappers
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported condition type. type=[{member.Condition.Type}]");
+            }
+        }
+
+        private void EmitInvokeConverter(MemberMapping member)
+        {
+            var field = holder.GetConverterField(member.No);
+            switch (member.Converter!.Type)
+            {
+                case ConverterType.FuncSource:
+                    EmitCallFieldMethod(field, "Invoke");
+                    break;
+                case ConverterType.FuncSourceContext:
+                    EmitStackContextArgument();
+                    EmitCallFieldMethod(field, "Invoke");
+                    break;
+                case ConverterType.Interface:
+                case ConverterType.InterfaceType:
+                    EmitStackContextArgument();
+                    EmitCallFieldMethod(field, "Convert");
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported converter. type=[{member.Converter.Type}]");
             }
         }
 
@@ -593,6 +626,15 @@ namespace Smart.Mapper.Mappers
             }
         }
 
+        private void EmitConvertNullable(Type currentType, Type targetType)
+        {
+            if ((targetType != currentType) && (Nullable.GetUnderlyingType(targetType) == currentType))
+            {
+                var nullableCtor = targetType.GetConstructor(new[] { currentType });
+                ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+            }
+        }
+
         private void EmitReturn()
         {
             if (isFunction)
@@ -602,18 +644,7 @@ namespace Smart.Mapper.Mappers
                     ilGenerator.EmitLdloc(destinationLocal);
                 }
 
-                if (context.DelegateDestinationType != context.MapDestinationType)
-                {
-                    if (Nullable.GetUnderlyingType(context.DelegateDestinationType) == context.MapDestinationType)
-                    {
-                        var nullableCtor = context.DelegateDestinationType.GetConstructor(new[] { context.MapDestinationType });
-                        ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
-                    }
-                    else
-                    {
-                        throw new NotSupportedException($"Unsupported conversion. type=[{context.MapDestinationType}] to type=[{context.DelegateDestinationType}]");
-                    }
-                }
+                EmitConvertNullable(context.MapDestinationType, context.DelegateDestinationType);
             }
 
             ilGenerator.Emit(OpCodes.Ret);

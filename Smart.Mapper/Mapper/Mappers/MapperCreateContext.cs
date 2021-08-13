@@ -23,7 +23,7 @@ namespace Smart.Mapper.Mappers
 
         public object? ConstValue { get; }
 
-        public TypeEntry<ConverterType>? Converter { get; }
+        public ConverterEntry? Converter { get; }
 
         public bool IsNullIf { get; }
 
@@ -37,7 +37,7 @@ namespace Smart.Mapper.Mappers
             bool isNested,
             bool isConst,
             object? constValue,
-            TypeEntry<ConverterType>? converter,
+            ConverterEntry? converter,
             bool isNullIf,
             object? nullIfValue)
         {
@@ -220,13 +220,50 @@ namespace Smart.Mapper.Mappers
             return new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
         }
 
-        private TypeEntry<ConverterType>? ResolveConverter(Type sourceType, Type destinationType)
+        private ConverterEntry? ResolveConverter(Type sourceType, Type destinationType)
         {
-            // TODO nullable?
-            if (!destinationType.IsAssignableFrom(sourceType))
+            if (destinationType.IsAssignableFrom(sourceType))
             {
-                return mappingOption.GetConverter(sourceType, destinationType) ??
-                       defaultOption.GetConverter(sourceType, destinationType);
+                return null;
+            }
+
+            var converter = mappingOption.GetConverter(sourceType, destinationType) ??
+                            defaultOption.GetConverter(sourceType, destinationType);
+            if (converter is not null)
+            {
+                return converter;
+            }
+
+            var destinationUnderlyingType = Nullable.GetUnderlyingType(destinationType);
+            if (destinationUnderlyingType is not null)
+            {
+                converter = mappingOption.GetConverter(sourceType, destinationUnderlyingType) ??
+                            defaultOption.GetConverter(sourceType, destinationUnderlyingType);
+                if (converter is not null)
+                {
+                    return converter;
+                }
+            }
+
+            if (sourceType.IsValueType && !sourceType.IsNullableType())
+            {
+                var nullableSourceType = typeof(Nullable<>).MakeGenericType(sourceType);
+                converter = mappingOption.GetConverter(nullableSourceType, destinationType) ??
+                            defaultOption.GetConverter(nullableSourceType, destinationType);
+                if (converter is not null)
+                {
+                    return converter;
+                }
+
+                if (destinationUnderlyingType is not null)
+                {
+                    converter = mappingOption.GetConverter(nullableSourceType, destinationUnderlyingType) ??
+                                defaultOption.GetConverter(nullableSourceType, destinationUnderlyingType);
+                    if (converter is not null)
+                    {
+                        return converter;
+                    }
+                }
             }
 
             return null;

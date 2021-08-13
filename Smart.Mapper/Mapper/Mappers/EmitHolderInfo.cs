@@ -260,7 +260,7 @@ namespace Smart.Mapper.Mappers
             return genericMethod.Invoke(context.NestedMapper, null)!;
         }
 
-        private static object ResolveConverter(IServiceProvider serviceProvider, TypeEntry<ConverterType> entry) =>
+        private static object ResolveConverter(IServiceProvider serviceProvider, ConverterEntry entry) =>
              entry.Type == ConverterType.InterfaceType ? serviceProvider.GetService((Type)entry.Value)! : entry.Value;
 
         //--------------------------------------------------------------------------------

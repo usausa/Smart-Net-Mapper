@@ -24,7 +24,7 @@ namespace Smart.Mapper.Expressions
             return this;
         }
 
-        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember, ResolutionContext> converter)
+        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter)
         {
             mappingOption.SetConverter(converter);
             return this;

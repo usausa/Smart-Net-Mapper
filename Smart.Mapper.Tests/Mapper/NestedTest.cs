@@ -4,6 +4,8 @@ namespace Smart.Mapper
 
     public class NestedTest
     {
+        private const string Profile = "sub";
+
         //--------------------------------------------------------------------------------
         // Nested
         //--------------------------------------------------------------------------------
@@ -40,7 +42,6 @@ namespace Smart.Mapper
         // Nullable
         //--------------------------------------------------------------------------------
 
-        // TODO Innerの引数がnullableアンマッチの時の考慮が必要！
         [Fact]
         public void NestedNullable()
         {
@@ -55,7 +56,51 @@ namespace Smart.Mapper
             Assert.Equal(-1, destination.Inner!.Value.Value);
         }
 
-        // TODO
+        [Fact]
+        public void NestedNullableNull()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<StructSourceInner, StructDestinationInner>();
+            config.CreateMap<Source2, Destination2>()
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source2, Destination2>(new Source2 { Inner = null });
+
+            Assert.Null(destination.Inner);
+        }
+
+        //--------------------------------------------------------------------------------
+        // Profile
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ProfileNested()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ProfileNestedNull()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(x => x.Inner, opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = null });
+
+            Assert.Null(destination.Inner);
+        }
 
         //--------------------------------------------------------------------------------
         // Manual

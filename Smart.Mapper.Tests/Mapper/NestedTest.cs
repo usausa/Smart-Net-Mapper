@@ -103,6 +103,24 @@ namespace Smart.Mapper
         }
 
         //--------------------------------------------------------------------------------
+        // All
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void NestedAll()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForAllMember(opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        //--------------------------------------------------------------------------------
         // Manual
         //--------------------------------------------------------------------------------
 

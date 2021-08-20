@@ -197,6 +197,10 @@ namespace Smart.Mapper
             Assert.Equal(-2, destination.Inner!.Value);
         }
 
+        //--------------------------------------------------------------------------------
+        // Manual cache
+        //--------------------------------------------------------------------------------
+
         [Fact]
         public void ManualNestByCacheMap()
         {
@@ -277,7 +281,166 @@ namespace Smart.Mapper
             Assert.Equal(-2, destination.Inner!.Value);
         }
 
-        // TODO manual profile
+        //--------------------------------------------------------------------------------
+        // Manual profile
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ManualNestByProfileMap()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    d.Inner = new DestinationInner();
+                    c.Mapper.Map(s.Inner, d.Inner);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileFunc()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) => d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(s.Inner));
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileParameterMap()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile)
+                .ForMember(d => d.Value, opt => opt.MapFrom((s, _, c) => s.Value + (int)c.Parameter!));
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    d.Inner = new DestinationInner();
+                    c.Mapper.Map(s.Inner, d.Inner, c.Parameter);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } }, -1);
+
+            Assert.Equal(-2, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileParameterFunc()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile)
+                .ForMember(d => d.Value, opt => opt.MapFrom((s, _, c) => s.Value + (int)c.Parameter!));
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(s.Inner, c.Parameter);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } }, -1);
+
+            Assert.Equal(-2, destination.Inner!.Value);
+        }
+
+        //--------------------------------------------------------------------------------
+        // Manual profile cache
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ManualNestByProfileCacheMap()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    var map = c.Mapper.GetMapperAction<SourceInner?, DestinationInner>();
+                    d.Inner = new DestinationInner();
+                    map(s.Inner, d.Inner);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileCacheFunc()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile);
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    var map = c.Mapper.GetMapperFunc<SourceInner?, DestinationInner>();
+                    d.Inner = map(s.Inner);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileCacheParameterMap()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile)
+                .ForMember(d => d.Value, opt => opt.MapFrom((s, _, c) => s.Value + (int)c.Parameter!));
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    var map = c.Mapper.GetParameterMapperAction<SourceInner?, DestinationInner>();
+                    d.Inner = new DestinationInner();
+                    map(s.Inner, d.Inner, c.Parameter);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } }, -1);
+
+            Assert.Equal(-2, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ManualNestByProfileCacheParameterFunc()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>(Profile)
+                .ForMember(d => d.Value, opt => opt.MapFrom((s, _, c) => s.Value + (int)c.Parameter!));
+            config.CreateMap<Source, Destination>(Profile)
+                .ForMember(d => d.Inner, opt => opt.Ignore())
+                .AfterMap((s, d, c) =>
+                {
+                    var map = c.Mapper.GetParameterMapperFunc<SourceInner?, DestinationInner>();
+                    d.Inner = map(s.Inner, c.Parameter);
+                });
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } }, -1);
+
+            Assert.Equal(-2, destination.Inner!.Value);
+        }
 
         //--------------------------------------------------------------------------------
         // Data

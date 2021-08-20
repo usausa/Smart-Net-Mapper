@@ -157,7 +157,7 @@ namespace Smart.Mapper
             FindTypeInfo<TSource, TDestination>().MapAction;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>() =>
+        public Action<TSource, TDestination, object?> GetParameterMapperAction<TSource, TDestination>() =>
             FindTypeInfo<TSource, TDestination>().ParameterMapAction;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -165,7 +165,7 @@ namespace Smart.Mapper
             FindTypeInfo<TSource, TDestination>().MapFunc;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
+        public Func<TSource, object?, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
             FindTypeInfo<TSource, TDestination>().ParameterMapFunc;
 
         // With profile
@@ -175,7 +175,7 @@ namespace Smart.Mapper
             FindTypeInfo<TSource, TDestination>(profile).MapAction;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>(string profile) =>
+        public Action<TSource, TDestination, object?> GetParameterMapperAction<TSource, TDestination>(string profile) =>
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapAction;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -183,7 +183,7 @@ namespace Smart.Mapper
             FindTypeInfo<TSource, TDestination>(profile).MapFunc;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>(string profile) =>
+        public Func<TSource, object?, TDestination> GetParameterMapperFunc<TSource, TDestination>(string profile) =>
             FindTypeInfo<TSource, TDestination>(profile).ParameterMapFunc;
 
         //--------------------------------------------------------------------------------
@@ -268,13 +268,13 @@ namespace Smart.Mapper
             public Action<TSource, TDestination> GetMapperAction<TSource, TDestination>() =>
                 mapper.GetMapperAction<TSource, TDestination>();
 
-            public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>() =>
+            public Action<TSource, TDestination, object?> GetParameterMapperAction<TSource, TDestination>() =>
                 mapper.GetParameterMapperAction<TSource, TDestination>();
 
             public Func<TSource, TDestination> GetMapperFunc<TSource, TDestination>() =>
                 mapper.GetMapperFunc<TSource, TDestination>();
 
-            public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
+            public Func<TSource, object?, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
                 mapper.GetParameterMapperFunc<TSource, TDestination>();
 
             public TDestination Map<TSource, TDestination>(TSource source) =>
@@ -305,13 +305,13 @@ namespace Smart.Mapper
             public Action<TSource, TDestination> GetMapperAction<TSource, TDestination>() =>
                 mapper.GetMapperAction<TSource, TDestination>(profile);
 
-            public Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>() =>
+            public Action<TSource, TDestination, object?> GetParameterMapperAction<TSource, TDestination>() =>
                 mapper.GetParameterMapperAction<TSource, TDestination>(profile);
 
             public Func<TSource, TDestination> GetMapperFunc<TSource, TDestination>() =>
                 mapper.GetMapperFunc<TSource, TDestination>(profile);
 
-            public Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
+            public Func<TSource, object?, TDestination> GetParameterMapperFunc<TSource, TDestination>() =>
                 mapper.GetParameterMapperFunc<TSource, TDestination>(profile);
 
             public TDestination Map<TSource, TDestination>(TSource source) =>

@@ -6,11 +6,11 @@ namespace Smart.Mapper
     {
         Action<TSource, TDestination> GetMapperAction<TSource, TDestination>();
 
-        Action<TSource, TDestination, object> GetParameterMapperAction<TSource, TDestination>();
+        Action<TSource, TDestination, object?> GetParameterMapperAction<TSource, TDestination>();
 
         Func<TSource, TDestination> GetMapperFunc<TSource, TDestination>();
 
-        Func<TSource, object, TDestination> GetParameterMapperFunc<TSource, TDestination>();
+        Func<TSource, object?, TDestination> GetParameterMapperFunc<TSource, TDestination>();
 
         TDestination Map<TSource, TDestination>(TSource source);
 

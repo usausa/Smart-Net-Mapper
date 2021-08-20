@@ -1,5 +1,7 @@
 namespace Smart.Mapper
 {
+    using System;
+
     using Xunit;
 
     public class IgnoreTest
@@ -9,7 +11,7 @@ namespace Smart.Mapper
         //--------------------------------------------------------------------------------
 
         [Fact]
-        public void OrderByForMember()
+        public void IgnoreByForMember()
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
@@ -23,7 +25,7 @@ namespace Smart.Mapper
         }
 
         [Fact]
-        public void OrderByForAllMember()
+        public void IgnoreByForAllMember()
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()

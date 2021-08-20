@@ -99,7 +99,7 @@ namespace Smart.Mapper
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .ForMember(d => d.Value, opt => opt.MapFrom("StringValue.Length"));
+                .ForMember(d => d.Value, opt => opt.MapFrom($"String{opt.DestinationMember.Name}.Length"));
             using var mapper = config.ToMapper();
 
             var destination = new Destination();

@@ -9,20 +9,20 @@ namespace Smart.Mapper.Mappers
     {
         public object Instance { get; }
 
-        public bool HasDestinationParameter { get; }
+        public bool DestinationParameterRequired { get; }
 
-        public bool HasContext { get; }
+        public bool ContextRequired { get; }
 
         public EmitHolderInfo(
             MapperCreateContext context,
             TypeBuilder typeBuilder,
             IServiceProvider serviceProvider)
         {
-            HasDestinationParameter = IsDestinationParameterRequired(context);
-            HasContext = IsContextRequired(context);
+            DestinationParameterRequired = IsDestinationParameterRequired(context);
+            ContextRequired = IsContextRequired(context);
 
             // Mapper
-            if (HasContext)
+            if (ContextRequired)
             {
                 typeBuilder.DefineField("mapper", typeof(INestedMapper), FieldAttributes.Public);
             }
@@ -115,7 +115,7 @@ namespace Smart.Mapper.Mappers
             Instance = Activator.CreateInstance(holderType)!;
 
             // Mapper
-            if (HasContext)
+            if (ContextRequired)
             {
                 GetMapperField().SetValue(Instance, context.NestedMapper);
             }

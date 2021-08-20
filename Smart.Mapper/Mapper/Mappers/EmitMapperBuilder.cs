@@ -68,9 +68,8 @@ namespace Smart.Mapper.Mappers
 
         private void DeclareVariables()
         {
-            // TODO re check
             // Destination
-            if (isFunction && (holder.HasDestinationParameter || !context.MapDestinationType.IsClass))
+            if (isFunction && (holder.DestinationParameterRequired || !context.MapDestinationType.IsClass))
             {
                 destinationLocal = ilGenerator.DeclareLocal(context.MapDestinationType);
             }
@@ -82,7 +81,7 @@ namespace Smart.Mapper.Mappers
             }
 
             // Context
-            if (holder.HasContext)
+            if (holder.ContextRequired)
             {
                 contextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
             }
@@ -337,8 +336,8 @@ namespace Smart.Mapper.Mappers
                         stackedType = member.Converter.DestinationType;
                     }
 
-                    // v---------- Œ©’¼‚µ
-                    // TODO null check, converter‚Åint?:p‚É‘Î‚µ‚Äint‚Ì‰Â”\«‚ ‚è
+                    // v---------- è¦‹ç›´ã—
+                    // TODO null check, converterã§int?:pã«å¯¾ã—ã¦intã®å¯èƒ½æ€§ã‚ã‚Š
                     if (member.IsNullIf && (stackedType.IsClass || stackedType.IsNullableType()))
                     {
                         var convert = !member.Property.PropertyType.IsAssignableFrom(stackedType);
@@ -363,7 +362,7 @@ namespace Smart.Mapper.Mappers
                                 // Convert
                                 ilGenerator.MarkLabel(convertLabel);
 
-                                // TODO ‚±‚±‚ÅŒ^•ÏŠ·‚ª•K—vA’ˆÓNullable‚Ì‰Â”\«HAnull‚Å‚Í‚È‚¢‚±‚Æ‚ª•ÛØ
+                                // TODO ã“ã“ã§å‹å¤‰æ›ãŒå¿…è¦ã€æ³¨æ„Nullableã®å¯èƒ½æ€§ï¼Ÿã€nullã§ã¯ãªã„ã“ã¨ãŒä¿è¨¼
                                 throw new NotImplementedException();
                             }
                         }
@@ -390,7 +389,7 @@ namespace Smart.Mapper.Mappers
 
                             if (convert)
                             {
-                                // TODO Anull‚Å‚Í‚È‚¢‚±‚Æ‚ª•ÛØ
+                                // TODO ã€nullã§ã¯ãªã„ã“ã¨ãŒä¿è¨¼
                                 throw new NotImplementedException();
                             }
                         }
@@ -399,11 +398,11 @@ namespace Smart.Mapper.Mappers
                     }
                     else if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
                     {
-                        // TODO convert “Æ—§HAnull‚Ìê‡‚ª‚ ‚é-ƒLƒƒƒXƒg“™H
+                        // TODO convert ç‹¬ç«‹ï¼Ÿã€nullã®å ´åˆãŒã‚ã‚‹-ã‚­ãƒ£ã‚¹ãƒˆç­‰ï¼Ÿ
                         throw new NotImplementedException();
                     }
 
-                    // ^---------- Œ©’¼‚µ
+                    // ^---------- è¦‹ç›´ã—
                 }
 
                 // Set

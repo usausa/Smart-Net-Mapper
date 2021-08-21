@@ -366,7 +366,7 @@ namespace Smart.Mapper.Mappers
                                 ilGenerator.MarkLabel(convertLabel);
 
                                 // Convert
-                                EmitConvert(member, stackedType);
+                                EmitConvert(stackedType, member.Property);
                             }
 
                             ilGenerator.MarkLabel(setLabel);
@@ -396,7 +396,7 @@ namespace Smart.Mapper.Mappers
                             // Convert
                             if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
                             {
-                                EmitConvert(member, stackedType);
+                                EmitConvert(stackedType, member.Property);
                             }
 
                             ilGenerator.MarkLabel(setLabel);
@@ -423,7 +423,7 @@ namespace Smart.Mapper.Mappers
                             ilGenerator.MarkLabel(convertLabel);
 
                             // Convert
-                            EmitConvert(member, stackedType);
+                            EmitConvert(stackedType, member.Property);
 
                             ilGenerator.MarkLabel(setLabel);
                         }
@@ -452,7 +452,7 @@ namespace Smart.Mapper.Mappers
                             // Convert
                             if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
                             {
-                                EmitConvert(member, stackedType);
+                                EmitConvert(stackedType, member.Property);
                             }
 
                             ilGenerator.MarkLabel(setLabel);
@@ -460,7 +460,7 @@ namespace Smart.Mapper.Mappers
                         else
                         {
                             // Convert
-                            EmitConvert(member, stackedType);
+                            EmitConvert(stackedType, member.Property);
                         }
                     }
                 }
@@ -581,84 +581,103 @@ namespace Smart.Mapper.Mappers
             }
         }
 
-        private void EmitConvert(MemberMapping member, Type stackedType)
+        private void EmitConvert(Type sourceType, PropertyInfo destinationProperty)
         {
-            // TODO null制御はここ
-            // x -> y / x? -> y?
-            // x -> y? (y is not nullable)
-            // x? -> y (x is not nullable)
-            // x? -> y? (x is not nullable & x is not nullable)
-            var opMethod = GetImplicitConversionOperator(stackedType, member.Property.PropertyType) ??
-                           GetExplicitConversionOperator(stackedType, member.Property.PropertyType);
+            // Match operator
+            var opMethod = GetImplicitConversionOperator(sourceType, destinationProperty.PropertyType) ??
+                           GetExplicitConversionOperator(sourceType, destinationProperty.PropertyType);
             if (opMethod is not null)
             {
-                // TODO nullable
                 ilGenerator.Emit(OpCodes.Call, opMethod);
+                return;
             }
-            else
-            {
-                var underlyingSourceType = Nullable.GetUnderlyingType(stackedType);
-                var baseSourceType = underlyingSourceType ?? stackedType;
-                baseSourceType = baseSourceType.IsEnum ? Enum.GetUnderlyingType(baseSourceType) : baseSourceType;
-                var underlyingDestinationType = Nullable.GetUnderlyingType(member.Property.PropertyType);
-                var baseDestinationType = underlyingDestinationType ?? member.Property.PropertyType;
-                baseDestinationType = baseDestinationType.IsEnum ? Enum.GetUnderlyingType(baseDestinationType) : baseDestinationType;
 
-                // From Nullable
+            // If source is nullable, use underlying type operator and use source value
+            var underlyingSourceType = Nullable.GetUnderlyingType(sourceType);
+            if (underlyingSourceType is not null)
+            {
+                opMethod = GetImplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType) ??
+                           GetExplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType);
+                if (opMethod is not null)
+                {
+                    ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
+                    ilGenerator.Emit(OpCodes.Call, opMethod);
+                    return;
+                }
+            }
+
+            // If destination is nullable, use underlying type operator and convert to nullable
+            var underlyingDestinationType = Nullable.GetUnderlyingType(destinationProperty.PropertyType);
+            if (underlyingDestinationType is not null)
+            {
+                opMethod = GetImplicitConversionOperator(sourceType, underlyingDestinationType) ??
+                           GetExplicitConversionOperator(sourceType, underlyingDestinationType);
+                if (opMethod is not null)
+                {
+                    ilGenerator.Emit(OpCodes.Call, opMethod);
+                    var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
+                    ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                    return;
+                }
+
+                // If source is nullable, use underlying type operator and use source value
                 if (underlyingSourceType is not null)
                 {
-                    ilGenerator.Emit(OpCodes.Call, stackedType.GetProperty("Value")!.GetMethod!);
-                }
-
-                if (baseDestinationType != baseSourceType)
-                {
-                    if (!ilGenerator.EmitPrimitiveConvert(baseSourceType, baseDestinationType))
+                    opMethod = GetImplicitConversionOperator(underlyingSourceType, underlyingDestinationType) ??
+                               GetExplicitConversionOperator(underlyingSourceType, underlyingDestinationType);
+                    if (opMethod is not null)
                     {
-                        throw new InvalidOperationException($"Type conversion is not supported. property=[{member.Property.Name}], from=[{stackedType}]");
+                        ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
+                        ilGenerator.Emit(OpCodes.Call, opMethod);
+                        var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
+                        ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                        return;
                     }
                 }
+            }
 
-                // To Nullable
-                if (underlyingDestinationType is not null)
+            // If source is nullable, use source value
+            if (underlyingSourceType is not null)
+            {
+                ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
+            }
+
+            // Try primitive covert
+            var baseSourceType = underlyingSourceType ?? sourceType;
+            baseSourceType = baseSourceType.IsEnum ? Enum.GetUnderlyingType(baseSourceType) : baseSourceType;
+            var baseDestinationType = underlyingDestinationType ?? destinationProperty.PropertyType;
+            baseDestinationType = baseDestinationType.IsEnum ? Enum.GetUnderlyingType(baseDestinationType) : baseDestinationType;
+            if (baseDestinationType != baseSourceType)
+            {
+                if (!ilGenerator.EmitPrimitiveConvert(baseSourceType, baseDestinationType))
                 {
-                    var nullableCtor = member.Property.PropertyType.GetConstructor(new[] { underlyingDestinationType });
-                    ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                    throw new InvalidOperationException($"Type conversion is not supported. property=[{destinationProperty.Name}], from=[{sourceType}]");
                 }
+            }
+
+            // If destination is nullable, convert to nullable
+            if (underlyingDestinationType is not null)
+            {
+                var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
+                ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
             }
         }
 
-        // TODO intはint?のメソッドに対して適用できる！
         private static MethodInfo? GetImplicitConversionOperator(Type sourceType, Type targetType)
         {
             var sourceTypeMethod = sourceType.GetMethods().FirstOrDefault(mi =>
-                mi.IsPublic &&
-                mi.IsStatic &&
-                mi.Name == "op_Implicit" &&
-                mi.ReturnType == targetType);
+                mi.IsPublic && mi.IsStatic && mi.Name == "op_Implicit" && mi.ReturnType == targetType);
             return sourceTypeMethod ?? targetType.GetMethods().FirstOrDefault(mi =>
-                mi.IsPublic &&
-                mi.IsStatic &&
-                mi.Name == "op_Implicit" &&
-                mi.GetParameters().Length == 1 &&
-                mi.GetParameters()[0].ParameterType == sourceType);
+                mi.IsPublic && mi.IsStatic && mi.Name == "op_Implicit" && mi.GetParameters().Length == 1 && mi.GetParameters()[0].ParameterType == sourceType);
         }
 
         private static MethodInfo? GetExplicitConversionOperator(Type sourceType, Type targetType)
         {
             var sourceTypeMethod = sourceType.GetMethods().FirstOrDefault(mi =>
-                mi.IsPublic &&
-                mi.IsStatic &&
-                mi.Name == "op_Explicit" &&
-                mi.ReturnType == targetType);
+                mi.IsPublic && mi.IsStatic && mi.Name == "op_Explicit" && mi.ReturnType == targetType);
             return sourceTypeMethod ?? targetType.GetMethods().FirstOrDefault(mi =>
-                mi.IsPublic &&
-                mi.IsStatic &&
-                mi.Name == "op_Explicit" &&
-                mi.GetParameters().Length == 1 &&
-                mi.GetParameters()[0].ParameterType == sourceType);
+                mi.IsPublic && mi.IsStatic && mi.Name == "op_Explicit" && mi.GetParameters().Length == 1 && mi.GetParameters()[0].ParameterType == sourceType);
         }
-
-        // TODO
 
         //--------------------------------------------------------------------------------
         // Return

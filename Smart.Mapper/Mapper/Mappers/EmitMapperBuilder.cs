@@ -28,7 +28,7 @@ namespace Smart.Mapper.Mappers
         private LocalBuilder? destinationLocal;
         private LocalBuilder? contextLocal;
 
-        private readonly Dictionary<Type, LocalBuilder> temporaryLocals = new();
+        private readonly Dictionary<Type, LocalBuilder> workLocals = new();
 
         public EmitMapperBuilder(
             ILGenerator ilGenerator,
@@ -85,20 +85,6 @@ namespace Smart.Mapper.Mappers
             if (holder.ContextRequired)
             {
                 contextLocal = ilGenerator.DeclareLocal(typeof(ResolutionContext));
-            }
-
-            // Temporary
-            foreach (var member in context.Members)
-            {
-                if (member.IsNullIf && !member.Property.PropertyType.IsClass && !temporaryLocals.ContainsKey(member.Property.PropertyType))
-                {
-                    temporaryLocals[member.Property.PropertyType] = ilGenerator.DeclareLocal(member.Property.PropertyType);
-                }
-
-                if (member.IsNested && !temporaryLocals.ContainsKey(member.MapFrom!.MemberType))
-                {
-                    temporaryLocals[member.MapFrom.MemberType] = ilGenerator.DeclareLocal(member.MapFrom.MemberType);
-                }
             }
         }
 
@@ -366,7 +352,7 @@ namespace Smart.Mapper.Mappers
                                 ilGenerator.MarkLabel(convertLabel);
 
                                 // Convert
-                                EmitConvert(stackedType, member.Property);
+                                EmitBasicConvert(stackedType, member.Property);
                             }
 
                             ilGenerator.MarkLabel(setLabel);
@@ -376,7 +362,7 @@ namespace Smart.Mapper.Mappers
                             // Nullable
                             var setLabel = ilGenerator.DefineLabel();
                             var reloadLabel = ilGenerator.DefineLabel();
-                            var temporaryLocal = temporaryLocals[member.Property.PropertyType];
+                            var temporaryLocal = ResolveWorkLocal(stackedType);
 
                             ilGenerator.EmitStloc(temporaryLocal);
 
@@ -391,76 +377,85 @@ namespace Smart.Mapper.Mappers
 
                             // Non null
                             ilGenerator.MarkLabel(reloadLabel);
+                            // TODO 変換しない場合のみ、変換するときはアドレスなのでConvert内で？
                             ilGenerator.EmitLdloc(temporaryLocal);
 
                             // Convert
-                            if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
+                            if (member.Property.PropertyType != stackedType)
                             {
-                                EmitConvert(stackedType, member.Property);
+                                EmitBasicConvert(stackedType, member.Property);
                             }
 
                             ilGenerator.MarkLabel(setLabel);
                         }
                     }
-                    else if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
+                    else
                     {
-                        // Not assignable
                         if (stackedType.IsClass)
                         {
                             // Class
-                            var setLabel = ilGenerator.DefineLabel();
-                            var convertLabel = ilGenerator.DefineLabel();
-
-                            // Branch
-                            ilGenerator.Emit(OpCodes.Dup);
-                            ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
-
-                            // Default
-                            ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
-                            ilGenerator.Emit(OpCodes.Br_S, setLabel);
-
-                            // Convert
-                            ilGenerator.MarkLabel(convertLabel);
-
-                            // Convert
-                            EmitConvert(stackedType, member.Property);
-
-                            ilGenerator.MarkLabel(setLabel);
-                        }
-                        else if (stackedType.IsNullableType())
-                        {
-                            // Nullable
-                            var setLabel = ilGenerator.DefineLabel();
-                            var convertLabel = ilGenerator.DefineLabel();
-                            var temporaryLocal = temporaryLocals[member.Property.PropertyType];
-
-                            ilGenerator.EmitStloc(temporaryLocal);
-
-                            // Branch
-                            ilGenerator.EmitLdloca(temporaryLocal);
-                            ilGenerator.Emit(OpCodes.Call, member.Property.PropertyType.GetProperty("HasValue")!.GetMethod!);
-                            ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
-
-                            // Default
-                            ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
-                            ilGenerator.Emit(OpCodes.Br_S, setLabel);
-
-                            // Non null
-                            ilGenerator.MarkLabel(convertLabel);
-                            ilGenerator.EmitLdloc(temporaryLocal);
-
-                            // Convert
                             if (!member.Property.PropertyType.IsAssignableFrom(stackedType))
                             {
-                                EmitConvert(stackedType, member.Property);
-                            }
+                                // Class
+                                var setLabel = ilGenerator.DefineLabel();
+                                var convertLabel = ilGenerator.DefineLabel();
 
-                            ilGenerator.MarkLabel(setLabel);
+                                // Branch
+                                ilGenerator.Emit(OpCodes.Dup);
+                                ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
+
+                                // Default
+                                ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                                ilGenerator.Emit(OpCodes.Br_S, setLabel);
+
+                                // Convert
+                                ilGenerator.MarkLabel(convertLabel);
+
+                                // Convert
+                                EmitBasicConvert(stackedType, member.Property);
+
+                                ilGenerator.MarkLabel(setLabel);
+                            }
                         }
                         else
                         {
-                            // Convert
-                            EmitConvert(stackedType, member.Property);
+                            // ValueType
+                            if (member.Property.PropertyType != stackedType)
+                            {
+                                if (stackedType.IsNullableType())
+                                {
+                                    // Nullable
+                                    var setLabel = ilGenerator.DefineLabel();
+                                    var convertLabel = ilGenerator.DefineLabel();
+                                    var temporaryLocal = ResolveWorkLocal(stackedType);
+
+                                    ilGenerator.EmitStloc(temporaryLocal);
+
+                                    // Branch
+                                    ilGenerator.EmitLdloca(temporaryLocal);
+                                    ilGenerator.Emit(OpCodes.Call, member.Property.PropertyType.GetProperty("HasValue")!.GetMethod!);
+                                    ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
+
+                                    // Default
+                                    ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                                    ilGenerator.Emit(OpCodes.Br_S, setLabel);
+
+                                    // Non null
+                                    ilGenerator.MarkLabel(convertLabel);
+                                    // TODO 変換するときはアドレスなのでConvert内で？
+                                    ilGenerator.EmitLdloc(temporaryLocal);
+
+                                    // Convert
+                                    EmitBasicConvert(stackedType, member.Property);
+
+                                    ilGenerator.MarkLabel(setLabel);
+                                }
+                                else
+                                {
+                                    // Convert
+                                    EmitBasicConvert(stackedType, member.Property);
+                                }
+                            }
                         }
                     }
                 }
@@ -581,57 +576,66 @@ namespace Smart.Mapper.Mappers
             }
         }
 
-        private void EmitConvert(Type sourceType, PropertyInfo destinationProperty)
+        private void EmitBasicConvert(Type sourceType, PropertyInfo destinationProperty)
         {
-            // Match operator
-            var opMethod = GetImplicitConversionOperator(sourceType, destinationProperty.PropertyType) ??
-                           GetExplicitConversionOperator(sourceType, destinationProperty.PropertyType);
-            if (opMethod is not null)
-            {
-                ilGenerator.Emit(OpCodes.Call, opMethod);
-                return;
-            }
-
-            // If source is nullable, use underlying type operator and use source value
             var underlyingSourceType = Nullable.GetUnderlyingType(sourceType);
-            if (underlyingSourceType is not null)
-            {
-                opMethod = GetImplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType) ??
-                           GetExplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType);
-                if (opMethod is not null)
-                {
-                    ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
-                    ilGenerator.Emit(OpCodes.Call, opMethod);
-                    return;
-                }
-            }
-
-            // If destination is nullable, use underlying type operator and convert to nullable
             var underlyingDestinationType = Nullable.GetUnderlyingType(destinationProperty.PropertyType);
-            if (underlyingDestinationType is not null)
+
+            if (((underlyingSourceType is null) || (underlyingSourceType != destinationProperty.PropertyType)) &&
+                ((underlyingDestinationType is null) || (underlyingDestinationType != sourceType)))
             {
-                opMethod = GetImplicitConversionOperator(sourceType, underlyingDestinationType) ??
-                           GetExplicitConversionOperator(sourceType, underlyingDestinationType);
+                // Match operator
+                var opMethod = GetImplicitConversionOperator(sourceType, destinationProperty.PropertyType) ??
+                               GetExplicitConversionOperator(sourceType, destinationProperty.PropertyType);
                 if (opMethod is not null)
                 {
+                    // TODO if source is nullable stack ?
                     ilGenerator.Emit(OpCodes.Call, opMethod);
-                    var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
-                    ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
                     return;
                 }
 
                 // If source is nullable, use underlying type operator and use source value
                 if (underlyingSourceType is not null)
                 {
-                    opMethod = GetImplicitConversionOperator(underlyingSourceType, underlyingDestinationType) ??
-                               GetExplicitConversionOperator(underlyingSourceType, underlyingDestinationType);
+                    opMethod = GetImplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType) ??
+                               GetExplicitConversionOperator(underlyingSourceType, destinationProperty.PropertyType);
                     if (opMethod is not null)
                     {
+                        // TODO
                         ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
+                        ilGenerator.Emit(OpCodes.Call, opMethod);
+                        return;
+                    }
+                }
+
+                // If destination is nullable, use underlying type operator and convert to nullable
+                if (underlyingDestinationType is not null)
+                {
+                    opMethod = GetImplicitConversionOperator(sourceType, underlyingDestinationType) ??
+                               GetExplicitConversionOperator(sourceType, underlyingDestinationType);
+                    if (opMethod is not null)
+                    {
+                        // TODO if source is nullable stack ?
                         ilGenerator.Emit(OpCodes.Call, opMethod);
                         var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
                         ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
                         return;
+                    }
+
+                    // If source is nullable, use underlying type operator and use source value
+                    if (underlyingSourceType is not null)
+                    {
+                        opMethod = GetImplicitConversionOperator(underlyingSourceType, underlyingDestinationType) ??
+                                   GetExplicitConversionOperator(underlyingSourceType, underlyingDestinationType);
+                        if (opMethod is not null)
+                        {
+                            // TODO
+                            ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
+                            ilGenerator.Emit(OpCodes.Call, opMethod);
+                            var nullableCtor = destinationProperty.PropertyType.GetConstructor(new[] { underlyingDestinationType });
+                            ilGenerator.Emit(OpCodes.Newobj, nullableCtor!);
+                            return;
+                        }
                     }
                 }
             }
@@ -639,6 +643,7 @@ namespace Smart.Mapper.Mappers
             // If source is nullable, use source value
             if (underlyingSourceType is not null)
             {
+                // TODO
                 ilGenerator.Emit(OpCodes.Call, sourceType.GetProperty("Value")!.GetMethod!);
             }
 
@@ -705,6 +710,17 @@ namespace Smart.Mapper.Mappers
         //--------------------------------------------------------------------------------
         // Helper
         //--------------------------------------------------------------------------------
+
+        private LocalBuilder ResolveWorkLocal(Type type)
+        {
+            if (!workLocals.TryGetValue(type, out var local))
+            {
+                local = ilGenerator.DeclareLocal(type);
+                workLocals[type] = local;
+            }
+
+            return local;
+        }
 
         private void EmitLoadField(FieldInfo field)
         {

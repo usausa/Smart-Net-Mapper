@@ -2,8 +2,6 @@ namespace Smart.Mapper
 {
     using System;
 
-    using Xunit;
-
     public partial class ConversionTest
     {
         //--------------------------------------------------------------------------------
@@ -28,6 +26,26 @@ namespace Smart.Mapper
         public class DecimalHolder
         {
             public decimal Value { get; set; }
+        }
+
+        public class NullableInt16Holder
+        {
+            public short? Value { get; set; }
+        }
+
+        public class NullableInt32Holder
+        {
+            public int? Value { get; set; }
+        }
+
+        public class NullableInt64Holder
+        {
+            public long? Value { get; set; }
+        }
+
+        public class NullableDecimalHolder
+        {
+            public decimal? Value { get; set; }
         }
 
         public enum Enum16 : short

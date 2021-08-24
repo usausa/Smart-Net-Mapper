@@ -616,7 +616,7 @@ namespace Smart.Mapper.Mappers
 
             // Branch
             ilGenerator.EmitLdloca(temporaryLocal);
-            ilGenerator.Emit(OpCodes.Call, member.Property.PropertyType.GetProperty("HasValue")!.GetMethod!);
+            ilGenerator.Emit(OpCodes.Call, stackedType.GetProperty("HasValue")!.GetMethod!);
             ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
 
             // Default

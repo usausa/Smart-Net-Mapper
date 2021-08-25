@@ -29,6 +29,7 @@ namespace Smart.Mapper
             config.CreateMap<Int32Holder, NullableInt32Holder>();
             using var mapper = config.ToMapper();
 
+            Assert.Equal(0, mapper.Map<Int32Holder, NullableInt32Holder>(new Int32Holder { Value = 0 }).Value);
             Assert.Equal(-1, mapper.Map<Int32Holder, NullableInt32Holder>(new Int32Holder { Value = -1 }).Value);
             Assert.Equal(Int32.MaxValue, mapper.Map<Int32Holder, NullableInt32Holder>(new Int32Holder { Value = Int32.MaxValue }).Value);
         }
@@ -68,6 +69,7 @@ namespace Smart.Mapper
             config.CreateMap<Int32Holder, NullableInt64Holder>();
             using var mapper = config.ToMapper();
 
+            Assert.Equal(0L, mapper.Map<Int32Holder, NullableInt64Holder>(new Int32Holder { Value = 0 }).Value);
             Assert.Equal(-1L, mapper.Map<Int32Holder, NullableInt64Holder>(new Int32Holder { Value = -1 }).Value);
             Assert.Equal(Int32.MaxValue, mapper.Map<Int32Holder, NullableInt64Holder>(new Int32Holder { Value = Int32.MaxValue }).Value);
         }
@@ -107,6 +109,7 @@ namespace Smart.Mapper
             config.CreateMap<Int32Holder, NullableInt16Holder>();
             using var mapper = config.ToMapper();
 
+            Assert.Equal((short)0, mapper.Map<Int32Holder, NullableInt16Holder>(new Int32Holder { Value = 0 }).Value);
             Assert.Equal((short)-1, mapper.Map<Int32Holder, NullableInt16Holder>(new Int32Holder { Value = -1 }).Value);
             Assert.Equal(unchecked((short)Int32.MaxValue), mapper.Map<Int32Holder, NullableInt16Holder>(new Int32Holder { Value = Int32.MaxValue }).Value);
         }
@@ -146,6 +149,7 @@ namespace Smart.Mapper
             config.CreateMap<Int32Holder, NullableDecimalHolder>();
             using var mapper = config.ToMapper();
 
+            Assert.Equal(0m, mapper.Map<Int32Holder, NullableDecimalHolder>(new Int32Holder { Value = 0 }).Value);
             Assert.Equal(1m, mapper.Map<Int32Holder, NullableDecimalHolder>(new Int32Holder { Value = 1 }).Value);
             Assert.Equal(Int32.MaxValue, mapper.Map<Int32Holder, NullableDecimalHolder>(new Int32Holder { Value = Int32.MaxValue }).Value);
         }
@@ -157,6 +161,7 @@ namespace Smart.Mapper
             config.CreateMap<DecimalHolder, NullableInt32Holder>();
             using var mapper = config.ToMapper();
 
+            Assert.Equal(0, mapper.Map<DecimalHolder, NullableInt32Holder>(new DecimalHolder { Value = 0m }).Value);
             Assert.Equal(1, mapper.Map<DecimalHolder, NullableInt32Holder>(new DecimalHolder { Value = 1m }).Value);
             Assert.Equal(-1, mapper.Map<DecimalHolder, NullableInt32Holder>(new DecimalHolder { Value = -1m }).Value);
         }

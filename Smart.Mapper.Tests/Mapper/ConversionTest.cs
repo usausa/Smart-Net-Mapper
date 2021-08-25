@@ -60,6 +60,11 @@ namespace Smart.Mapper
             public Enum16 Value { get; set; }
         }
 
+        public class NullableEnum16Holder
+        {
+            public Enum16? Value { get; set; }
+        }
+
         public enum Enum32
         {
             Zero = 0,
@@ -72,6 +77,11 @@ namespace Smart.Mapper
             public Enum32 Value { get; set; }
         }
 
+        public class NullableEnum32Holder
+        {
+            public Enum32? Value { get; set; }
+        }
+
         public enum Enum64 : long
         {
             Zero = 0,
@@ -82,6 +92,11 @@ namespace Smart.Mapper
         public class Enum64Holder
         {
             public Enum64 Value { get; set; }
+        }
+
+        public class NullableEnum64Holder
+        {
+            public Enum64? Value { get; set; }
         }
     }
 }

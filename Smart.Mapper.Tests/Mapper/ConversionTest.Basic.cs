@@ -7,7 +7,7 @@ namespace Smart.Mapper
     public partial class ConversionTest
     {
         //--------------------------------------------------------------------------------
-        // Conversion
+        // Basic
         //--------------------------------------------------------------------------------
 
         [Fact]
@@ -52,7 +52,5 @@ namespace Smart.Mapper
 
             Assert.Equal(-1, mapper.Map<DecimalHolder, Int32Holder>(new DecimalHolder { Value = -1m }).Value);
         }
-
-        // TODO
     }
 }

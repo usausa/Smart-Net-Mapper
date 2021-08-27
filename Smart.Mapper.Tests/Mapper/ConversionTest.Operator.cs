@@ -30,8 +30,8 @@ namespace Smart.Mapper
             using var mapper = config.ToMapper();
 
             Assert.Equal(0, mapper.Map<ClassValueHolder, Int32Holder>(new ClassValueHolder { Value = null }).Value);
-            Assert.Equal(-1, mapper.Map<ClassValueHolder, Int32Holder>(new ClassValueHolder { Value = -1 }).Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<ClassValueHolder, Int32Holder>(new ClassValueHolder { Value = Int32.MaxValue }).Value);
+            Assert.Equal(-1, mapper.Map<ClassValueHolder, Int32Holder>(new ClassValueHolder { Value = new ClassValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<ClassValueHolder, Int32Holder>(new ClassValueHolder { Value = new ClassValue { RawValue = Int32.MaxValue } }).Value);
         }
 
         //--------------------------------------------------------------------------------
@@ -57,9 +57,9 @@ namespace Smart.Mapper
             config.CreateMap<StructValueHolder, Int32Holder>();
             using var mapper = config.ToMapper();
 
-            Assert.Equal(0, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = 0 }).Value);
-            Assert.Equal(-1, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = -1 }).Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = Int32.MaxValue }).Value);
+            Assert.Equal(0, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = new StructValue { RawValue = 0 } }).Value);
+            Assert.Equal(-1, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<StructValueHolder, Int32Holder>(new StructValueHolder { Value = new StructValue { RawValue = Int32.MaxValue } }).Value);
         }
 
         //--------------------------------------------------------------------------------
@@ -121,9 +121,9 @@ namespace Smart.Mapper
             config.CreateMap<ClassValueHolder, NullableInt32Holder>();
             using var mapper = config.ToMapper();
 
-            Assert.Equal(0, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = 0 }).Value);
-            Assert.Equal(-1, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = -1 }).Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = Int32.MaxValue }).Value);
+            Assert.Equal(0, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = new ClassValue { RawValue = 0 } }).Value);
+            Assert.Equal(-1, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = new ClassValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<ClassValueHolder, NullableInt32Holder>(new ClassValueHolder { Value = new ClassValue { RawValue = Int32.MaxValue } }).Value);
         }
 
         //--------------------------------------------------------------------------------
@@ -149,9 +149,9 @@ namespace Smart.Mapper
             config.CreateMap<StructValueHolder, NullableInt32Holder>();
             using var mapper = config.ToMapper();
 
-            Assert.Equal(0, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = 0 }).Value);
-            Assert.Equal(-1, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = -1 }).Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = Int32.MaxValue }).Value);
+            Assert.Equal(0, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = new StructValue { RawValue = 0 } }).Value);
+            Assert.Equal(-1, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<StructValueHolder, NullableInt32Holder>(new StructValueHolder { Value = new StructValue { RawValue = Int32.MaxValue } }).Value);
         }
 
         //--------------------------------------------------------------------------------
@@ -178,26 +178,25 @@ namespace Smart.Mapper
             using var mapper = config.ToMapper();
 
             Assert.Null(mapper.Map<ClassNullableValueHolder, NullableInt32Holder>(new ClassNullableValueHolder { Value = null }).Value);
-            Assert.Equal(-1, mapper.Map<ClassNullableValueHolder, NullableInt32Holder>(new ClassNullableValueHolder { Value = -1 }).Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<ClassNullableValueHolder, NullableInt32Holder>(new ClassNullableValueHolder { Value = Int32.MaxValue }).Value);
+            Assert.Equal(-1, mapper.Map<ClassNullableValueHolder, NullableInt32Holder>(new ClassNullableValueHolder { Value = new ClassNullableValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<ClassNullableValueHolder, NullableInt32Holder>(new ClassNullableValueHolder { Value = new ClassNullableValue { RawValue = Int32.MaxValue } }).Value);
         }
 
         //--------------------------------------------------------------------------------
         // NullableValue/StructNullable
         //--------------------------------------------------------------------------------
 
-        //[Fact]
-        //public void ConvertNullableValueToStructNullable()
-        //{
-        //    var config = new MapperConfig();
-        //    config.CreateMap<NullableInt32Holder, StructNullableValueHolder>();
-        //    using var mapper = config.ToMapper();
+        [Fact]
+        public void ConvertNullableValueToStructNullable()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableInt32Holder, StructNullableValueHolder>();
+            using var mapper = config.ToMapper();
 
-        //    // TODO 4
-        //    Assert.Equal(0, mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = null }).Value.RawValue);
-        //    Assert.Equal(-1, mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = -1 }).Value.RawValue);
-        //    Assert.Equal(Int32.MaxValue, mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = Int32.MaxValue }).Value.RawValue);
-        //}
+            Assert.Null(mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = null }).Value.RawValue);
+            Assert.Equal(-1, mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = -1 }).Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableInt32Holder, StructNullableValueHolder>(new NullableInt32Holder { Value = Int32.MaxValue }).Value.RawValue);
+        }
 
         [Fact]
         public void ConvertStructNullableToNullableValue()
@@ -207,15 +206,111 @@ namespace Smart.Mapper
             using var mapper = config.ToMapper();
 
             Assert.Null(mapper.Map<StructNullableValueHolder, NullableInt32Holder>(new StructNullableValueHolder { Value = null }).Value);
-            Assert.Equal(-1, mapper.Map<StructNullableValueHolder, NullableInt32Holder>(new StructNullableValueHolder { Value = -1 }).Value!.Value);
-            Assert.Equal(Int32.MaxValue, mapper.Map<StructNullableValueHolder, NullableInt32Holder>(new StructNullableValueHolder { Value = Int32.MaxValue }).Value!.Value);
+            Assert.Equal(-1, mapper.Map<StructNullableValueHolder, NullableInt32Holder>(new StructNullableValueHolder { Value = new StructNullableValue { RawValue = -1 } }).Value!.Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<StructNullableValueHolder, NullableInt32Holder>(new StructNullableValueHolder { Value = new StructNullableValue { RawValue = Int32.MaxValue } }).Value!.Value);
         }
 
-        // TODO NullableValue/NStruct
-        // TODO Value/NullableStruct
-        // TODO Value/NullableNStruct
-        // TODO NullableValue/NullableStruct
-        // TODO NullableValue/NullableNStruct
+        //--------------------------------------------------------------------------------
+        // Value/NullableStruct
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertValueToNullableStruct()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<Int32Holder, NullableStructValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<Int32Holder, NullableStructValueHolder>(new Int32Holder { Value = 0 }).Value!.Value.RawValue);
+            Assert.Equal(-1, mapper.Map<Int32Holder, NullableStructValueHolder>(new Int32Holder { Value = -1 }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<Int32Holder, NullableStructValueHolder>(new Int32Holder { Value = Int32.MaxValue }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableStructToValue()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructValueHolder, Int32Holder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<NullableStructValueHolder, Int32Holder>(new NullableStructValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableStructValueHolder, Int32Holder>(new NullableStructValueHolder { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructValueHolder, Int32Holder>(new NullableStructValueHolder { Value = new StructValue { RawValue = Int32.MaxValue } }).Value);
+        }
+
+        //--------------------------------------------------------------------------------
+        // Value/NullableStructNullable
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertValueToNullableStructNullable()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<Int32Holder, NullableStructNullableValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<Int32Holder, NullableStructNullableValueHolder>(new Int32Holder { Value = 0 }).Value!.Value.RawValue);
+            Assert.Equal(-1, mapper.Map<Int32Holder, NullableStructNullableValueHolder>(new Int32Holder { Value = -1 }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<Int32Holder, NullableStructNullableValueHolder>(new Int32Holder { Value = Int32.MaxValue }).Value!.Value.RawValue);
+        }
+
+        // StructNullableValue to int is not supported
+
+        //--------------------------------------------------------------------------------
+        // NullableValue/NullableStruct
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertNullableValueToNullableStruct()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableInt32Holder, NullableStructValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableInt32Holder, NullableStructValueHolder>(new NullableInt32Holder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableInt32Holder, NullableStructValueHolder>(new NullableInt32Holder { Value = -1 }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableInt32Holder, NullableStructValueHolder>(new NullableInt32Holder { Value = Int32.MaxValue }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableStructToNullableValue()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructValueHolder, NullableInt32Holder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableStructValueHolder, NullableInt32Holder>(new NullableStructValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableStructValueHolder, NullableInt32Holder>(new NullableStructValueHolder { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructValueHolder, NullableInt32Holder>(new NullableStructValueHolder { Value = new StructValue { RawValue = Int32.MaxValue } }).Value);
+        }
+
+        //--------------------------------------------------------------------------------
+        // Value/NullableStructNullable
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertNullableValueToNullableStructNullable()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableInt32Holder, NullableStructNullableValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableInt32Holder, NullableStructNullableValueHolder>(new NullableInt32Holder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableInt32Holder, NullableStructNullableValueHolder>(new NullableInt32Holder { Value = -1 }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableInt32Holder, NullableStructNullableValueHolder>(new NullableInt32Holder { Value = Int32.MaxValue }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableStructNullableToNullableValue()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructNullableValueHolder, NullableInt32Holder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableStructNullableValueHolder, NullableInt32Holder>(new NullableStructNullableValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableStructNullableValueHolder, NullableInt32Holder>(new NullableStructNullableValueHolder { Value = new StructNullableValue { RawValue = -1 } }).Value!.Value);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructNullableValueHolder, NullableInt32Holder>(new NullableStructNullableValueHolder { Value = new StructNullableValue { RawValue = Int32.MaxValue } }).Value!.Value);
+        }
 
         //--------------------------------------------------------------------------------
         // ClassPair1/ClassPair2
@@ -273,6 +368,7 @@ namespace Smart.Mapper
             Assert.Equal(Int32.MaxValue, mapper.Map<StructPair2ValueHolder, StructPair1ValueHolder>(new StructPair2ValueHolder { Value = new StructPair2Value { RawValue = Int32.MaxValue } }).Value.RawValue);
         }
 
+        // TODO 4 pattern ?
         // TODO NullableStructPair1Value/StructPair2Value
         // TODO StructPair1Value/NullableStructPair2Value
         // TODO NullableStructPair1Value/NullableStructPair2Value

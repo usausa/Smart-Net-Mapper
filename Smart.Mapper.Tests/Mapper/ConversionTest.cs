@@ -120,6 +120,11 @@ namespace Smart.Mapper
             public StructValue Value { get; set; }
         }
 
+        public class NullableStructValueHolder
+        {
+            public StructValue? Value { get; set; }
+        }
+
         public class ClassValue
         {
             public int RawValue { get; set; }
@@ -144,6 +149,11 @@ namespace Smart.Mapper
         public class StructNullableValueHolder
         {
             public StructNullableValue Value { get; set; }
+        }
+
+        public class NullableStructNullableValueHolder
+        {
+            public StructNullableValue? Value { get; set; }
         }
 
         public class ClassNullableValue

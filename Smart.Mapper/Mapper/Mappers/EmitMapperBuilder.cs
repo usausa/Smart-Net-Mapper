@@ -590,6 +590,7 @@ namespace Smart.Mapper.Mappers
             ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
 
             // Default
+            ilGenerator.Emit(OpCodes.Pop);
             ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
             ilGenerator.Emit(OpCodes.Br_S, setLabel);
 

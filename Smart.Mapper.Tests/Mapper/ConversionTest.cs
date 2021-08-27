@@ -115,7 +115,7 @@ namespace Smart.Mapper
             public static explicit operator int(StructValue value) => value.RawValue;
         }
 
-        public class OperatorStructValueHolder
+        public class StructValueHolder
         {
             public StructValue Value { get; set; }
         }

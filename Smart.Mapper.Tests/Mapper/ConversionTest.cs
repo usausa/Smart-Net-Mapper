@@ -205,6 +205,11 @@ namespace Smart.Mapper
             public StructPair1Value Value { get; set; }
         }
 
+        public class NullableStructPair1ValueHolder
+        {
+            public StructPair1Value? Value { get; set; }
+        }
+
         public struct StructPair2Value
         {
             public int RawValue { get; set; }
@@ -213,6 +218,11 @@ namespace Smart.Mapper
         public class StructPair2ValueHolder
         {
             public StructPair2Value Value { get; set; }
+        }
+
+        public class NullableStructPair2ValueHolder
+        {
+            public StructPair2Value? Value { get; set; }
         }
 
         public class CrossPairClassValue
@@ -236,6 +246,11 @@ namespace Smart.Mapper
         public class CrossPairStructValueHolder
         {
             public CrossPairStructValue Value { get; set; }
+        }
+
+        public class NullableCrossPairStructValueHolder
+        {
+            public CrossPairStructValue? Value { get; set; }
         }
     }
 }

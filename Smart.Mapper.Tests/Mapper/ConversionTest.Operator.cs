@@ -368,11 +368,144 @@ namespace Smart.Mapper
             Assert.Equal(Int32.MaxValue, mapper.Map<StructPair2ValueHolder, StructPair1ValueHolder>(new StructPair2ValueHolder { Value = new StructPair2Value { RawValue = Int32.MaxValue } }).Value.RawValue);
         }
 
-        // TODO 4 pattern ?
-        // TODO NullableStructPair1Value/StructPair2Value
-        // TODO StructPair1Value/NullableStructPair2Value
-        // TODO NullableStructPair1Value/NullableStructPair2Value
-        // TODO CrossPairClassValue/CrossPairStructValue
-        // TODO CrossPairClassValue/NullableCrossPairStructValue
+        //--------------------------------------------------------------------------------
+        // NullableStructPair1/StructPair2
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertNullableStructPair1ToStructPair2()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructPair1ValueHolder, StructPair2ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<NullableStructPair1ValueHolder, StructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = null }).Value.RawValue);
+            Assert.Equal(-1, mapper.Map<NullableStructPair1ValueHolder, StructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = new StructPair1Value { RawValue = -1 } }).Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructPair1ValueHolder, StructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = new StructPair1Value { RawValue = Int32.MaxValue } }).Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertStructPair2ToNullableStructPair1()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<StructPair2ValueHolder, NullableStructPair1ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<StructPair2ValueHolder, NullableStructPair1ValueHolder>(new StructPair2ValueHolder { Value = new StructPair2Value { RawValue = 0 } }).Value!.Value.RawValue);
+            Assert.Equal(-1, mapper.Map<StructPair2ValueHolder, NullableStructPair1ValueHolder>(new StructPair2ValueHolder { Value = new StructPair2Value { RawValue = -1 } }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<StructPair2ValueHolder, NullableStructPair1ValueHolder>(new StructPair2ValueHolder { Value = new StructPair2Value { RawValue = Int32.MaxValue } }).Value!.Value.RawValue);
+        }
+
+        //--------------------------------------------------------------------------------
+        // StructPair1/NullableStructPair2
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertStructPair1ToNullableStructPair2()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<StructPair1ValueHolder, NullableStructPair2ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<StructPair1ValueHolder, NullableStructPair2ValueHolder>(new StructPair1ValueHolder { Value = new StructPair1Value { RawValue = 0 } }).Value!.Value.RawValue);
+            Assert.Equal(-1, mapper.Map<StructPair1ValueHolder, NullableStructPair2ValueHolder>(new StructPair1ValueHolder { Value = new StructPair1Value { RawValue = -1 } }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<StructPair1ValueHolder, NullableStructPair2ValueHolder>(new StructPair1ValueHolder { Value = new StructPair1Value { RawValue = Int32.MaxValue } }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableStructPair2ToStructPair1()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructPair2ValueHolder, StructPair1ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<NullableStructPair2ValueHolder, StructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = null }).Value.RawValue);
+            Assert.Equal(-1, mapper.Map<NullableStructPair2ValueHolder, StructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = new StructPair2Value { RawValue = -1 } }).Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructPair2ValueHolder, StructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = new StructPair2Value { RawValue = Int32.MaxValue } }).Value.RawValue);
+        }
+
+        //--------------------------------------------------------------------------------
+        // NullableStructPair1/NullableStructPair2
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertNullableStructPair1ToNullableStructPair2()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructPair1ValueHolder, NullableStructPair2ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableStructPair1ValueHolder, NullableStructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableStructPair1ValueHolder, NullableStructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = new StructPair1Value { RawValue = -1 } }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructPair1ValueHolder, NullableStructPair2ValueHolder>(new NullableStructPair1ValueHolder { Value = new StructPair1Value { RawValue = Int32.MaxValue } }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableStructPair2ToNullableStructPair1()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableStructPair2ValueHolder, NullableStructPair1ValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<NullableStructPair2ValueHolder, NullableStructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<NullableStructPair2ValueHolder, NullableStructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = new StructPair2Value { RawValue = -1 } }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableStructPair2ValueHolder, NullableStructPair1ValueHolder>(new NullableStructPair2ValueHolder { Value = new StructPair2Value { RawValue = Int32.MaxValue } }).Value!.Value.RawValue);
+        }
+
+        //--------------------------------------------------------------------------------
+        // CrossPairClass/CrossPairStruct
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertCrossPairClassToCrossPairStruct()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<CrossPairClassValueHolder, CrossPairStructValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<CrossPairClassValueHolder, CrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = null }).Value.RawValue);
+            Assert.Equal(-1, mapper.Map<CrossPairClassValueHolder, CrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = new CrossPairClassValue { RawValue = -1 } }).Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<CrossPairClassValueHolder, CrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = new CrossPairClassValue { RawValue = Int32.MaxValue } }).Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertCrossPairStructToCrossPairClass()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<CrossPairStructValueHolder, CrossPairClassValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<CrossPairStructValueHolder, CrossPairClassValueHolder>(new CrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = 0 } }).Value!.RawValue);
+            Assert.Equal(-1, mapper.Map<CrossPairStructValueHolder, CrossPairClassValueHolder>(new CrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = -1 } }).Value!.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<CrossPairStructValueHolder, CrossPairClassValueHolder>(new CrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = Int32.MaxValue } }).Value!.RawValue);
+        }
+
+        //--------------------------------------------------------------------------------
+        // CrossPairClass/NullableCrossPairStruct
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void ConvertCrossPairClassToNullableCrossPairStruct()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<CrossPairClassValueHolder, NullableCrossPairStructValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Null(mapper.Map<CrossPairClassValueHolder, NullableCrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = null }).Value);
+            Assert.Equal(-1, mapper.Map<CrossPairClassValueHolder, NullableCrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = new CrossPairClassValue { RawValue = -1 } }).Value!.Value.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<CrossPairClassValueHolder, NullableCrossPairStructValueHolder>(new CrossPairClassValueHolder { Value = new CrossPairClassValue { RawValue = Int32.MaxValue } }).Value!.Value.RawValue);
+        }
+
+        [Fact]
+        public void ConvertNullableCrossPairStructToCrossPairClass()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableCrossPairStructValueHolder, CrossPairClassValueHolder>();
+            using var mapper = config.ToMapper();
+
+            Assert.Equal(0, mapper.Map<NullableCrossPairStructValueHolder, CrossPairClassValueHolder>(new NullableCrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = 0 } }).Value!.RawValue);
+            Assert.Equal(-1, mapper.Map<NullableCrossPairStructValueHolder, CrossPairClassValueHolder>(new NullableCrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = -1 } }).Value!.RawValue);
+            Assert.Equal(Int32.MaxValue, mapper.Map<NullableCrossPairStructValueHolder, CrossPairClassValueHolder>(new NullableCrossPairStructValueHolder { Value = new CrossPairStructValue { RawValue = Int32.MaxValue } }).Value!.RawValue);
+        }
     }
 }

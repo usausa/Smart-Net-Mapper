@@ -230,7 +230,7 @@ namespace Smart.Mapper
             public int RawValue { get; set; }
 
             public static implicit operator CrossPairClassValue(CrossPairStructValue value) => new() { RawValue = value.RawValue };
-            public static explicit operator CrossPairStructValue(CrossPairClassValue value) => new() { RawValue = value.RawValue };
+            public static implicit operator CrossPairStructValue(CrossPairClassValue value) => new() { RawValue = value.RawValue };
         }
 
         public class CrossPairClassValueHolder
@@ -251,6 +251,33 @@ namespace Smart.Mapper
         public class NullableCrossPairStructValueHolder
         {
             public CrossPairStructValue? Value { get; set; }
+        }
+
+        //--------------------------------------------------------------------------------
+        // Invalid
+        //--------------------------------------------------------------------------------
+
+        public class NoConverterClassValue
+        {
+        }
+
+        public class NoConverterClassValueHolder
+        {
+            public NoConverterClassValue? Value { get; set; }
+        }
+
+        public struct NoConverterStructValue
+        {
+        }
+
+        public class NoConverterStructValueHolder
+        {
+            public NoConverterStructValue Value { get; set; }
+        }
+
+        public class NoConverterNullableStructValueHolder
+        {
+            public NoConverterStructValue? Value { get; set; }
         }
     }
 }

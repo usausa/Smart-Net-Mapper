@@ -143,6 +143,11 @@ namespace Smart.Mapper
             public int Value { get; set; }
         }
 
+        public class NullableSource
+        {
+            public int? Value { get; set; }
+        }
+
         public class Destination
         {
             public string? Value { get; set; }

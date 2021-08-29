@@ -75,5 +75,32 @@ namespace Smart.Mapper
             Assert.Throws<InvalidOperationException>(() =>
                 mapper.Map<NoConverterNullableStructValueHolder, NullableInt32Holder>(new NoConverterNullableStructValueHolder()));
         }
+
+        //--------------------------------------------------------------------------------
+        // Data
+        //--------------------------------------------------------------------------------
+
+        public class NoConverterClassValue
+        {
+        }
+
+        public class NoConverterClassValueHolder
+        {
+            public NoConverterClassValue? Value { get; set; }
+        }
+
+        public struct NoConverterStructValue
+        {
+        }
+
+        public class NoConverterStructValueHolder
+        {
+            public NoConverterStructValue Value { get; set; }
+        }
+
+        public class NoConverterNullableStructValueHolder
+        {
+            public NoConverterStructValue? Value { get; set; }
+        }
     }
 }

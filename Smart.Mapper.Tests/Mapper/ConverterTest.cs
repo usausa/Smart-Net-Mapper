@@ -22,6 +22,18 @@ namespace Smart.Mapper
             Assert.Equal("1", destination.Value);
         }
 
+        [Fact]
+        public void UseConverterOfUnderlyingSource()
+        {
+            var config = new MapperConfig();
+            config.CreateMap<NullableSource, Destination>();
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<NullableSource, Destination>(new NullableSource { Value = 1 });
+
+            Assert.Equal("1", destination.Value);
+        }
+
         //--------------------------------------------------------------------------------
         // Default option
         //--------------------------------------------------------------------------------

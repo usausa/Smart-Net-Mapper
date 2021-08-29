@@ -485,6 +485,8 @@ namespace Smart.Mapper.Mappers
                     // Nullable convert required
                     ilGenerator.Emit(OpCodes.Newobj, member.Property.PropertyType.GetConstructor(new[] { member.Converter.DestinationType })!);
                 }
+
+                ilGenerator.MarkLabel(setLabel);
             }
             else
             {

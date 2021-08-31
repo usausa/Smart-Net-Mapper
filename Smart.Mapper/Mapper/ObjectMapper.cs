@@ -78,16 +78,14 @@ namespace Smart.Mapper
                 {
                     return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, nestedMapper));
                 }
-                else
-                {
-                    if (!profileNestedMappers.TryGetValue(profile, out var profileNestedMapper))
-                    {
-                        profileNestedMapper = new ProfileNestedMapper(this, profile);
-                        profileNestedMappers[profile] = profileNestedMapper;
-                    }
 
-                    return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, profileNestedMapper));
+                if (!profileNestedMappers.TryGetValue(profile, out var profileNestedMapper))
+                {
+                    profileNestedMapper = new ProfileNestedMapper(this, profile);
+                    profileNestedMappers[profile] = profileNestedMapper;
                 }
+
+                return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, profileNestedMapper));
             }
         }
 

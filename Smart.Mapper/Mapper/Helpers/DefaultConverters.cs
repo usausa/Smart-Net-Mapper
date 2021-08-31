@@ -75,7 +75,7 @@ namespace Smart.Mapper.Helpers
             { new(typeof(DateTimeOffset), typeof(string)), new(ConverterType.FuncSource, typeof(DateTimeOffset), typeof(string), (Func<DateTimeOffset, string>)(x => x.ToString())) },
             // Guid
             { new(typeof(string), typeof(Guid)), new(ConverterType.FuncSource, typeof(string), typeof(Guid), (Func<string?, Guid>)(x => x is null ? default : Guid.Parse(x))) },
-            { new(typeof(Guid), typeof(string)), new(ConverterType.FuncSource, typeof(Guid), typeof(string), (Func<Guid, string>)(x => x.ToString())) },
+            { new(typeof(Guid), typeof(string)), new(ConverterType.FuncSource, typeof(Guid), typeof(string), (Func<Guid, string>)(x => x.ToString())) }
         };
     }
 }

@@ -37,7 +37,7 @@ namespace Smart.Mapper.Mappers
         Func,
         FuncContext,
         Interface,
-        InterfaceType,
+        InterfaceType
     }
 
     public enum ConverterType

@@ -156,26 +156,18 @@ namespace Smart.Mapper.Mappers
                     {
                         bool isNullIf;
                         object? nullIfValue;
-                        if (memberOption.Property.PropertyType.IsClass || memberOption.Property.PropertyType.IsNullableType())
+                        if (memberOption.UseNullIf())
                         {
-                            if (memberOption.UseNullIf())
-                            {
-                                isNullIf = true;
-                                nullIfValue = memberOption.GetNullIfValue();
-                            }
-                            else
-                            {
-                                isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
-                                if (!isNullIf)
-                                {
-                                    isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
-                                }
-                            }
+                            isNullIf = true;
+                            nullIfValue = memberOption.GetNullIfValue();
                         }
                         else
                         {
-                            isNullIf = false;
-                            nullIfValue = null;
+                            isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                            if (!isNullIf)
+                            {
+                                isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                            }
                         }
 
                         members.Add(new MemberMapping(

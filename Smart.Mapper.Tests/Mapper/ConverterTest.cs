@@ -52,26 +52,90 @@ namespace Smart.Mapper
             Assert.True(mapper.Map<NullableSource, NullableBoolDestination>(new NullableSource { Value = -1 }).Value);
         }
 
+        //--------------------------------------------------------------------------------
+        // Class/Struct
+        //--------------------------------------------------------------------------------
+
+        [Fact]
+        public void UseConverterClassSourceToDestination()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.ConvertUsing<ClassValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<ClassValueSource, BoolDestination>();
+            using var mapper = config.ToMapper();
+
+            Assert.True(mapper.Map<ClassValueSource, BoolDestination>(new ClassValueSource { Value = new ClassValue { RawValue = -1 } }).Value);
+        }
+
+        [Fact]
+        public void UseConverterClassSourceToUnderlyingDestination()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.ConvertUsing<ClassValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<ClassValueSource, NullableBoolDestination>();
+            using var mapper = config.ToMapper();
+
+            Assert.True(mapper.Map<ClassValueSource, NullableBoolDestination>(new ClassValueSource { Value = new ClassValue { RawValue = -1 } }).Value);
+        }
+
+        [Fact]
+        public void UseConverterClassSourceToDestinationWithNullIf()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.ConvertUsing<ClassValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<ClassValueSource, BoolDestination>()
+                .ForMember(x => x.Value, opt => opt.NullIf(true));
+            using var mapper = config.ToMapper();
+
+            Assert.True(mapper.Map<ClassValueSource, BoolDestination>(new ClassValueSource { Value = new ClassValue { RawValue = -1 } }).Value);
+            Assert.True(mapper.Map<ClassValueSource, BoolDestination>(new ClassValueSource { Value = null }).Value);
+        }
+
         [Fact]
         public void UseConverterNullableSourceToDestination()
         {
             var config = new MapperConfig();
-            config.Default(opt => opt.ConvertUsing<StructValue?, bool>(x => x!.Value.RawValue != 0));
-            config.CreateMap<StructValueSource, BoolDestination>();
+            config.Default(opt => opt.ConvertUsing<StructValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<NullableStructValueSource, BoolDestination>();
             using var mapper = config.ToMapper();
 
-            Assert.True(mapper.Map<StructValueSource, BoolDestination>(new StructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.True(mapper.Map<NullableStructValueSource, BoolDestination>(new NullableStructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
         }
 
         [Fact]
         public void UseConverterNullableSourceToUnderlyingDestination()
         {
             var config = new MapperConfig();
-            config.Default(opt => opt.ConvertUsing<StructValue?, bool>(x => x!.Value.RawValue != 0));
-            config.CreateMap<StructValueSource, NullableBoolDestination>();
+            config.Default(opt => opt.ConvertUsing<StructValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<NullableStructValueSource, NullableBoolDestination>();
             using var mapper = config.ToMapper();
 
-            Assert.True(mapper.Map<StructValueSource, NullableBoolDestination>(new StructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.True(mapper.Map<NullableStructValueSource, NullableBoolDestination>(new NullableStructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
+        }
+
+        [Fact]
+        public void UseConverterNullableSourceToUnderlyingDestinationWithNullIf()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.ConvertUsing<StructValue, bool>(x => x.RawValue != 0));
+            config.CreateMap<NullableStructValueSource, NullableBoolDestination>()
+                .ForMember(x => x.Value, opt => opt.NullIf(true));
+            using var mapper = config.ToMapper();
+
+            Assert.True(mapper.Map<NullableStructValueSource, NullableBoolDestination>(new NullableStructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
+            Assert.True(mapper.Map<NullableStructValueSource, NullableBoolDestination>(new NullableStructValueSource { Value = null }).Value);
+        }
+
+        [Fact]
+        public void UseConverterNullableSourceToDestinationByNullableInputConverter()
+        {
+            var config = new MapperConfig();
+            config.Default(opt => opt.ConvertUsing<StructValue?, bool>(x => x!.Value.RawValue != 0));
+            config.CreateMap<NullableStructValueSource, BoolDestination>()
+                .ForMember(x => x.Value, opt => opt.NullIf(true));
+            using var mapper = config.ToMapper();
+
+            Assert.True(mapper.Map<NullableStructValueSource, BoolDestination>(new NullableStructValueSource { Value = new StructValue { RawValue = -1 } }).Value);
         }
 
         //--------------------------------------------------------------------------------
@@ -189,9 +253,19 @@ namespace Smart.Mapper
             public int RawValue { get; set; }
         }
 
-        public class StructValueSource
+        public class NullableStructValueSource
         {
-            public StructValue Value { get; set; }
+            public StructValue? Value { get; set; }
+        }
+
+        public class ClassValue
+        {
+            public int RawValue { get; set; }
+        }
+
+        public class ClassValueSource
+        {
+            public ClassValue? Value { get; set; }
         }
 
         public class StringDestination

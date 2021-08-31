@@ -354,7 +354,7 @@ namespace Smart.Mapper.Mappers
 
                 // Branch
                 ilGenerator.EmitLdloc(temporaryLocal);
-                ilGenerator.Emit(OpCodes.Brtrue_S, setLabel);
+                ilGenerator.Emit(OpCodes.Brtrue_S, convertLabel);
 
                 // Default or NullIf
                 if (member.IsNullIf)

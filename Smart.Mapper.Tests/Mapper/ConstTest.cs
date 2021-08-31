@@ -91,6 +91,28 @@ namespace Smart.Mapper
             Assert.Equal(new DateTime(2000, 12, 31), destination.NullableDateTimeValue);
         }
 
+        [Fact]
+        public void ConstNullValue()
+        {
+            var config = new MapperConfig();
+            config.Default(opt =>
+            {
+                opt.Const<string?>(null);
+                opt.Const<int?>(null);
+                opt.Const<MyEnum?>(null);
+                opt.Const<DateTime?>(null);
+            });
+            config.CreateMap<Source, Destination>();
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source());
+
+            Assert.Null(destination.StringValue);
+            Assert.Null(destination.NullableIntValue);
+            Assert.Null(destination.NullableEnumValue);
+            Assert.Null(destination.NullableDateTimeValue);
+        }
+
         //--------------------------------------------------------------------------------
         // Data
         //--------------------------------------------------------------------------------

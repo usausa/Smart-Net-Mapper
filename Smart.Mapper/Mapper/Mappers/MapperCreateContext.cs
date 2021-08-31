@@ -66,8 +66,6 @@ namespace Smart.Mapper.Mappers
 
         public Type DelegateDestinationType { get; }
 
-        public Type MapSourceType => mappingOption.SourceType;
-
         public Type MapDestinationType => mappingOption.DestinationType;
 
         // Factory

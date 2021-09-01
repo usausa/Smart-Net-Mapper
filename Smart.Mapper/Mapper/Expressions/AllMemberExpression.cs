@@ -8,7 +8,7 @@ namespace Smart.Mapper.Expressions
     {
         private readonly MemberOption memberOption;
 
-        public PropertyInfo DestinationMember => memberOption.Property;
+        public MemberInfo DestinationMember => memberOption.Member;
 
         public AllMemberExpression(MemberOption memberOption)
         {

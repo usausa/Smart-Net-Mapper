@@ -8,7 +8,7 @@ namespace Smart.Mapper.Expressions
         // Info
         //--------------------------------------------------------------------------------
 
-        PropertyInfo DestinationMember { get; }
+        MemberInfo DestinationMember { get; }
 
         //--------------------------------------------------------------------------------
         // Ignore

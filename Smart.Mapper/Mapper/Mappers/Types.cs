@@ -32,7 +32,7 @@ namespace Smart.Mapper.Mappers
     public enum FromType
     {
         None,
-        Properties,
+        Path,
         LazyFunc,
         Func,
         FuncContext,

@@ -11,7 +11,9 @@ namespace Smart.Mapper.Mappers
     {
         public int No { get; }
 
-        public PropertyInfo Property { get; }
+        public MemberInfo Member { get; }
+
+        public Type MemberType => Member is PropertyInfo pi ? pi.PropertyType : ((FieldInfo)Member).FieldType;
 
         public TypeEntry<ConditionType>? Condition { get; }
 
@@ -31,7 +33,7 @@ namespace Smart.Mapper.Mappers
 
         public MemberMapping(
             int no,
-            PropertyInfo property,
+            MemberInfo member,
             TypeEntry<ConditionType>? condition,
             FromTypeEntry? mapFrom,
             bool isNested,
@@ -42,7 +44,7 @@ namespace Smart.Mapper.Mappers
             object? nullIfValue)
         {
             No = no;
-            Property = property;
+            Member = member;
             Condition = condition;
             MapFrom = mapFrom;
             IsNested = isNested;
@@ -126,10 +128,10 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    isConst = mappingOption.TryGetConstValue(memberOption.Property.PropertyType, out constValue);
+                    isConst = mappingOption.TryGetConstValue(memberOption.MemberType, out constValue);
                     if (!isConst)
                     {
-                        isConst = defaultOption.TryGetConstValue(memberOption.Property.PropertyType, out constValue);
+                        isConst = defaultOption.TryGetConstValue(memberOption.MemberType, out constValue);
                     }
                 }
 
@@ -137,13 +139,13 @@ namespace Smart.Mapper.Mappers
                 {
                     members.Add(new MemberMapping(
                         members.Count,
-                        memberOption.Property,
+                        memberOption.Member,
                         memberOption.GetCondition(),
                         null,
                         false,
                         true,
                         constValue,
-                        (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.Property.PropertyType) : null,
+                        (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.MemberType) : null,
                         false,
                         null));
                 }
@@ -161,22 +163,22 @@ namespace Smart.Mapper.Mappers
                         }
                         else
                         {
-                            isNullIf = mappingOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                            isNullIf = mappingOption.TryGetNullIfValue(memberOption.MemberType, out nullIfValue);
                             if (!isNullIf)
                             {
-                                isNullIf = defaultOption.TryGetNullIfValue(memberOption.Property.PropertyType, out nullIfValue);
+                                isNullIf = defaultOption.TryGetNullIfValue(memberOption.MemberType, out nullIfValue);
                             }
                         }
 
                         members.Add(new MemberMapping(
                             members.Count,
-                            memberOption.Property,
+                            memberOption.Member,
                             memberOption.GetCondition(),
                             mapFrom,
                             memberOption.IsNested(),
                             false,
                             null,
-                            ResolveConverter(mapFrom.MemberType, memberOption.Property.PropertyType),
+                            ResolveConverter(mapFrom.MemberType, memberOption.MemberType),
                             isNullIf,
                             nullIfValue));
                     }
@@ -194,14 +196,20 @@ namespace Smart.Mapper.Mappers
                 return mapFrom;
             }
 
-            var name = matcher(memberOption.Property.Name) ?? memberOption.Property.Name;
+            var name = matcher(memberOption.Member.Name) ?? memberOption.Member.Name;
             var pi = mappingOption.SourceType.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
-            if ((pi is null) || !pi.CanRead)
+            if ((pi is not null) && pi.CanRead)
             {
-                return null;
+                return new FromTypeEntry(FromType.Path, pi.PropertyType, new MemberInfo[] { pi });
             }
 
-            return new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
+            var fi = mappingOption.SourceType.GetField(name, BindingFlags.Instance | BindingFlags.Public);
+            if (fi is not null)
+            {
+                return new FromTypeEntry(FromType.Path, fi.FieldType, new MemberInfo[] { fi });
+            }
+
+            return null;
         }
 
         private ConverterEntry? ResolveConverter(Type sourceType, Type destinationType)

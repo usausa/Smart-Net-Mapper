@@ -328,7 +328,14 @@ namespace Smart.Mapper.Mappers
                 }
 
                 // Set
-                ilGenerator.EmitCallMethod(member.Property.SetMethod!);
+                if (member.Member is PropertyInfo pi)
+                {
+                    ilGenerator.EmitCallMethod(pi.SetMethod!);
+                }
+                else
+                {
+                    ilGenerator.Emit(OpCodes.Stfld, (FieldInfo)member.Member);
+                }
 
                 if (member.Condition is not null)
                 {
@@ -363,7 +370,7 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                    ilGenerator.EmitStackDefaultValue(member.MemberType);
                 }
                 ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
@@ -373,10 +380,10 @@ namespace Smart.Mapper.Mappers
                 EmitLoadField(holder.GetConverterField(member.No));
                 ilGenerator.EmitLdloc(temporaryLocal);
                 EmitInvokeConverter(member);
-                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.Property.PropertyType))
+                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
                 {
                     // Nullable convert required
-                    ilGenerator.Emit(OpCodes.Newobj, member.Property.PropertyType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                    ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
                 }
 
                 ilGenerator.MarkLabel(setLabel);
@@ -386,7 +393,7 @@ namespace Smart.Mapper.Mappers
                 // Stack and convert
                 EmitStackSourceMember(member);
 
-                if (!member.Property.PropertyType.IsAssignableFrom(memberType))
+                if (!member.MemberType.IsAssignableFrom(memberType))
                 {
                     // Convert required
                     var setLabel = ilGenerator.DefineLabel();
@@ -404,16 +411,16 @@ namespace Smart.Mapper.Mappers
                     }
                     else
                     {
-                        ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                        ilGenerator.EmitStackDefaultValue(member.MemberType);
                     }
                     ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
                     // Convert
                     ilGenerator.MarkLabel(convertLabel);
 
-                    if (!EmitConvertOperationForClass(ilGenerator, memberType, member.Property.PropertyType))
+                    if (!EmitConvertOperationForClass(ilGenerator, memberType, member.MemberType))
                     {
-                        throw new InvalidOperationException($"Can not convert to property. property=[{member.Property.PropertyType.Name}], type=[{memberType}]");
+                        throw new InvalidOperationException($"Can not convert to property. property=[{member.MemberType.Name}], type=[{memberType}]");
                     }
 
                     ilGenerator.MarkLabel(setLabel);
@@ -462,7 +469,7 @@ namespace Smart.Mapper.Mappers
                 }
                 else
                 {
-                    ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                    ilGenerator.EmitStackDefaultValue(member.MemberType);
                 }
                 ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
@@ -480,10 +487,10 @@ namespace Smart.Mapper.Mappers
                     ilGenerator.EmitLdloc(temporaryLocal);
                 }
                 EmitInvokeConverter(member);
-                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.Property.PropertyType))
+                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
                 {
                     // Nullable convert required
-                    ilGenerator.Emit(OpCodes.Newobj, member.Property.PropertyType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                    ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
                 }
 
                 ilGenerator.MarkLabel(setLabel);
@@ -493,7 +500,7 @@ namespace Smart.Mapper.Mappers
                 // Stack and convert
                 EmitStackSourceMember(member);
 
-                if (member.Property.PropertyType != memberType)
+                if (member.MemberType != memberType)
                 {
                     // Nullable
                     var setLabel = ilGenerator.DefineLabel();
@@ -514,23 +521,23 @@ namespace Smart.Mapper.Mappers
                     }
                     else
                     {
-                        ilGenerator.EmitStackDefaultValue(member.Property.PropertyType);
+                        ilGenerator.EmitStackDefaultValue(member.MemberType);
                     }
                     ilGenerator.Emit(OpCodes.Br_S, setLabel);
 
                     // Convert
                     ilGenerator.MarkLabel(convertLabel);
 
-                    if (!EmitConvertOperationForNullable(ilGenerator, memberType, member.Property.PropertyType, temporaryLocal))
+                    if (!EmitConvertOperationForNullable(ilGenerator, memberType, member.MemberType, temporaryLocal))
                     {
                         ilGenerator.EmitLdloca(temporaryLocal);
                         ilGenerator.Emit(OpCodes.Call, memberType.GetProperty("Value")!.GetMethod!);
 
                         var underlyingType = Nullable.GetUnderlyingType(memberType)!;
-                        if (!EmitConvertOperationForNullableValue(ilGenerator, underlyingType, member.Property.PropertyType) &&
-                            !EmitConvertPrimitive(ilGenerator, underlyingType, member.Property.PropertyType))
+                        if (!EmitConvertOperationForNullableValue(ilGenerator, underlyingType, member.MemberType) &&
+                            !EmitConvertPrimitive(ilGenerator, underlyingType, member.MemberType))
                         {
-                            throw new InvalidOperationException($"Can not convert to property. property=[{member.Property.PropertyType.Name}], type=[{memberType}]");
+                            throw new InvalidOperationException($"Can not convert to property. property=[{member.MemberType.Name}], type=[{memberType}]");
                         }
                     }
 
@@ -547,7 +554,7 @@ namespace Smart.Mapper.Mappers
 
                     // Branch
                     ilGenerator.EmitLdloca(temporaryLocal);
-                    ilGenerator.Emit(OpCodes.Call, member.Property.PropertyType.GetProperty("HasValue")!.GetMethod!);
+                    ilGenerator.Emit(OpCodes.Call, member.MemberType.GetProperty("HasValue")!.GetMethod!);
                     ilGenerator.Emit(OpCodes.Brtrue_S, reloadLabel);
 
                     // Null if
@@ -578,10 +585,10 @@ namespace Smart.Mapper.Mappers
                 }
                 EmitInvokeConverter(member);
 
-                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.Property.PropertyType))
+                if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
                 {
                     // Nullable convert required
-                    ilGenerator.Emit(OpCodes.Newobj, member.Property.PropertyType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                    ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
                 }
             }
             else
@@ -589,13 +596,13 @@ namespace Smart.Mapper.Mappers
                 // Stack and convert
                 EmitStackSourceMember(member);
 
-                if (member.Property.PropertyType != memberType)
+                if (member.MemberType != memberType)
                 {
                     // Convert required
-                    if (!EmitConvertOperationValueType(ilGenerator, memberType, member.Property.PropertyType) &&
-                        !EmitConvertPrimitive(ilGenerator, memberType, member.Property.PropertyType))
+                    if (!EmitConvertOperationValueType(ilGenerator, memberType, member.MemberType) &&
+                        !EmitConvertPrimitive(ilGenerator, memberType, member.MemberType))
                     {
-                        throw new InvalidOperationException($"Can not convert to property. property=[{member.Property.PropertyType.Name}], type=[{memberType}]");
+                        throw new InvalidOperationException($"Can not convert to property. property=[{member.MemberType.Name}], type=[{memberType}]");
                     }
                 }
             }
@@ -649,13 +656,19 @@ namespace Smart.Mapper.Mappers
         {
             switch (member.MapFrom!.Type)
             {
-                case FromType.Properties:
+                case FromType.Path:
                     EmitStackSourceCall();
-                    foreach (var pi in (PropertyInfo[])member.MapFrom.Value)
+                    foreach (var mi in (MemberInfo[])member.MapFrom.Value)
                     {
-                        ilGenerator.EmitCallMethod(pi.GetMethod!);
+                        if (mi is PropertyInfo pi)
+                        {
+                            ilGenerator.EmitCallMethod(pi.GetMethod!);
+                        }
+                        else if (mi is FieldInfo fi)
+                        {
+                            ilGenerator.Emit(OpCodes.Ldfld, fi);
+                        }
                     }
-
                     break;
                 case FromType.LazyFunc:
                     var lazyFuncField = holder.GetProviderField(member.No);

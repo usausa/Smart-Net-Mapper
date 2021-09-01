@@ -6,11 +6,11 @@ namespace Smart.Mapper.Helpers
 
     internal static class ExpressionHelper
     {
-        public static PropertyInfo? GetPropertyInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
+        public static MemberInfo? GetMemberInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
         {
             if (expression.Body is MemberExpression memberExpression)
             {
-                return memberExpression.Member as PropertyInfo;
+                return memberExpression.Member;
             }
 
             return null;

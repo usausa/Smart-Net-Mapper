@@ -10,7 +10,9 @@ namespace Smart.Mapper.Options
 
     public class MemberOption
     {
-        public PropertyInfo Property { get; }
+        public MemberInfo Member { get; }
+
+        public Type MemberType => Member is PropertyInfo pi ? pi.PropertyType : ((FieldInfo)Member).FieldType;
 
         private bool ignore;
 
@@ -28,9 +30,9 @@ namespace Smart.Mapper.Options
         private bool useNullIf;
         private object? nullIfValue;
 
-        public MemberOption(PropertyInfo property)
+        public MemberOption(MemberInfo member)
         {
-            Property = property;
+            Member = member;
         }
 
         //--------------------------------------------------------------------------------
@@ -81,7 +83,13 @@ namespace Smart.Mapper.Options
                 var type = typeof(TSource);
                 if ((memberExpression.Member is PropertyInfo pi) && (pi.ReflectedType == type))
                 {
-                    mapFrom = new FromTypeEntry(FromType.Properties, pi.PropertyType, new[] { pi });
+                    mapFrom = new FromTypeEntry(FromType.Path, pi.PropertyType, new MemberInfo[] { pi });
+                    return;
+                }
+
+                if ((memberExpression.Member is FieldInfo fi) && (fi.ReflectedType == type))
+                {
+                    mapFrom = new FromTypeEntry(FromType.Path, fi.FieldType, new MemberInfo[] { fi });
                     return;
                 }
             }
@@ -104,21 +112,35 @@ namespace Smart.Mapper.Options
 
         public void SetMapFrom<TSource>(string sourcePath)
         {
+            if (String.IsNullOrEmpty(sourcePath))
+            {
+                throw new ArgumentException("Invalid source.", nameof(sourcePath));
+            }
+
             var type = typeof(TSource);
-            var properties = new List<PropertyInfo>();
+            var members = new List<MemberInfo>();
             foreach (var name in sourcePath.Split("."))
             {
                 var pi = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
-                if (pi is null)
+                if (pi is not null)
                 {
-                    throw new ArgumentException("Invalid source.", nameof(sourcePath));
+                    members.Add(pi);
+                    type = pi.PropertyType;
+                    continue;
                 }
 
-                properties.Add(pi);
-                type = pi.PropertyType;
+                var fi = type.GetField(name, BindingFlags.Public | BindingFlags.Instance);
+                if (fi is not null)
+                {
+                    members.Add(fi);
+                    type = fi.FieldType;
+                    continue;
+                }
+
+                throw new ArgumentException("Invalid source.", nameof(sourcePath));
             }
 
-            mapFrom = new FromTypeEntry(FromType.Properties, properties[^1].PropertyType, properties.ToArray());
+            mapFrom = new FromTypeEntry(FromType.Path, type, members.ToArray());
         }
 
         //--------------------------------------------------------------------------------

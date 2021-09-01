@@ -138,13 +138,13 @@ namespace Smart.Mapper.Expressions
 
         public IMappingExpression<TSource, TDestination> ForMember<TMember>(Expression<Func<TDestination, TMember>> expression, Action<IMemberExpression<TSource, TDestination, TMember>> option)
         {
-            var pi = ExpressionHelper.GetPropertyInfo(expression);
-            if (pi is null)
+            var mi = ExpressionHelper.GetMemberInfo(expression);
+            if (mi is null)
             {
                 throw new ArgumentException("Invalid destination member expression.");
             }
 
-            var memberOption = mappingOption.MemberOptions.FirstOrDefault(x => x.Property == pi);
+            var memberOption = mappingOption.MemberOptions.FirstOrDefault(x => x.Member == mi);
             if (memberOption is null)
             {
                 throw new ArgumentException("Invalid destination member expression.");

@@ -64,7 +64,7 @@ namespace Smart.Mapper.Mappers
             // Const
             foreach (var member in context.Members.Where(x => x.IsConst))
             {
-                typeBuilder.DefineField($"constValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+                typeBuilder.DefineField($"constValue{member.No}", member.MemberType, FieldAttributes.Public);
             }
 
             // Provider
@@ -106,7 +106,7 @@ namespace Smart.Mapper.Mappers
             // NullIf
             foreach (var member in context.Members.Where(x => x.IsNullIf))
             {
-                typeBuilder.DefineField($"nullIfValue{member.No}", member.Property.PropertyType, FieldAttributes.Public);
+                typeBuilder.DefineField($"nullIfValue{member.No}", member.MemberType, FieldAttributes.Public);
             }
 
             // Create holder
@@ -256,7 +256,7 @@ namespace Smart.Mapper.Mappers
             var method = hasParameter
                 ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!
                 : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!;
-            var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.Property.PropertyType);
+            var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.MemberType);
             return genericMethod.Invoke(context.NestedMapper, null)!;
         }
 

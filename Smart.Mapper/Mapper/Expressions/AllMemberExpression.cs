@@ -23,7 +23,13 @@ namespace Smart.Mapper.Expressions
 
         public IAllMemberExpression Nested()
         {
-            memberOption.SetNested();
+            memberOption.SetNested(null);
+            return this;
+        }
+
+        public IAllMemberExpression Nested(string profile)
+        {
+            memberOption.SetNested(profile);
             return this;
         }
 

@@ -17,6 +17,7 @@ namespace Smart.Mapper.Options
         private bool ignore;
 
         private bool nested;
+        private string? nestedProfile;
 
         private int order = Int32.MaxValue;
 
@@ -45,7 +46,11 @@ namespace Smart.Mapper.Options
         // Nested
         //--------------------------------------------------------------------------------
 
-        public void SetNested() => nested = true;
+        public void SetNested(string? profile)
+        {
+            nested = true;
+            nestedProfile = profile;
+        }
 
         //--------------------------------------------------------------------------------
         // Order
@@ -170,6 +175,8 @@ namespace Smart.Mapper.Options
         internal bool IsIgnore() => ignore;
 
         internal bool IsNested() => nested;
+
+        internal string? GetNestedProfile() => nestedProfile;
 
         internal int GetOrder() => order;
 

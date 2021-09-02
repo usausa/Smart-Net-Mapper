@@ -22,6 +22,8 @@ namespace Smart.Mapper.Expressions
 
         IAllMemberExpression Nested();
 
+        IAllMemberExpression Nested(string profile);
+
         //--------------------------------------------------------------------------------
         // Order
         //--------------------------------------------------------------------------------

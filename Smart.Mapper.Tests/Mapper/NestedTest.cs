@@ -80,7 +80,7 @@ namespace Smart.Mapper
             var config = new MapperConfig();
             config.CreateMap<SourceInner, DestinationInner>(Profile);
             config.CreateMap<Source, Destination>(Profile)
-                .ForMember(x => x.Inner, opt => opt.Nested());
+                .ForMember(x => x.Inner, opt => opt.Nested(Profile));
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
@@ -94,7 +94,7 @@ namespace Smart.Mapper
             var config = new MapperConfig();
             config.CreateMap<SourceInner, DestinationInner>(Profile);
             config.CreateMap<Source, Destination>(Profile)
-                .ForMember(x => x.Inner, opt => opt.Nested());
+                .ForMember(x => x.Inner, opt => opt.Nested(Profile));
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = null });
@@ -110,9 +110,23 @@ namespace Smart.Mapper
         public void NestedAll()
         {
             var config = new MapperConfig();
+            config.CreateMap<SourceInner, DestinationInner>();
+            config.CreateMap<Source, Destination>()
+                .ForAllMember(opt => opt.Nested());
+            using var mapper = config.ToMapper();
+
+            var destination = mapper.Map<Source, Destination>(new Source { Inner = new SourceInner { Value = -1 } });
+
+            Assert.Equal(-1, destination.Inner!.Value);
+        }
+
+        [Fact]
+        public void ProfileNestedAll()
+        {
+            var config = new MapperConfig();
             config.CreateMap<SourceInner, DestinationInner>(Profile);
             config.CreateMap<Source, Destination>(Profile)
-                .ForAllMember(opt => opt.Nested());
+                .ForAllMember(opt => opt.Nested(Profile));
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
@@ -295,7 +309,7 @@ namespace Smart.Mapper
                 .AfterMap((s, d, c) =>
                 {
                     d.Inner = new DestinationInner();
-                    c.Mapper.Map(s.Inner, d.Inner);
+                    c.Mapper.Map(Profile, s.Inner, d.Inner);
                 });
             using var mapper = config.ToMapper();
 
@@ -311,7 +325,7 @@ namespace Smart.Mapper
             config.CreateMap<SourceInner, DestinationInner>(Profile);
             config.CreateMap<Source, Destination>(Profile)
                 .ForMember(d => d.Inner, opt => opt.Ignore())
-                .AfterMap((s, d, c) => d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(s.Inner));
+                .AfterMap((s, d, c) => d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(Profile, s.Inner));
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(Profile, new Source { Inner = new SourceInner { Value = -1 } });
@@ -330,7 +344,7 @@ namespace Smart.Mapper
                 .AfterMap((s, d, c) =>
                 {
                     d.Inner = new DestinationInner();
-                    c.Mapper.Map(s.Inner, d.Inner, c.Parameter);
+                    c.Mapper.Map(Profile, s.Inner, d.Inner, c.Parameter);
                 });
             using var mapper = config.ToMapper();
 
@@ -349,7 +363,7 @@ namespace Smart.Mapper
                 .ForMember(d => d.Inner, opt => opt.Ignore())
                 .AfterMap((s, d, c) =>
                 {
-                    d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(s.Inner, c.Parameter);
+                    d.Inner = c.Mapper.Map<SourceInner?, DestinationInner>(Profile, s.Inner, c.Parameter);
                 });
             using var mapper = config.ToMapper();
 
@@ -371,7 +385,7 @@ namespace Smart.Mapper
                 .ForMember(d => d.Inner, opt => opt.Ignore())
                 .AfterMap((s, d, c) =>
                 {
-                    var map = c.Mapper.GetMapperAction<SourceInner?, DestinationInner>();
+                    var map = c.Mapper.GetMapperAction<SourceInner?, DestinationInner>(Profile);
                     d.Inner = new DestinationInner();
                     map(s.Inner, d.Inner);
                 });
@@ -391,7 +405,7 @@ namespace Smart.Mapper
                 .ForMember(d => d.Inner, opt => opt.Ignore())
                 .AfterMap((s, d, c) =>
                 {
-                    var map = c.Mapper.GetMapperFunc<SourceInner?, DestinationInner>();
+                    var map = c.Mapper.GetMapperFunc<SourceInner?, DestinationInner>(Profile);
                     d.Inner = map(s.Inner);
                 });
             using var mapper = config.ToMapper();
@@ -411,7 +425,7 @@ namespace Smart.Mapper
                 .ForMember(d => d.Inner, opt => opt.Ignore())
                 .AfterMap((s, d, c) =>
                 {
-                    var map = c.Mapper.GetParameterMapperAction<SourceInner?, DestinationInner>();
+                    var map = c.Mapper.GetParameterMapperAction<SourceInner?, DestinationInner>(Profile);
                     d.Inner = new DestinationInner();
                     map(s.Inner, d.Inner, c.Parameter);
                 });
@@ -432,7 +446,7 @@ namespace Smart.Mapper
                 .ForMember(d => d.Inner, opt => opt.Ignore())
                 .AfterMap((s, d, c) =>
                 {
-                    var map = c.Mapper.GetParameterMapperFunc<SourceInner?, DestinationInner>();
+                    var map = c.Mapper.GetParameterMapperFunc<SourceInner?, DestinationInner>(Profile);
                     d.Inner = map(s.Inner, c.Parameter);
                 });
             using var mapper = config.ToMapper();

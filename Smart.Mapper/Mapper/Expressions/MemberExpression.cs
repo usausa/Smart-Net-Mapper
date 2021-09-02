@@ -34,7 +34,13 @@ namespace Smart.Mapper.Expressions
 
         public IMemberExpression<TSource, TDestination, TMember> Nested()
         {
-            memberOption.SetNested();
+            memberOption.SetNested(null);
+            return this;
+        }
+
+        public IMemberExpression<TSource, TDestination, TMember> Nested(string profile)
+        {
+            memberOption.SetNested(profile);
             return this;
         }
 

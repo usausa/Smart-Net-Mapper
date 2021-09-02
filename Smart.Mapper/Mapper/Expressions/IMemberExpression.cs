@@ -26,6 +26,8 @@ namespace Smart.Mapper.Expressions
 
         IMemberExpression<TSource, TDestination, TMember> Nested();
 
+        IMemberExpression<TSource, TDestination, TMember> Nested(string profile);
+
         //--------------------------------------------------------------------------------
         // Order
         //--------------------------------------------------------------------------------

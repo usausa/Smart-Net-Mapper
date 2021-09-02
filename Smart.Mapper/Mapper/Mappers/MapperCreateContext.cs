@@ -21,6 +21,8 @@ namespace Smart.Mapper.Mappers
 
         public bool IsNested { get; }
 
+        public string? NestedProfile { get; }
+
         public bool IsConst { get; }
 
         public object? ConstValue { get; }
@@ -37,6 +39,7 @@ namespace Smart.Mapper.Mappers
             TypeEntry<ConditionType>? condition,
             FromTypeEntry? mapFrom,
             bool isNested,
+            string? nestedProfile,
             bool isConst,
             object? constValue,
             ConverterEntry? converter,
@@ -48,6 +51,7 @@ namespace Smart.Mapper.Mappers
             Condition = condition;
             MapFrom = mapFrom;
             IsNested = isNested;
+            NestedProfile = nestedProfile;
             IsConst = isConst;
             ConstValue = constValue;
             Converter = converter;
@@ -143,6 +147,7 @@ namespace Smart.Mapper.Mappers
                         memberOption.GetCondition(),
                         null,
                         false,
+                        null,
                         true,
                         constValue,
                         (constValue is not null) ? ResolveConverter(constValue.GetType(), memberOption.MemberType) : null,
@@ -176,6 +181,7 @@ namespace Smart.Mapper.Mappers
                             memberOption.GetCondition(),
                             mapFrom,
                             memberOption.IsNested(),
+                            memberOption.GetNestedProfile(),
                             false,
                             null,
                             ResolveConverter(mapFrom.MemberType, memberOption.MemberType),

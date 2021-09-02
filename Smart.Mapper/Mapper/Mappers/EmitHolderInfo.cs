@@ -253,11 +253,12 @@ namespace Smart.Mapper.Mappers
 
         private static object ResolveNestedMapper(MapperCreateContext context, MemberMapping member, bool hasParameter)
         {
+            var argumentTypes = String.IsNullOrEmpty(member.NestedProfile) ? Type.EmptyTypes : new[] { typeof(string) };
             var method = hasParameter
-                ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc))!
-                : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc))!;
+                ? typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetParameterMapperFunc), argumentTypes)!
+                : typeof(INestedMapper).GetMethod(nameof(INestedMapper.GetMapperFunc), argumentTypes)!;
             var genericMethod = method.MakeGenericMethod(member.MapFrom!.MemberType, member.MemberType);
-            return genericMethod.Invoke(context.NestedMapper, null)!;
+            return genericMethod.Invoke(context.NestedMapper, argumentTypes.Length == 0 ? null : new object?[] { member.NestedProfile })!;
         }
 
         private static object ResolveConverter(IServiceProvider serviceProvider, ConverterEntry entry) =>

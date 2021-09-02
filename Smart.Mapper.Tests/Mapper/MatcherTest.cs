@@ -1,5 +1,7 @@
 namespace Smart.Mapper
 {
+    using System;
+
     using Xunit;
 
     public class MatcherTest
@@ -13,7 +15,7 @@ namespace Smart.Mapper
         {
             var config = new MapperConfig();
             config.CreateMap<Source, Destination>()
-                .MatchMember(d => d.EndsWith("Ignore") ? null : "Source" + d[11..]);
+                .MatchMember(d => d.EndsWith("Ignore", StringComparison.Ordinal) ? null : "Source" + d[11..]);
             using var mapper = config.ToMapper();
 
             var destination = mapper.Map<Source, Destination>(new Source { SourceValue1 = -1, SourceValue2 = -2, SourceValueIgnore = -3 });

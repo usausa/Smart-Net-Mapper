@@ -161,7 +161,7 @@ namespace Smart.Mapper.Mappers
                 ilGenerator.Emit(OpCodes.Ldtoken, context.MapDestinationType);
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))!);
                 var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
-                ilGenerator.EmitCallMethod(method);
+                ilGenerator.Emit(OpCodes.Callvirt, method);
                 ilGenerator.EmitTypeConversion(context.MapDestinationType);
 
                 if (destinationLocal is not null)
@@ -176,25 +176,25 @@ namespace Smart.Mapper.Mappers
                 {
                     case FactoryType.FuncDestination:
                         EmitLoadField(field);
-                        EmitCallFieldMethod(field, "Invoke");
+                        EmitCallFuncFieldMethod(field);
                         break;
                     case FactoryType.FuncSourceDestination:
                         EmitLoadField(field);
                         EmitStackSourceArgument();
-                        EmitCallFieldMethod(field, "Invoke");
+                        EmitCallFuncFieldMethod(field);
                         break;
                     case FactoryType.FuncSourceContextDestination:
                         EmitLoadField(field);
                         EmitStackSourceArgument();
                         EmitStackContextArgument();
-                        EmitCallFieldMethod(field, "Invoke");
+                        EmitCallFuncFieldMethod(field);
                         break;
                     case FactoryType.Interface:
                     case FactoryType.InterfaceType:
                         EmitLoadField(field);
                         EmitStackSourceArgument();
                         EmitStackContextArgument();
-                        EmitCallFieldMethod(field, "Create");
+                        EmitCallInterfaceFieldMethod(field, "Create");
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported factory. type=[{context.Factory.Type}]");
@@ -248,14 +248,14 @@ namespace Smart.Mapper.Mappers
                         EmitLoadField(field);
                         EmitStackSourceArgument();
                         EmitStackDestinationArgument();
-                        EmitCallFieldMethod(field, "Invoke");
+                        EmitCallFuncFieldMethod(field);
                         break;
                     case ActionType.ActionContext:
                         EmitLoadField(field);
                         EmitStackSourceArgument();
                         EmitStackDestinationArgument();
                         EmitStackContextArgument();
-                        EmitCallFieldMethod(field, "Invoke");
+                        EmitCallFuncFieldMethod(field);
                         break;
                     case ActionType.Interface:
                     case ActionType.InterfaceType:
@@ -263,7 +263,7 @@ namespace Smart.Mapper.Mappers
                         EmitStackSourceArgument();
                         EmitStackDestinationArgument();
                         EmitStackContextArgument();
-                        EmitCallFieldMethod(field, "Process");
+                        EmitCallInterfaceFieldMethod(field, "Process");
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported action map. type=[{field.FieldType}]");
@@ -305,7 +305,7 @@ namespace Smart.Mapper.Mappers
                     EmitLoadField(field);
                     EmitStackSourceMember(member);
                     EmitStackParameter();
-                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    EmitCallFuncFieldMethod(field);
                 }
                 else
                 {
@@ -620,20 +620,20 @@ namespace Smart.Mapper.Mappers
                 case ConditionType.FuncSource:
                     EmitLoadField(field);
                     EmitStackSourceArgument();
-                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    EmitCallFuncFieldMethod(field);
                     break;
                 case ConditionType.FuncSourceContext:
                     EmitLoadField(field);
                     EmitStackSourceArgument();
                     EmitStackContextArgument();
-                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    EmitCallFuncFieldMethod(field);
                     break;
                 case ConditionType.FuncSourceDestinationContext:
                     EmitLoadField(field);
                     EmitStackSourceArgument();
                     EmitStackDestinationArgument();
                     EmitStackContextArgument();
-                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Invoke")!);
+                    EmitCallFuncFieldMethod(field);
                     break;
                 case ConditionType.Interface:
                 case ConditionType.InterfaceType:
@@ -641,7 +641,7 @@ namespace Smart.Mapper.Mappers
                     EmitStackSourceArgument();
                     EmitStackDestinationArgument();
                     EmitStackContextArgument();
-                    ilGenerator.EmitCallMethod(field.FieldType.GetMethod("Eval")!);
+                    EmitCallInterfaceFieldMethod(field, "Eval");
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported condition type. type=[{member.Condition.Type}]");
@@ -674,14 +674,14 @@ namespace Smart.Mapper.Mappers
                     var lazyFuncField = holder.GetProviderField(member.No);
                     EmitLoadField(lazyFuncField);
                     EmitStackSourceArgument();
-                    EmitCallFieldMethod(lazyFuncField, "Invoke");
+                    EmitCallFuncFieldMethod(lazyFuncField);
                     break;
                 case FromType.Func:
                     var funcField = holder.GetProviderField(member.No);
                     EmitLoadField(funcField);
                     EmitStackSourceArgument();
                     EmitStackDestinationArgument();
-                    EmitCallFieldMethod(funcField, "Invoke");
+                    EmitCallFuncFieldMethod(funcField);
                     break;
                 case FromType.FuncContext:
                     var funcContextField = holder.GetProviderField(member.No);
@@ -689,7 +689,7 @@ namespace Smart.Mapper.Mappers
                     EmitStackSourceArgument();
                     EmitStackDestinationArgument();
                     EmitStackContextArgument();
-                    EmitCallFieldMethod(funcContextField, "Invoke");
+                    EmitCallFuncFieldMethod(funcContextField);
                     break;
                 case FromType.Interface:
                 case FromType.InterfaceType:
@@ -698,7 +698,7 @@ namespace Smart.Mapper.Mappers
                     EmitStackSourceArgument();
                     EmitStackDestinationArgument();
                     EmitStackContextArgument();
-                    EmitCallFieldMethod(interfaceField, "Provide");
+                    EmitCallInterfaceFieldMethod(interfaceField, "Provide");
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported map from type. type=[{member.MapFrom!.Type}]");
@@ -715,16 +715,16 @@ namespace Smart.Mapper.Mappers
             switch (member.Converter!.Type)
             {
                 case ConverterType.FuncSource:
-                    EmitCallFieldMethod(field, "Invoke");
+                    EmitCallFuncFieldMethod(field);
                     break;
                 case ConverterType.FuncSourceContext:
                     EmitStackContextArgument();
-                    EmitCallFieldMethod(field, "Invoke");
+                    EmitCallFuncFieldMethod(field);
                     break;
                 case ConverterType.Interface:
                 case ConverterType.InterfaceType:
                     EmitStackContextArgument();
-                    EmitCallFieldMethod(field, "Convert");
+                    EmitCallInterfaceFieldMethod(field, "Convert");
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported converter. type=[{member.Converter.Type}]");
@@ -963,9 +963,14 @@ namespace Smart.Mapper.Mappers
             ilGenerator.Emit(OpCodes.Ldfld, field);
         }
 
-        private void EmitCallFieldMethod(FieldInfo field, string name)
+        private void EmitCallFuncFieldMethod(FieldInfo field)
         {
-            ilGenerator.EmitCallMethod(field.FieldType.GetMethod(name)!);
+            ilGenerator.Emit(OpCodes.Call, field.FieldType.GetMethod("Invoke")!);
+        }
+
+        private void EmitCallInterfaceFieldMethod(FieldInfo field, string name)
+        {
+            ilGenerator.Emit(OpCodes.Callvirt, field.FieldType.GetMethod(name)!);
         }
 
         private void EmitStackContextArgument()

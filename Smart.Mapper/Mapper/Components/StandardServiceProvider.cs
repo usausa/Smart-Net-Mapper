@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Components
+namespace Smart.Mapper.Components
 {
     using System;
 

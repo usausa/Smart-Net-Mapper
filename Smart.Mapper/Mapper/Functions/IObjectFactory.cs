@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions
 {
     public interface IObjectFactory<in TSource, out TDestination>
     {

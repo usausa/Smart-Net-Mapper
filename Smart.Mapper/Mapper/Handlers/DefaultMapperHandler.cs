@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Handlers
+namespace Smart.Mapper.Handlers
 {
     using System;
 

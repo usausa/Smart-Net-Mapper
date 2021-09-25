@@ -11,6 +11,7 @@ namespace Smart.Mapper
     using Smart.Mapper.Helpers;
     using Smart.Mapper.Mappers;
     using Smart.Mapper.Options;
+    using Smart.Mapper.Rules;
 
     public sealed class ObjectMapper : DisposableObject, INestedMapper
     {
@@ -19,6 +20,8 @@ namespace Smart.Mapper
         private readonly ComponentContainer components;
 
         private readonly IMissingHandler[] handlers;
+
+        private readonly IMappingRule[] rules;
 
         private readonly IMapperFactory factory;
 
@@ -33,13 +36,15 @@ namespace Smart.Mapper
         internal ObjectMapper(MapperConfig config)
         {
             components = config.GetComponentContainer();
+
+            handlers = components.GetAll<IMissingHandler>().OrderByDescending(x => x.Priority).ToArray();
+            rules = components.GetAll<IMappingRule>().ToArray();
+            factory = components.Get<IMapperFactory>();
+
             defaultOption = config.GetDefaultOption();
             mapperOptions = config.GetEntries().ToDictionary(
                 x => (x.Profile, x.Option.SourceType, x.Option.DestinationType),
                 x => x.Option);
-
-            handlers = components.GetAll<IMissingHandler>().OrderByDescending(x => x.Priority).ToArray();
-            factory = components.Get<IMapperFactory>();
         }
 
         protected override void Dispose(bool disposing)
@@ -66,6 +71,15 @@ namespace Smart.Mapper
                     throw new InvalidOperationException(String.IsNullOrEmpty(profile)
                         ? $"Mapper not found. sourceType=[{sourceType}], destinationType=[{destinationType}]"
                         : $"Mapper not found. profile=[{profile}], sourceType=[{sourceType}], destinationType=[{destinationType}]");
+                }
+
+                foreach (var rule in rules)
+                {
+                    rule.EditMapping(mapperOption);
+                    foreach (var memberOption in mapperOption.MemberOptions)
+                    {
+                        rule.EditMember(memberOption);
+                    }
                 }
 
                 return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, this));

@@ -6,6 +6,7 @@ namespace Smart.Mapper.Mappers
     using System.Reflection;
     using System.Reflection.Emit;
 
+    using Smart.Reflection;
     using Smart.Reflection.Emit;
 
     internal class EmitMapperBuilder
@@ -872,10 +873,15 @@ namespace Smart.Mapper.Mappers
             var baseDestinationType = underlyingDestinationType ?? destinationType;
             baseDestinationType = baseDestinationType.IsEnum ? Enum.GetUnderlyingType(baseDestinationType) : baseDestinationType;
 
-            if ((baseDestinationType != baseSourceType) &&
-                !ilGenerator.EmitPrimitiveConvert(baseSourceType, baseDestinationType))
+            if (baseDestinationType != baseSourceType)
             {
-                return false;
+                var method = PrimitiveConvert.GetMethod(baseSourceType, baseDestinationType);
+                if (method is null)
+                {
+                    return false;
+                }
+
+                ilGenerator.Emit(OpCodes.Call, method);
             }
 
             // If destination is nullable, convert to nullable

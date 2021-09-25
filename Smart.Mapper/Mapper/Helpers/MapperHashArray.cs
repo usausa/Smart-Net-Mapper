@@ -11,7 +11,7 @@ namespace Smart.Mapper.Helpers
 
         private static readonly Node EmptyNode = new(typeof(EmptyKey), typeof(EmptyKey), default!);
 
-        private readonly object sync = new();
+        private readonly object sync;
 
         private readonly int initialSize;
 
@@ -25,8 +25,9 @@ namespace Smart.Mapper.Helpers
         // Constructor
         //--------------------------------------------------------------------------------
 
-        public MapperHashArray(int initialSize)
+        public MapperHashArray(object sync, int initialSize)
         {
+            this.sync = sync;
             this.initialSize = initialSize;
             nodes = CreateInitialTable(initialSize);
         }

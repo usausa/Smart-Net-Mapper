@@ -29,12 +29,15 @@ namespace Smart.Mapper
 
         private readonly Dictionary<(string?, Type, Type), MappingOption> mapperOptions;
 
-        private readonly MapperHashArray mapperCache = new(128);
+        private readonly MapperHashArray mapperCache;
 
-        private readonly ProfileMapperHashArray profileMapperCache = new(32);
+        private readonly ProfileMapperHashArray profileMapperCache;
 
         internal ObjectMapper(MapperConfig config)
         {
+            mapperCache = new MapperHashArray(sync, 128);
+            profileMapperCache = new ProfileMapperHashArray(sync, 32);
+
             components = config.GetComponentContainer();
 
             handlers = components.GetAll<IMissingHandler>().OrderByDescending(x => x.Priority).ToArray();
@@ -63,27 +66,24 @@ namespace Smart.Mapper
 
         private object CreateTypeInfo(string? profile, Type sourceType, Type destinationType)
         {
-            lock (sync)
+            var mapperOption = FindMappingOption(profile, sourceType, destinationType);
+            if (mapperOption is null)
             {
-                var mapperOption = FindMappingOption(profile, sourceType, destinationType);
-                if (mapperOption is null)
-                {
-                    throw new InvalidOperationException(String.IsNullOrEmpty(profile)
-                        ? $"Mapper not found. sourceType=[{sourceType}], destinationType=[{destinationType}]"
-                        : $"Mapper not found. profile=[{profile}], sourceType=[{sourceType}], destinationType=[{destinationType}]");
-                }
-
-                foreach (var rule in rules)
-                {
-                    rule.EditMapping(mapperOption);
-                    foreach (var memberOption in mapperOption.MemberOptions)
-                    {
-                        rule.EditMember(memberOption);
-                    }
-                }
-
-                return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, this));
+                throw new InvalidOperationException(String.IsNullOrEmpty(profile)
+                    ? $"Mapper not found. sourceType=[{sourceType}], destinationType=[{destinationType}]"
+                    : $"Mapper not found. profile=[{profile}], sourceType=[{sourceType}], destinationType=[{destinationType}]");
             }
+
+            foreach (var rule in rules)
+            {
+                rule.EditMapping(mapperOption);
+                foreach (var memberOption in mapperOption.MemberOptions)
+                {
+                    rule.EditMember(memberOption);
+                }
+            }
+
+            return factory.Create(new MapperCreateContext(sourceType, destinationType, defaultOption, mapperOption, this));
         }
 
         private MappingOption? FindMappingOption(string? profile, Type sourceType, Type destinationType)

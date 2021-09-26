@@ -58,9 +58,12 @@ namespace Smart.Mapper
         }
 
         public static MapperConfig AddIgnoreRule(this MapperConfig config, params string[] names) =>
-            config.AddRule(new IgnoreMemberRule(x => names.Any(name => x.Name == name)));
+            config.AddRule(new IgnoreRule(x => names.Any(name => x.Name == name)));
 
         public static MapperConfig AddIgnoreRule(this MapperConfig config, params Type[] types) =>
-            config.AddRule(new IgnoreMemberRule(x => types.Any(t => (x is PropertyInfo pi ? pi.PropertyType : ((FieldInfo)x).FieldType) == t)));
+            config.AddRule(new IgnoreRule(x => types.Any(t => (x is PropertyInfo pi ? pi.PropertyType : ((FieldInfo)x).FieldType) == t)));
+
+        public static MapperConfig AddNestedRule(this MapperConfig config, Func<MemberInfo, bool> predicate, string? profile = null) =>
+            config.AddRule(new NestedRule(predicate, profile));
     }
 }

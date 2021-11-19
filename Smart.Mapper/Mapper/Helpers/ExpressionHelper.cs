@@ -1,19 +1,18 @@
-namespace Smart.Mapper.Helpers
+namespace Smart.Mapper.Helpers;
+
+using System;
+using System.Linq.Expressions;
+using System.Reflection;
+
+internal static class ExpressionHelper
 {
-    using System;
-    using System.Linq.Expressions;
-    using System.Reflection;
-
-    internal static class ExpressionHelper
+    public static MemberInfo? GetMemberInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
     {
-        public static MemberInfo? GetMemberInfo<TSource, TMember>(Expression<Func<TSource, TMember>> expression)
+        if (expression.Body is MemberExpression memberExpression)
         {
-            if (expression.Body is MemberExpression memberExpression)
-            {
-                return memberExpression.Member;
-            }
-
-            return null;
+            return memberExpression.Member;
         }
+
+        return null;
     }
 }

@@ -1,59 +1,58 @@
-namespace Smart.Mapper
+namespace Smart.Mapper;
+
+using System;
+
+using Xunit;
+
+public class RuleTest
 {
-    using System;
+    //--------------------------------------------------------------------------------
+    // Order
+    //--------------------------------------------------------------------------------
 
-    using Xunit;
-
-    public class RuleTest
+    [Fact]
+    public void IgnoreRule1()
     {
-        //--------------------------------------------------------------------------------
-        // Order
-        //--------------------------------------------------------------------------------
+        var config = new MapperConfig()
+            .AddIgnoreRule(nameof(Source.DateTime));
+        config.CreateMap<Source, Destination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void IgnoreRule1()
-        {
-            var config = new MapperConfig()
-                .AddIgnoreRule(nameof(Source.DateTime));
-            config.CreateMap<Source, Destination>();
-            using var mapper = config.ToMapper();
+        var destination = mapper.Map<Source, Destination>(new Source { Value = 1, DateTime = new DateTime(2000, 12, 31, 23, 59, 59) });
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, DateTime = new DateTime(2000, 12, 31, 23, 59, 59) });
+        Assert.Equal(1, destination.Value);
+        Assert.Equal(default, destination.DateTime);
+    }
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(default, destination.DateTime);
-        }
+    [Fact]
+    public void IgnoreByForAllMember()
+    {
+        var config = new MapperConfig()
+            .AddIgnoreRule(typeof(DateTime));
+        config.CreateMap<Source, Destination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void IgnoreByForAllMember()
-        {
-            var config = new MapperConfig()
-                .AddIgnoreRule(typeof(DateTime));
-            config.CreateMap<Source, Destination>();
-            using var mapper = config.ToMapper();
+        var destination = mapper.Map<Source, Destination>(new Source { Value = 1, DateTime = new DateTime(2000, 12, 31, 23, 59, 59) });
 
-            var destination = mapper.Map<Source, Destination>(new Source { Value = 1, DateTime = new DateTime(2000, 12, 31, 23, 59, 59) });
+        Assert.Equal(1, destination.Value);
+        Assert.Equal(default, destination.DateTime);
+    }
 
-            Assert.Equal(1, destination.Value);
-            Assert.Equal(default, destination.DateTime);
-        }
+    //--------------------------------------------------------------------------------
+    // Data
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Data
-        //--------------------------------------------------------------------------------
+    public class Source
+    {
+        public int Value { get; set; }
 
-        public class Source
-        {
-            public int Value { get; set; }
+        public DateTime DateTime { get; set; }
+    }
 
-            public DateTime DateTime { get; set; }
-        }
+    public class Destination
+    {
+        public int Value { get; set; }
 
-        public class Destination
-        {
-            public int Value { get; set; }
-
-            public DateTime DateTime { get; set; }
-        }
+        public DateTime DateTime { get; set; }
     }
 }

@@ -1,15 +1,14 @@
-namespace Smart.Mapper
+namespace Smart.Mapper;
+
+public sealed class ResolutionContext
 {
-    public sealed class ResolutionContext
+    public object? Parameter { get; }
+
+    public INestedMapper Mapper { get; }
+
+    public ResolutionContext(object? parameter, INestedMapper mapper)
     {
-        public object? Parameter { get; }
-
-        public INestedMapper Mapper { get; }
-
-        public ResolutionContext(object? parameter, INestedMapper mapper)
-        {
-            Parameter = parameter;
-            Mapper = mapper;
-        }
+        Parameter = parameter;
+        Mapper = mapper;
     }
 }

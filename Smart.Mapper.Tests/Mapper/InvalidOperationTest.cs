@@ -1,42 +1,41 @@
-namespace Smart.Mapper
+namespace Smart.Mapper;
+
+using System;
+
+using Xunit;
+
+public class InvalidOperationTest
 {
-    using System;
+    //--------------------------------------------------------------------------------
+    // Constructor
+    //--------------------------------------------------------------------------------
 
-    using Xunit;
-
-    public class InvalidOperationTest
+    [Fact]
+    public void NoDefaultConstructorDestinationIsNotSupported()
     {
-        //--------------------------------------------------------------------------------
-        // Constructor
-        //--------------------------------------------------------------------------------
+        var config = new MapperConfig();
+        config.CreateMap<Source, NoDefaultConstructorDestination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void NoDefaultConstructorDestinationIsNotSupported()
+        Assert.Throws<InvalidOperationException>(() =>
+            mapper.Map<Source, NoDefaultConstructorDestination>(new Source()));
+    }
+
+    //--------------------------------------------------------------------------------
+    // Data
+    //--------------------------------------------------------------------------------
+
+    public class Source
+    {
+    }
+
+    public class NoDefaultConstructorDestination
+    {
+        public int Value { get; set; }
+
+        public NoDefaultConstructorDestination(int value)
         {
-            var config = new MapperConfig();
-            config.CreateMap<Source, NoDefaultConstructorDestination>();
-            using var mapper = config.ToMapper();
-
-            Assert.Throws<InvalidOperationException>(() =>
-                mapper.Map<Source, NoDefaultConstructorDestination>(new Source()));
-        }
-
-        //--------------------------------------------------------------------------------
-        // Data
-        //--------------------------------------------------------------------------------
-
-        public class Source
-        {
-        }
-
-        public class NoDefaultConstructorDestination
-        {
-            public int Value { get; set; }
-
-            public NoDefaultConstructorDestination(int value)
-            {
-                Value = value;
-            }
+            Value = value;
         }
     }
 }

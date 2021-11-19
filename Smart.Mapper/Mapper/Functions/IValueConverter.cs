@@ -1,7 +1,6 @@
-namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions;
+
+public interface IValueConverter<in TSourceMember, out TDestinationMember>
 {
-    public interface IValueConverter<in TSourceMember, out TDestinationMember>
-    {
-        TDestinationMember Convert(TSourceMember value, ResolutionContext context);
-    }
+    TDestinationMember Convert(TSourceMember value, ResolutionContext context);
 }

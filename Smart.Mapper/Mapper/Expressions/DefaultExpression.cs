@@ -1,82 +1,81 @@
-namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions;
+
+using System;
+
+using Smart.Mapper.Functions;
+using Smart.Mapper.Options;
+
+internal class DefaultExpression : IDefaultExpression
 {
-    using System;
+    private readonly DefaultOption defaultOption;
 
-    using Smart.Mapper.Functions;
-    using Smart.Mapper.Options;
-
-    internal class DefaultExpression : IDefaultExpression
+    public DefaultExpression(DefaultOption defaultOption)
     {
-        private readonly DefaultOption defaultOption;
+        this.defaultOption = defaultOption;
+    }
 
-        public DefaultExpression(DefaultOption defaultOption)
-        {
-            this.defaultOption = defaultOption;
-        }
+    //--------------------------------------------------------------------------------
+    // Factory
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Factory
-        //--------------------------------------------------------------------------------
+    public IDefaultExpression FactoryUsingServiceProvider()
+    {
+        defaultOption.SetFactoryUseServiceProvider();
+        return this;
+    }
 
-        public IDefaultExpression FactoryUsingServiceProvider()
-        {
-            defaultOption.SetFactoryUseServiceProvider();
-            return this;
-        }
+    public IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory)
+    {
+        defaultOption.SetFactory(factory);
+        return this;
+    }
 
-        public IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory)
-        {
-            defaultOption.SetFactory(factory);
-            return this;
-        }
+    //--------------------------------------------------------------------------------
+    // Converter
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Converter
-        //--------------------------------------------------------------------------------
+    public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter)
+    {
+        defaultOption.SetConverter(converter);
+        return this;
+    }
 
-        public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter)
-        {
-            defaultOption.SetConverter(converter);
-            return this;
-        }
+    public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter)
+    {
+        defaultOption.SetConverter(converter);
+        return this;
+    }
 
-        public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter)
-        {
-            defaultOption.SetConverter(converter);
-            return this;
-        }
+    public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter)
+    {
+        defaultOption.SetConverter(converter);
+        return this;
+    }
 
-        public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter)
-        {
-            defaultOption.SetConverter(converter);
-            return this;
-        }
+    public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+        where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>
+    {
+        defaultOption.SetConverter<TSourceMember, TDestinationMember, TValueConverter>();
+        return this;
+    }
 
-        public IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>
-        {
-            defaultOption.SetConverter<TSourceMember, TDestinationMember, TValueConverter>();
-            return this;
-        }
+    //--------------------------------------------------------------------------------
+    // Constant
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Constant
-        //--------------------------------------------------------------------------------
+    public IDefaultExpression Const<TMember>(TMember value)
+    {
+        defaultOption.SetConstValue(value);
+        return this;
+    }
 
-        public IDefaultExpression Const<TMember>(TMember value)
-        {
-            defaultOption.SetConstValue(value);
-            return this;
-        }
+    //--------------------------------------------------------------------------------
+    // Null
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Null
-        //--------------------------------------------------------------------------------
-
-        public IDefaultExpression NullIf<TMember>(TMember value)
-        {
-            defaultOption.SetNullIfValue(value);
-            return this;
-        }
+    public IDefaultExpression NullIf<TMember>(TMember value)
+    {
+        defaultOption.SetNullIfValue(value);
+        return this;
     }
 }

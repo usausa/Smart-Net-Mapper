@@ -1,32 +1,31 @@
-namespace Smart.Mapper.Rules
+namespace Smart.Mapper.Rules;
+
+using System;
+using System.Reflection;
+
+using Smart.Mapper.Options;
+
+public sealed class NestedRule : IMappingRule
 {
-    using System;
-    using System.Reflection;
+    private readonly Func<MemberInfo, bool> predicate;
 
-    using Smart.Mapper.Options;
+    private readonly string? profile;
 
-    public sealed class NestedRule : IMappingRule
+    public NestedRule(Func<MemberInfo, bool> predicate, string? profile)
     {
-        private readonly Func<MemberInfo, bool> predicate;
+        this.predicate = predicate;
+        this.profile = profile;
+    }
 
-        private readonly string? profile;
+    public void EditMapping(MappingOption option)
+    {
+    }
 
-        public NestedRule(Func<MemberInfo, bool> predicate, string? profile)
+    public void EditMember(MemberOption option)
+    {
+        if (predicate(option.Member))
         {
-            this.predicate = predicate;
-            this.profile = profile;
-        }
-
-        public void EditMapping(MappingOption option)
-        {
-        }
-
-        public void EditMember(MemberOption option)
-        {
-            if (predicate(option.Member))
-            {
-                option.SetNested(profile);
-            }
+            option.SetNested(profile);
         }
     }
 }

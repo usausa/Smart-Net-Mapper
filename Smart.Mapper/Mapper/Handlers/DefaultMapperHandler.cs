@@ -1,16 +1,15 @@
-namespace Smart.Mapper.Handlers
+namespace Smart.Mapper.Handlers;
+
+using System;
+
+using Smart.Mapper.Options;
+
+public sealed class DefaultMapperHandler : IMissingHandler
 {
-    using System;
+    public int Priority { get; set; } = Int32.MinValue;
 
-    using Smart.Mapper.Options;
-
-    public sealed class DefaultMapperHandler : IMissingHandler
+    public MappingOption Handle(Type sourceType, Type destinationType)
     {
-        public int Priority { get; set; } = Int32.MinValue;
-
-        public MappingOption Handle(Type sourceType, Type destinationType)
-        {
-            return new(sourceType, destinationType);
-        }
+        return new(sourceType, destinationType);
     }
 }

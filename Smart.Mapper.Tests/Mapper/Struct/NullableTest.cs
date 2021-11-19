@@ -1,69 +1,68 @@
-namespace Smart.Mapper.Struct
+namespace Smart.Mapper.Struct;
+
+using Xunit;
+
+public class NullableTest
 {
-    using Xunit;
+    //--------------------------------------------------------------------------------
+    // Nested
+    //--------------------------------------------------------------------------------
 
-    public class NullableTest
+    [Fact]
+    public void StructToNullableByStructToStruct()
     {
-        //--------------------------------------------------------------------------------
-        // Nested
-        //--------------------------------------------------------------------------------
+        var config = new MapperConfig();
+        config.CreateMap<StructSource, StructDestination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void StructToNullableByStructToStruct()
-        {
-            var config = new MapperConfig();
-            config.CreateMap<StructSource, StructDestination>();
-            using var mapper = config.ToMapper();
+        var destination = mapper.Map<StructSource, StructDestination?>(new StructSource { IntValue = -1 });
 
-            var destination = mapper.Map<StructSource, StructDestination?>(new StructSource { IntValue = -1 });
+        Assert.Equal(-1, destination!.Value.IntValue);
+    }
 
-            Assert.Equal(-1, destination!.Value.IntValue);
-        }
+    [Fact]
+    public void NullableToStructByStructToStruct()
+    {
+        var config = new MapperConfig();
+        config.CreateMap<StructSource, StructDestination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void NullableToStructByStructToStruct()
-        {
-            var config = new MapperConfig();
-            config.CreateMap<StructSource, StructDestination>();
-            using var mapper = config.ToMapper();
+        var destination = mapper.Map<StructSource?, StructDestination>(new StructSource { IntValue = -1 });
 
-            var destination = mapper.Map<StructSource?, StructDestination>(new StructSource { IntValue = -1 });
+        Assert.Equal(-1, destination.IntValue);
 
-            Assert.Equal(-1, destination.IntValue);
+        var destination2 = mapper.Map<StructSource?, StructDestination>(null);
 
-            var destination2 = mapper.Map<StructSource?, StructDestination>(null);
+        Assert.Equal(0, destination2.IntValue);
+    }
 
-            Assert.Equal(0, destination2.IntValue);
-        }
+    [Fact]
+    public void NullableToNullableByStructToStruct()
+    {
+        var config = new MapperConfig();
+        config.CreateMap<StructSource, StructDestination>();
+        using var mapper = config.ToMapper();
 
-        [Fact]
-        public void NullableToNullableByStructToStruct()
-        {
-            var config = new MapperConfig();
-            config.CreateMap<StructSource, StructDestination>();
-            using var mapper = config.ToMapper();
+        var destination = mapper.Map<StructSource?, StructDestination?>(new StructSource { IntValue = -1 });
 
-            var destination = mapper.Map<StructSource?, StructDestination?>(new StructSource { IntValue = -1 });
+        Assert.Equal(-1, destination!.Value.IntValue);
 
-            Assert.Equal(-1, destination!.Value.IntValue);
+        var destination2 = mapper.Map<StructSource?, StructDestination?>(null);
 
-            var destination2 = mapper.Map<StructSource?, StructDestination?>(null);
+        Assert.Null(destination2);
+    }
 
-            Assert.Null(destination2);
-        }
+    //--------------------------------------------------------------------------------
+    // Data
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Data
-        //--------------------------------------------------------------------------------
+    public struct StructSource
+    {
+        public int IntValue { get; set; }
+    }
 
-        public struct StructSource
-        {
-            public int IntValue { get; set; }
-        }
-
-        public struct StructDestination
-        {
-            public int IntValue { get; set; }
-        }
+    public struct StructDestination
+    {
+        public int IntValue { get; set; }
     }
 }

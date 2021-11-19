@@ -1,42 +1,41 @@
-namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions;
+
+using System.Reflection;
+
+using Smart.Mapper.Options;
+
+public sealed class AllMemberExpression : IAllMemberExpression
 {
-    using System.Reflection;
+    private readonly MemberOption memberOption;
 
-    using Smart.Mapper.Options;
+    public MemberInfo DestinationMember => memberOption.Member;
 
-    public sealed class AllMemberExpression : IAllMemberExpression
+    public AllMemberExpression(MemberOption memberOption)
     {
-        private readonly MemberOption memberOption;
+        this.memberOption = memberOption;
+    }
 
-        public MemberInfo DestinationMember => memberOption.Member;
+    public IAllMemberExpression Ignore()
+    {
+        memberOption.SetIgnore();
+        return this;
+    }
 
-        public AllMemberExpression(MemberOption memberOption)
-        {
-            this.memberOption = memberOption;
-        }
+    public IAllMemberExpression Nested()
+    {
+        memberOption.SetNested(null);
+        return this;
+    }
 
-        public IAllMemberExpression Ignore()
-        {
-            memberOption.SetIgnore();
-            return this;
-        }
+    public IAllMemberExpression Nested(string profile)
+    {
+        memberOption.SetNested(profile);
+        return this;
+    }
 
-        public IAllMemberExpression Nested()
-        {
-            memberOption.SetNested(null);
-            return this;
-        }
-
-        public IAllMemberExpression Nested(string profile)
-        {
-            memberOption.SetNested(profile);
-            return this;
-        }
-
-        public IAllMemberExpression Order(int order)
-        {
-            memberOption.SetOrder(order);
-            return this;
-        }
+    public IAllMemberExpression Order(int order)
+    {
+        memberOption.SetOrder(order);
+        return this;
     }
 }

@@ -1,66 +1,65 @@
-namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions;
+
+using System;
+
+using Smart.Mapper.Functions;
+using Smart.Mapper.Options;
+
+internal class MappingDefaultExpression : IMappingDefaultExpression
 {
-    using System;
+    private readonly MappingOption mappingOption;
 
-    using Smart.Mapper.Functions;
-    using Smart.Mapper.Options;
-
-    internal class MappingDefaultExpression : IMappingDefaultExpression
+    public MappingDefaultExpression(MappingOption mappingOption)
     {
-        private readonly MappingOption mappingOption;
+        this.mappingOption = mappingOption;
+    }
 
-        public MappingDefaultExpression(MappingOption mappingOption)
-        {
-            this.mappingOption = mappingOption;
-        }
+    //--------------------------------------------------------------------------------
+    // Converter
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Converter
-        //--------------------------------------------------------------------------------
+    public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter)
+    {
+        mappingOption.SetConverter(converter);
+        return this;
+    }
 
-        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter)
-        {
-            mappingOption.SetConverter(converter);
-            return this;
-        }
+    public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter)
+    {
+        mappingOption.SetConverter(converter);
+        return this;
+    }
 
-        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter)
-        {
-            mappingOption.SetConverter(converter);
-            return this;
-        }
+    public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter)
+    {
+        mappingOption.SetConverter(converter);
+        return this;
+    }
 
-        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter)
-        {
-            mappingOption.SetConverter(converter);
-            return this;
-        }
+    public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+        where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>
+    {
+        mappingOption.SetConverter<TSourceMember, TDestinationMember, TValueConverter>();
+        return this;
+    }
 
-        public IMappingDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>
-        {
-            mappingOption.SetConverter<TSourceMember, TDestinationMember, TValueConverter>();
-            return this;
-        }
+    //--------------------------------------------------------------------------------
+    // Constant
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Constant
-        //--------------------------------------------------------------------------------
+    public IMappingDefaultExpression Const<TMember>(TMember value)
+    {
+        mappingOption.SetConstValue(value);
+        return this;
+    }
 
-        public IMappingDefaultExpression Const<TMember>(TMember value)
-        {
-            mappingOption.SetConstValue(value);
-            return this;
-        }
+    //--------------------------------------------------------------------------------
+    // Null
+    //--------------------------------------------------------------------------------
 
-        //--------------------------------------------------------------------------------
-        // Null
-        //--------------------------------------------------------------------------------
-
-        public IMappingDefaultExpression NullIf<TMember>(TMember value)
-        {
-            mappingOption.SetNullIfValue(value);
-            return this;
-        }
+    public IMappingDefaultExpression NullIf<TMember>(TMember value)
+    {
+        mappingOption.SetNullIfValue(value);
+        return this;
     }
 }

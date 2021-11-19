@@ -1,7 +1,6 @@
-namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions;
+
+public interface IObjectFactory<in TSource, out TDestination>
 {
-    public interface IObjectFactory<in TSource, out TDestination>
-    {
-        TDestination Create(TSource source, ResolutionContext context);
-    }
+    TDestination Create(TSource source, ResolutionContext context);
 }

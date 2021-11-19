@@ -1,7 +1,6 @@
-namespace Smart.Mapper.Functions
+namespace Smart.Mapper.Functions;
+
+public interface IValueProvider<in TSource, in TDestination, out TMember>
 {
-    public interface IValueProvider<in TSource, in TDestination, out TMember>
-    {
-        TMember Provide(TSource source, TDestination destination, ResolutionContext context);
-    }
+    TMember Provide(TSource source, TDestination destination, ResolutionContext context);
 }

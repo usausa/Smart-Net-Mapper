@@ -1,42 +1,41 @@
-namespace Smart.Mapper.Expressions
+namespace Smart.Mapper.Expressions;
+
+using System;
+
+using Smart.Mapper.Functions;
+
+public interface IDefaultExpression
 {
-    using System;
+    //--------------------------------------------------------------------------------
+    // Factory
+    //--------------------------------------------------------------------------------
 
-    using Smart.Mapper.Functions;
+    IDefaultExpression FactoryUsingServiceProvider();
 
-    public interface IDefaultExpression
-    {
-        //--------------------------------------------------------------------------------
-        // Factory
-        //--------------------------------------------------------------------------------
+    IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
 
-        IDefaultExpression FactoryUsingServiceProvider();
+    //--------------------------------------------------------------------------------
+    // Convert
+    //--------------------------------------------------------------------------------
 
-        IDefaultExpression FactoryUsing<TDestination>(Func<TDestination> factory);
+    IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
 
-        //--------------------------------------------------------------------------------
-        // Convert
-        //--------------------------------------------------------------------------------
+    IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter);
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> converter);
+    IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> converter);
+    IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
+        where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> converter);
+    //--------------------------------------------------------------------------------
+    // Constant
+    //--------------------------------------------------------------------------------
 
-        IDefaultExpression ConvertUsing<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember>;
+    IDefaultExpression Const<TMember>(TMember value);
 
-        //--------------------------------------------------------------------------------
-        // Constant
-        //--------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------
+    // Null
+    //--------------------------------------------------------------------------------
 
-        IDefaultExpression Const<TMember>(TMember value);
-
-        //--------------------------------------------------------------------------------
-        // Null
-        //--------------------------------------------------------------------------------
-
-        IDefaultExpression NullIf<TMember>(TMember value);
-    }
+    IDefaultExpression NullIf<TMember>(TMember value);
 }

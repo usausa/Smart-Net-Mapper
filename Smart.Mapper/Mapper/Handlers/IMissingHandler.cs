@@ -1,13 +1,12 @@
-namespace Smart.Mapper.Handlers
+namespace Smart.Mapper.Handlers;
+
+using System;
+
+using Smart.Mapper.Options;
+
+public interface IMissingHandler
 {
-    using System;
+    int Priority { get; }
 
-    using Smart.Mapper.Options;
-
-    public interface IMissingHandler
-    {
-        int Priority { get; }
-
-        MappingOption? Handle(Type sourceType, Type destinationType);
-    }
+    MappingOption? Handle(Type sourceType, Type destinationType);
 }

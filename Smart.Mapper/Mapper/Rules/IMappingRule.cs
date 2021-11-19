@@ -1,11 +1,10 @@
-namespace Smart.Mapper.Rules
+namespace Smart.Mapper.Rules;
+
+using Smart.Mapper.Options;
+
+public interface IMappingRule
 {
-    using Smart.Mapper.Options;
+    void EditMapping(MappingOption option);
 
-    public interface IMappingRule
-    {
-        void EditMapping(MappingOption option);
-
-        void EditMember(MemberOption option);
-    }
+    void EditMember(MemberOption option);
 }

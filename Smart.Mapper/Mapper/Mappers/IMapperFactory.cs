@@ -1,7 +1,6 @@
-namespace Smart.Mapper.Mappers
+namespace Smart.Mapper.Mappers;
+
+internal interface IMapperFactory
 {
-    internal interface IMapperFactory
-    {
-        object Create(MapperCreateContext context);
-    }
+    object Create(MapperCreateContext context);
 }

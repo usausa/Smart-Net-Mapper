@@ -1,29 +1,28 @@
-namespace Smart.Mapper.Rules
+namespace Smart.Mapper.Rules;
+
+using System;
+using System.Reflection;
+
+using Smart.Mapper.Options;
+
+public sealed class IgnoreRule : IMappingRule
 {
-    using System;
-    using System.Reflection;
+    private readonly Func<MemberInfo, bool> predicate;
 
-    using Smart.Mapper.Options;
-
-    public sealed class IgnoreRule : IMappingRule
+    public IgnoreRule(Func<MemberInfo, bool> predicate)
     {
-        private readonly Func<MemberInfo, bool> predicate;
+        this.predicate = predicate;
+    }
 
-        public IgnoreRule(Func<MemberInfo, bool> predicate)
-        {
-            this.predicate = predicate;
-        }
+    public void EditMapping(MappingOption option)
+    {
+    }
 
-        public void EditMapping(MappingOption option)
+    public void EditMember(MemberOption option)
+    {
+        if (predicate(option.Member))
         {
-        }
-
-        public void EditMember(MemberOption option)
-        {
-            if (predicate(option.Member))
-            {
-                option.SetIgnore();
-            }
+            option.SetIgnore();
         }
     }
 }

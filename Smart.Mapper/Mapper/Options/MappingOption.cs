@@ -1,209 +1,208 @@
-namespace Smart.Mapper.Options
+namespace Smart.Mapper.Options;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+
+using Smart.Mapper.Functions;
+using Smart.Mapper.Mappers;
+
+public class MappingOption
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
+    public Type SourceType { get; }
 
-    using Smart.Mapper.Functions;
-    using Smart.Mapper.Mappers;
+    public Type DestinationType { get; }
 
-    public class MappingOption
+    // Mapping
+
+    private bool factoryUseServiceProvider;
+
+    private TypeEntry<FactoryType>? factory;
+
+    private List<TypeEntry<ActionType>>? beforeMaps;
+
+    private List<TypeEntry<ActionType>>? afterMaps;
+
+    private Func<string, string?>? matcher;
+
+    // Default
+
+    private Dictionary<Tuple<Type, Type>, ConverterEntry>? converters;
+
+    private Dictionary<Type, object?>? constValues;
+
+    private Dictionary<Type, object?>? nullIfValues;
+
+    // Member
+
+    public IReadOnlyList<MemberOption> MemberOptions { get; }
+
+    public MappingOption(Type sourceType, Type destinationType)
     {
-        public Type SourceType { get; }
+        SourceType = sourceType;
+        DestinationType = destinationType;
+        MemberOptions = destinationType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(x => x.CanWrite)
+            .Cast<MemberInfo>()
+            .Concat(destinationType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            .Select(x => new MemberOption(x))
+            .ToArray();
+    }
 
-        public Type DestinationType { get; }
+    //--------------------------------------------------------------------------------
+    // Factory
+    //--------------------------------------------------------------------------------
 
-        // Mapping
+    public void SetFactoryUseServiceProvider() => factoryUseServiceProvider = true;
 
-        private bool factoryUseServiceProvider;
+    public void SetFactory<TDestination>(Func<TDestination> value) =>
+        factory = new TypeEntry<FactoryType>(FactoryType.FuncDestination, value);
 
-        private TypeEntry<FactoryType>? factory;
+    public void SetFactory<TSource, TDestination>(Func<TSource, TDestination> value) =>
+        factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceDestination, value);
 
-        private List<TypeEntry<ActionType>>? beforeMaps;
+    public void SetFactory<TSource, TDestination>(Func<TSource, ResolutionContext, TDestination> value) =>
+        factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceContextDestination, value);
 
-        private List<TypeEntry<ActionType>>? afterMaps;
+    public void SetFactory<TSource, TDestination>(IObjectFactory<TSource, TDestination> value) =>
+        factory = new TypeEntry<FactoryType>(FactoryType.Interface, value);
 
-        private Func<string, string?>? matcher;
+    public void SetFactory<TSource, TDestination, TObjectFactory>()
+        where TObjectFactory : IObjectFactory<TSource, TDestination> =>
+        factory = new TypeEntry<FactoryType>(FactoryType.InterfaceType, typeof(TObjectFactory));
 
-        // Default
+    //--------------------------------------------------------------------------------
+    // Pre/Post process
+    //--------------------------------------------------------------------------------
 
-        private Dictionary<Tuple<Type, Type>, ConverterEntry>? converters;
+    public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
+        AddBeforeMapInternal(ActionType.Action, action);
 
-        private Dictionary<Type, object?>? constValues;
+    public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
+        AddBeforeMapInternal(ActionType.ActionContext, action);
 
-        private Dictionary<Type, object?>? nullIfValues;
+    public void AddBeforeMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
+        AddBeforeMapInternal(ActionType.Interface, action);
 
-        // Member
+    public void AddBeforeMap<TSource, TDestination, TMappingAction>()
+        where TMappingAction : IMappingAction<TSource, TDestination> =>
+        AddBeforeMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
 
-        public IReadOnlyList<MemberOption> MemberOptions { get; }
+    private void AddBeforeMapInternal(ActionType type, object value)
+    {
+        beforeMaps ??= new List<TypeEntry<ActionType>>();
+        beforeMaps.Add(new TypeEntry<ActionType>(type, value));
+    }
 
-        public MappingOption(Type sourceType, Type destinationType)
+    public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
+        AddAfterMapInternal(ActionType.Action, action);
+
+    public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
+        AddAfterMapInternal(ActionType.ActionContext, action);
+
+    public void AddAfterMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
+        AddAfterMapInternal(ActionType.Interface, action);
+
+    public void AddAfterMap<TSource, TDestination, TMappingAction>()
+        where TMappingAction : IMappingAction<TSource, TDestination> =>
+        AddAfterMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
+
+    private void AddAfterMapInternal(ActionType type, object value)
+    {
+        afterMaps ??= new List<TypeEntry<ActionType>>();
+        afterMaps.Add(new TypeEntry<ActionType>(type, value));
+    }
+
+    //--------------------------------------------------------------------------------
+    // Match
+    //--------------------------------------------------------------------------------
+
+    public void SetMatcher(Func<string, string?> value) => matcher = value;
+
+    //--------------------------------------------------------------------------------
+    // Converter
+    //--------------------------------------------------------------------------------
+
+    public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> value) =>
+        SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.FuncSource, value);
+
+    public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> value) =>
+        SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.FuncSourceContext, value);
+
+    public void SetConverter<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> value) =>
+        SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.Interface, value);
+
+    public void SetConverter<TSourceMember, TDestinationMember, TValueConverter>()
+        where TValueConverter : IValueConverter<TSourceMember, TDestinationMember> =>
+        SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.InterfaceType, typeof(TValueConverter));
+
+    private void SetConverterInternal(Type sourceType, Type destinationType, ConverterType type, object value)
+    {
+        converters ??= new();
+        converters[Tuple.Create(sourceType, destinationType)] = new ConverterEntry(type, sourceType, destinationType, value);
+    }
+
+    //--------------------------------------------------------------------------------
+    // Constant
+    //--------------------------------------------------------------------------------
+
+    public void SetConstValue<TMember>(TMember value)
+    {
+        constValues ??= new Dictionary<Type, object?>();
+        constValues[typeof(TMember)] = value;
+    }
+
+    //--------------------------------------------------------------------------------
+    // Null
+    //--------------------------------------------------------------------------------
+
+    public void SetNullIfValue<TMember>(TMember value)
+    {
+        nullIfValues ??= new Dictionary<Type, object?>();
+        nullIfValues[typeof(TMember)] = value;
+    }
+
+    //--------------------------------------------------------------------------------
+    // Internal
+    //--------------------------------------------------------------------------------
+
+    internal bool IsFactoryUseServiceProvider() => factoryUseServiceProvider;
+
+    internal TypeEntry<FactoryType>? GetFactory() => factory;
+
+    internal IReadOnlyList<TypeEntry<ActionType>> GetBeforeMaps() => beforeMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
+
+    internal IReadOnlyList<TypeEntry<ActionType>> GetAfterMaps() => afterMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
+
+    internal Func<string, string?>? GetMatcher() => matcher;
+
+    // Default
+
+    internal ConverterEntry? GetConverter(Type sourceType, Type destinationType)
+    {
+        return (converters is not null) && converters.TryGetValue(Tuple.Create(sourceType, destinationType), out var entry) ? entry : null;
+    }
+
+    internal bool TryGetConstValue(Type type, out object? value)
+    {
+        if ((constValues is not null) && constValues.TryGetValue(type, out value))
         {
-            SourceType = sourceType;
-            DestinationType = destinationType;
-            MemberOptions = destinationType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(x => x.CanWrite)
-                .Cast<MemberInfo>()
-                .Concat(destinationType.GetFields(BindingFlags.Public | BindingFlags.Instance))
-                .Select(x => new MemberOption(x))
-                .ToArray();
+            return true;
         }
 
-        //--------------------------------------------------------------------------------
-        // Factory
-        //--------------------------------------------------------------------------------
+        value = null;
+        return false;
+    }
 
-        public void SetFactoryUseServiceProvider() => factoryUseServiceProvider = true;
-
-        public void SetFactory<TDestination>(Func<TDestination> value) =>
-            factory = new TypeEntry<FactoryType>(FactoryType.FuncDestination, value);
-
-        public void SetFactory<TSource, TDestination>(Func<TSource, TDestination> value) =>
-            factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceDestination, value);
-
-        public void SetFactory<TSource, TDestination>(Func<TSource, ResolutionContext, TDestination> value) =>
-            factory = new TypeEntry<FactoryType>(FactoryType.FuncSourceContextDestination, value);
-
-        public void SetFactory<TSource, TDestination>(IObjectFactory<TSource, TDestination> value) =>
-            factory = new TypeEntry<FactoryType>(FactoryType.Interface, value);
-
-        public void SetFactory<TSource, TDestination, TObjectFactory>()
-            where TObjectFactory : IObjectFactory<TSource, TDestination> =>
-            factory = new TypeEntry<FactoryType>(FactoryType.InterfaceType, typeof(TObjectFactory));
-
-        //--------------------------------------------------------------------------------
-        // Pre/Post process
-        //--------------------------------------------------------------------------------
-
-        public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
-            AddBeforeMapInternal(ActionType.Action, action);
-
-        public void AddBeforeMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
-            AddBeforeMapInternal(ActionType.ActionContext, action);
-
-        public void AddBeforeMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
-            AddBeforeMapInternal(ActionType.Interface, action);
-
-        public void AddBeforeMap<TSource, TDestination, TMappingAction>()
-            where TMappingAction : IMappingAction<TSource, TDestination> =>
-            AddBeforeMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
-
-        private void AddBeforeMapInternal(ActionType type, object value)
+    internal bool TryGetNullIfValue(Type type, out object? value)
+    {
+        if ((nullIfValues is not null) && nullIfValues.TryGetValue(type, out value))
         {
-            beforeMaps ??= new List<TypeEntry<ActionType>>();
-            beforeMaps.Add(new TypeEntry<ActionType>(type, value));
+            return true;
         }
 
-        public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination> action) =>
-            AddAfterMapInternal(ActionType.Action, action);
-
-        public void AddAfterMap<TSource, TDestination>(Action<TSource, TDestination, ResolutionContext> action) =>
-            AddAfterMapInternal(ActionType.ActionContext, action);
-
-        public void AddAfterMap<TSource, TDestination>(IMappingAction<TSource, TDestination> action) =>
-            AddAfterMapInternal(ActionType.Interface, action);
-
-        public void AddAfterMap<TSource, TDestination, TMappingAction>()
-            where TMappingAction : IMappingAction<TSource, TDestination> =>
-            AddAfterMapInternal(ActionType.InterfaceType, typeof(TMappingAction));
-
-        private void AddAfterMapInternal(ActionType type, object value)
-        {
-            afterMaps ??= new List<TypeEntry<ActionType>>();
-            afterMaps.Add(new TypeEntry<ActionType>(type, value));
-        }
-
-        //--------------------------------------------------------------------------------
-        // Match
-        //--------------------------------------------------------------------------------
-
-        public void SetMatcher(Func<string, string?> value) => matcher = value;
-
-        //--------------------------------------------------------------------------------
-        // Converter
-        //--------------------------------------------------------------------------------
-
-        public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, TDestinationMember> value) =>
-            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.FuncSource, value);
-
-        public void SetConverter<TSourceMember, TDestinationMember>(Func<TSourceMember, ResolutionContext, TDestinationMember> value) =>
-            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.FuncSourceContext, value);
-
-        public void SetConverter<TSourceMember, TDestinationMember>(IValueConverter<TSourceMember, TDestinationMember> value) =>
-            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.Interface, value);
-
-        public void SetConverter<TSourceMember, TDestinationMember, TValueConverter>()
-            where TValueConverter : IValueConverter<TSourceMember, TDestinationMember> =>
-            SetConverterInternal(typeof(TSourceMember), typeof(TDestinationMember), ConverterType.InterfaceType, typeof(TValueConverter));
-
-        private void SetConverterInternal(Type sourceType, Type destinationType, ConverterType type, object value)
-        {
-            converters ??= new();
-            converters[Tuple.Create(sourceType, destinationType)] = new ConverterEntry(type, sourceType, destinationType, value);
-        }
-
-        //--------------------------------------------------------------------------------
-        // Constant
-        //--------------------------------------------------------------------------------
-
-        public void SetConstValue<TMember>(TMember value)
-        {
-            constValues ??= new Dictionary<Type, object?>();
-            constValues[typeof(TMember)] = value;
-        }
-
-        //--------------------------------------------------------------------------------
-        // Null
-        //--------------------------------------------------------------------------------
-
-        public void SetNullIfValue<TMember>(TMember value)
-        {
-            nullIfValues ??= new Dictionary<Type, object?>();
-            nullIfValues[typeof(TMember)] = value;
-        }
-
-        //--------------------------------------------------------------------------------
-        // Internal
-        //--------------------------------------------------------------------------------
-
-        internal bool IsFactoryUseServiceProvider() => factoryUseServiceProvider;
-
-        internal TypeEntry<FactoryType>? GetFactory() => factory;
-
-        internal IReadOnlyList<TypeEntry<ActionType>> GetBeforeMaps() => beforeMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
-
-        internal IReadOnlyList<TypeEntry<ActionType>> GetAfterMaps() => afterMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
-
-        internal Func<string, string?>? GetMatcher() => matcher;
-
-        // Default
-
-        internal ConverterEntry? GetConverter(Type sourceType, Type destinationType)
-        {
-            return (converters is not null) && converters.TryGetValue(Tuple.Create(sourceType, destinationType), out var entry) ? entry : null;
-        }
-
-        internal bool TryGetConstValue(Type type, out object? value)
-        {
-            if ((constValues is not null) && constValues.TryGetValue(type, out value))
-            {
-                return true;
-            }
-
-            value = null;
-            return false;
-        }
-
-        internal bool TryGetNullIfValue(Type type, out object? value)
-        {
-            if ((nullIfValues is not null) && nullIfValues.TryGetValue(type, out value))
-            {
-                return true;
-            }
-
-            value = null;
-            return false;
-        }
+        value = null;
+        return false;
     }
 }

@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Mappers;
 
-using System;
-
 internal sealed class TypeEntry<T>
     where T : Enum
 {

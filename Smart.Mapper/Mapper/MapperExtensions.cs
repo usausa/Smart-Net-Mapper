@@ -1,6 +1,5 @@
 namespace Smart.Mapper;
 
-using System;
 using System.Reflection;
 
 using Smart.Linq;

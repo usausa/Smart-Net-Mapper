@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Struct;
 
-using System;
-
 using Xunit;
 
 public class StructConstTest

@@ -1,6 +1,5 @@
 namespace Smart.Mapper.Rules;
 
-using System;
 using System.Reflection;
 
 using Smart.Mapper.Options;

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net6.0;net5.0;netcoreapp3.1;netstandard2.1</TargetFrameworks>
@@ -8,9 +8,9 @@
 
   <PropertyGroup>
     <PackageId>Usa.Smart.Mapper</PackageId>
-    <Title>Smart.Mapper .NET</Title>
-    <Description>Smart mapper library for .NET</Description>
-    <Summary>Smart mapper library for .NET</Summary>
+    <Title>Smart.Mapper</Title>
+    <Description>Smart mapper library</Description>
+    <Summary>Smart mapper library</Summary>
     <PackageTags>smart mapper</PackageTags>
   </PropertyGroup>
 

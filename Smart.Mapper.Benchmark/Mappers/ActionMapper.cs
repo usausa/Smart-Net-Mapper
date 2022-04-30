@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Benchmark.Mappers;
 
-using System;
-
 public interface IActionMapper
 {
     object Map(object source);

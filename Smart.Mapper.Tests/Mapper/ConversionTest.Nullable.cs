@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using System;
-
 using Xunit;
 
 public partial class ConversionTest

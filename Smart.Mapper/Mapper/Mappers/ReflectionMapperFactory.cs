@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Mappers;
 
-using System;
-
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
 internal sealed class ReflectionMapperFactory : IMapperFactory
 {

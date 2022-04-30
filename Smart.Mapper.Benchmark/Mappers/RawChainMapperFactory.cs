@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Benchmark.Mappers;
 
-using System;
-
 public static class RawChainMapperFactory
 {
     public static IActionMapper<SingleSource, SingleDestination> CreateSingleMapper()

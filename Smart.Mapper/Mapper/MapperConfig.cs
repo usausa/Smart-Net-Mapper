@@ -1,8 +1,5 @@
 namespace Smart.Mapper;
 
-using System;
-using System.Collections.Generic;
-
 using Smart.ComponentModel;
 using Smart.Mapper.Components;
 using Smart.Mapper.Expressions;

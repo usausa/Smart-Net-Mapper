@@ -1,6 +1,5 @@
 namespace Smart.Mapper.Helpers;
 
-using System;
 using System.Linq.Expressions;
 using System.Reflection;
 

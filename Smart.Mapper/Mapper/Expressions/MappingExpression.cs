@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Expressions;
 
-using System;
-using System.Linq;
 using System.Linq.Expressions;
 
 using Smart.Mapper.Functions;

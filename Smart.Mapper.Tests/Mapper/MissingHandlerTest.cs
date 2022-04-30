@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using System;
-
 using Smart.Mapper.Handlers;
 
 using Xunit;

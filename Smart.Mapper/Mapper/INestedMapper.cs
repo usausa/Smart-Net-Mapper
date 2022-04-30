@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using System;
-
 public interface INestedMapper
 {
     Action<TSource, TDestination> GetMapperAction<TSource, TDestination>();

@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Benchmark;
 
-using System;
-
 // Single
 public class SingleSource
 {

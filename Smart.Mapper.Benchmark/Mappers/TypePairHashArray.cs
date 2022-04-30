@@ -1,10 +1,8 @@
 namespace Smart.Mapper.Benchmark.Mappers;
 
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 [DebuggerDisplay("{" + nameof(Diagnostics) + "}")]
 public sealed class TypePairHashArray<T>

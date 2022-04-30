@@ -1,8 +1,5 @@
 namespace Smart.Mapper.Benchmark;
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-
 using AutoMapper;
 
 using BenchmarkDotNet.Attributes;
@@ -47,8 +44,7 @@ public class MapperBenchmark
 {
     private const int N = 1000;
 
-    [AllowNull]
-    private IMapper autoMapper;
+    private IMapper autoMapper = default!;
 
     private readonly DirectMapper directMapper = new();
 
@@ -56,17 +52,13 @@ public class MapperBenchmark
 
     private readonly ActionMapperFactory rawActionMapperFactory = new();
 
-    [AllowNull]
-    private IActionMapper<SimpleSource, SimpleDestination> instantSimpleMapper;
+    private IActionMapper<SimpleSource, SimpleDestination> instantSimpleMapper = default!;
 
-    [AllowNull]
-    private IActionMapper<SimpleSource, SimpleDestination> rawSimpleMapper;
+    private IActionMapper<SimpleSource, SimpleDestination> rawSimpleMapper = default!;
 
-    [AllowNull]
-    private ObjectMapper smartMapper;
+    private ObjectMapper smartMapper = default!;
 
-    [AllowNull]
-    private Func<SimpleSource, SimpleDestination> smartSimpleMapper;
+    private Func<SimpleSource, SimpleDestination> smartSimpleMapper = default!;
 
     [GlobalSetup]
     public void Setup()

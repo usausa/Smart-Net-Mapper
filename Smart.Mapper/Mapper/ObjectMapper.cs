@@ -12,6 +12,10 @@ using Smart.Mapper.Rules;
 
 public sealed class ObjectMapper : DisposableObject, INestedMapper
 {
+    // ReSharper disable NotAccessedPositionalProperty.Local
+    private readonly record struct RecordKey(string? Profile, Type SourceType, Type DestinationType);
+    // ReSharper restore NotAccessedPositionalProperty.Local
+
     private readonly object sync = new();
 
     private readonly ComponentContainer components;
@@ -24,7 +28,7 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
 
     private readonly DefaultOption defaultOption;
 
-    private readonly Dictionary<(string?, Type, Type), MappingOption> mapperOptions;
+    private readonly Dictionary<RecordKey, MappingOption> mapperOptions;
 
     private readonly MapperHashArray mapperCache;
 
@@ -43,7 +47,7 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
 
         defaultOption = config.GetDefaultOption();
         mapperOptions = config.GetEntries().ToDictionary(
-            x => (x.Profile, x.Option.SourceType, x.Option.DestinationType),
+            x => new RecordKey(x.Profile, x.Option.SourceType, x.Option.DestinationType),
             x => x.Option);
     }
 
@@ -85,7 +89,7 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
 
     private MappingOption? FindMappingOption(string? profile, Type sourceType, Type destinationType)
     {
-        if (mapperOptions.TryGetValue((profile, sourceType, destinationType), out var mapperOption))
+        if (mapperOptions.TryGetValue(new RecordKey(profile, sourceType, destinationType), out var mapperOption))
         {
             return mapperOption;
         }
@@ -94,20 +98,20 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
         var destinationUnderlyingType = Nullable.GetUnderlyingType(destinationType);
 
         if ((destinationUnderlyingType is not null) &&
-            mapperOptions.TryGetValue((profile, sourceType, destinationUnderlyingType), out mapperOption))
+            mapperOptions.TryGetValue(new RecordKey(profile, sourceType, destinationUnderlyingType), out mapperOption))
         {
             return mapperOption;
         }
 
         if ((sourceUnderlyingType is not null) &&
-            mapperOptions.TryGetValue((profile, sourceUnderlyingType, destinationType), out mapperOption))
+            mapperOptions.TryGetValue(new RecordKey(profile, sourceUnderlyingType, destinationType), out mapperOption))
         {
             return mapperOption;
         }
 
         if ((sourceUnderlyingType is not null) &&
             (destinationUnderlyingType is not null) &&
-            mapperOptions.TryGetValue((profile, sourceUnderlyingType, destinationUnderlyingType), out mapperOption))
+            mapperOptions.TryGetValue(new RecordKey(profile, sourceUnderlyingType, destinationUnderlyingType), out mapperOption))
         {
             return mapperOption;
         }

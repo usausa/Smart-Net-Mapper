@@ -234,19 +234,15 @@ internal sealed class EmitHolderInfo
 
     private static object? ResolveProvider(IServiceProvider serviceProvider, FromTypeEntry entry)
     {
-        switch (entry.Type)
+        return entry.Type switch
         {
-            case FromType.LazyFunc:
-                return entry.Value.GetType().GetProperty("Value")!.GetValue(entry.Value);
-            case FromType.Func:
-            case FromType.FuncContext:
-            case FromType.Interface:
-                return entry.Value;
-            case FromType.InterfaceType:
-                return serviceProvider.GetService((Type)entry.Value)!;
-        }
-
-        return null;
+            FromType.LazyFunc => entry.Value.GetType().GetProperty("Value")!.GetValue(entry.Value),
+            FromType.Func => entry.Value,
+            FromType.FuncContext => entry.Value,
+            FromType.Interface => entry.Value,
+            FromType.InterfaceType => serviceProvider.GetService((Type)entry.Value)!,
+            _ => null
+        };
     }
 
     private static object ResolveNestedMapper(MapperCreateContext context, MemberMapping member, bool hasParameter)

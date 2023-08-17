@@ -108,8 +108,9 @@ internal sealed class EmitHolderInfo
         }
 
         // Create holder
-        var typeInfo = typeBuilder.CreateTypeInfo()!;
-        var holderType = typeInfo.AsType();
+        var typeInfo = typeBuilder.CreateTypeInfo();
+        // ReSharper disable once RedundantSuppressNullableWarningExpression <= net6.0
+        var holderType = typeInfo!.AsType();
         Instance = Activator.CreateInstance(holderType)!;
 
         // Mapper

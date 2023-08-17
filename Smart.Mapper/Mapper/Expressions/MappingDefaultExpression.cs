@@ -3,7 +3,7 @@ namespace Smart.Mapper.Expressions;
 using Smart.Mapper.Functions;
 using Smart.Mapper.Options;
 
-internal class MappingDefaultExpression : IMappingDefaultExpression
+internal sealed class MappingDefaultExpression : IMappingDefaultExpression
 {
     private readonly MappingOption mappingOption;
 

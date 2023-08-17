@@ -6,7 +6,7 @@ using System.Reflection.Emit;
 using Smart.Reflection;
 using Smart.Reflection.Emit;
 
-internal class EmitMapperBuilder
+internal sealed class EmitMapperBuilder
 {
     private readonly ILGenerator ilGenerator;
 

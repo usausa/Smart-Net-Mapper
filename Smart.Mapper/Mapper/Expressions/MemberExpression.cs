@@ -6,7 +6,7 @@ using System.Reflection;
 using Smart.Mapper.Functions;
 using Smart.Mapper.Options;
 
-internal class MemberExpression<TSource, TDestination, TMember> : IMemberExpression<TSource, TDestination, TMember>
+internal sealed class MemberExpression<TSource, TDestination, TMember> : IMemberExpression<TSource, TDestination, TMember>
 {
     private readonly MemberOption memberOption;
 

@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
-internal class EmitMapperFactory : IMapperFactory
+internal sealed class EmitMapperFactory : IMapperFactory
 {
     private readonly IServiceProvider serviceProvider;
 

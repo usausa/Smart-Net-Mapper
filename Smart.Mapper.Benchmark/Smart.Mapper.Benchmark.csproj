@@ -2,15 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <CodeAnalysisRuleSet>..\Smart.Mapper.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
-    <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.10" />
     <PackageReference Include="TinyMapper" Version="3.0.3" />
-    <PackageReference Include="Usa.Smart.Core" Version="2.2.0" />
+    <PackageReference Include="Usa.Smart.Core" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>

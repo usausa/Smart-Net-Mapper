@@ -10,7 +10,7 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Options;
 using Smart.Mapper.Rules;
 
-public sealed class ObjectMapper : DisposableObject, INestedMapper
+public sealed class SmartMapper : DisposableObject, INestedMapper
 {
     // ReSharper disable NotAccessedPositionalProperty.Local
     private readonly record struct RecordKey(string? Profile, Type SourceType, Type DestinationType);
@@ -34,21 +34,21 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
 
     private readonly ProfileMapperHashArray profileMapperCache;
 
-    internal ObjectMapper(MapperConfig config)
+    internal SmartMapper(MapperConfig config)
     {
         mapperCache = new MapperHashArray(sync, 128);
         profileMapperCache = new ProfileMapperHashArray(sync, 32);
 
         components = config.GetComponentContainer();
 
-        handlers = components.GetAll<IMissingHandler>().OrderByDescending(x => x.Priority).ToArray();
+        handlers = components.GetAll<IMissingHandler>().OrderByDescending(static x => x.Priority).ToArray();
         rules = components.GetAll<IMappingRule>().ToArray();
         factory = components.Get<IMapperFactory>();
 
         defaultOption = config.GetDefaultOption();
         mapperOptions = config.GetEntries().ToDictionary(
-            x => new RecordKey(x.Profile, x.Option.SourceType, x.Option.DestinationType),
-            x => x.Option);
+            static x => new RecordKey(x.Profile, x.Option.SourceType, x.Option.DestinationType),
+            static x => x.Option);
     }
 
     protected override void Dispose(bool disposing)
@@ -118,7 +118,7 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
 
         return handlers
             .Select(x => x.Handle(sourceType, destinationType))
-            .FirstOrDefault(x => x is not null);
+            .FirstOrDefault(static x => x is not null);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -138,7 +138,7 @@ public sealed class ObjectMapper : DisposableObject, INestedMapper
         if (!profileMapperCache.TryGetValue(profile, typeof(TSource), typeof(TDestination), out var info))
         {
             // ReSharper disable once ConvertClosureToMethodGroup
-            info = profileMapperCache.AddIfNotExist(profile, typeof(TSource), typeof(TDestination), (p, ts, td) => CreateTypeInfo(p, ts, td));
+            info = profileMapperCache.AddIfNotExist(profile, typeof(TSource), typeof(TDestination), CreateTypeInfo);
         }
 
         return (MapperInfo<TSource, TDestination>)info;

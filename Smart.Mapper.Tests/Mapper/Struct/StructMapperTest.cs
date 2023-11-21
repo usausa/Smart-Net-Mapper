@@ -8,7 +8,7 @@ public class StructMapperTest
     // Mapper
     //--------------------------------------------------------------------------------
 
-    private static ObjectMapper CreateMapper()
+    private static SmartMapper CreateMapper()
     {
         var config = new MapperConfig();
         config.CreateMap<Source, Destination>();

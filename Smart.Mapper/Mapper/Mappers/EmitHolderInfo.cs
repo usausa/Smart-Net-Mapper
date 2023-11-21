@@ -51,7 +51,7 @@ internal sealed class EmitHolderInfo
         }
 
         // Condition
-        var conditions = context.Members.Where(x => x.Condition is not null)
+        var conditions = context.Members.Where(static x => x.Condition is not null)
             .Select(x => new { Member = x, Condition = ResolveCondition(serviceProvider, x.Condition!) })
             .ToList();
         foreach (var condition in conditions)
@@ -60,13 +60,13 @@ internal sealed class EmitHolderInfo
         }
 
         // Const
-        foreach (var member in context.Members.Where(x => x.IsConst))
+        foreach (var member in context.Members.Where(static x => x.IsConst))
         {
             typeBuilder.DefineField($"constValue{member.No}", member.MemberType, FieldAttributes.Public);
         }
 
         // Provider
-        var providers = context.Members.Where(x => x.MapFrom is not null)
+        var providers = context.Members.Where(static x => x.MapFrom is not null)
             .Select(x => new { Member = x, Provider = ResolveProvider(serviceProvider, x.MapFrom!) })
             .Where(x => x.Provider is not null)
             .ToList();
@@ -76,7 +76,7 @@ internal sealed class EmitHolderInfo
         }
 
         // Nested
-        var nestedMappers = context.Members.Where(x => x.IsNested)
+        var nestedMappers = context.Members.Where(static x => x.IsNested)
             .Select(x => new { Member = x, Mapper = ResolveNestedMapper(context, x, false) })
             .ToList();
         foreach (var nestedMapper in nestedMappers)
@@ -84,7 +84,7 @@ internal sealed class EmitHolderInfo
             typeBuilder.DefineField($"nestedMapper{nestedMapper.Member.No}", nestedMapper.Mapper.GetType(), FieldAttributes.Public);
         }
 
-        var parameterNestedMappers = context.Members.Where(x => x.IsNested)
+        var parameterNestedMappers = context.Members.Where(static x => x.IsNested)
             .Select(x => new { Member = x, Mapper = ResolveNestedMapper(context, x, true) })
             .ToList();
         foreach (var nestedMapper in parameterNestedMappers)
@@ -93,7 +93,7 @@ internal sealed class EmitHolderInfo
         }
 
         // Converter
-        var converters = context.Members.Where(x => x.Converter is not null)
+        var converters = context.Members.Where(static x => x.Converter is not null)
             .Select(x => new { Member = x, Converter = ResolveConverter(serviceProvider, x.Converter!) })
             .ToList();
         foreach (var converter in converters)
@@ -148,7 +148,7 @@ internal sealed class EmitHolderInfo
         }
 
         // Const
-        foreach (var member in context.Members.Where(x => x.IsConst))
+        foreach (var member in context.Members.Where(static x => x.IsConst))
         {
             GetConstValueField(member.No).SetValue(Instance, member.ConstValue);
         }
@@ -177,7 +177,7 @@ internal sealed class EmitHolderInfo
         }
 
         // NullIf
-        foreach (var member in context.Members.Where(x => x.IsNullIf))
+        foreach (var member in context.Members.Where(static x => x.IsNullIf))
         {
             GetNullIfValueField(member.No).SetValue(Instance, member.NullIfValue);
         }
@@ -185,14 +185,14 @@ internal sealed class EmitHolderInfo
 
     private static bool IsDestinationParameterRequired(MapperCreateContext context)
     {
-        if (context.BeforeMaps.Any(x => x.Type.HasDestinationParameter()) ||
-            context.AfterMaps.Any(x => x.Type.HasDestinationParameter()))
+        if (context.BeforeMaps.Any(static x => x.Type.HasDestinationParameter()) ||
+            context.AfterMaps.Any(static x => x.Type.HasDestinationParameter()))
         {
             return true;
         }
 
-        return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
-                                        ((x.Condition is not null) && x.Condition.Type.HasDestinationParameter()));
+        return context.Members.Any(static x => ((x.MapFrom is not null) && x.MapFrom.Type.HasDestinationParameter()) ||
+                                               ((x.Condition is not null) && x.Condition.Type.HasDestinationParameter()));
     }
 
     private static bool IsContextRequired(MapperCreateContext context)
@@ -202,15 +202,15 @@ internal sealed class EmitHolderInfo
             return true;
         }
 
-        if (context.BeforeMaps.Any(x => x.Type.HasContext()) ||
-            context.AfterMaps.Any(x => x.Type.HasContext()))
+        if (context.BeforeMaps.Any(static x => x.Type.HasContext()) ||
+            context.AfterMaps.Any(static x => x.Type.HasContext()))
         {
             return true;
         }
 
-        return context.Members.Any(x => ((x.MapFrom is not null) && x.MapFrom.Type.HasContext()) ||
-                                        ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
-                                        ((x.Converter is not null) && x.Converter.Type.HasContext()));
+        return context.Members.Any(static x => ((x.MapFrom is not null) && x.MapFrom.Type.HasContext()) ||
+                                               ((x.Condition is not null) && x.Condition.Type.HasContext()) ||
+                                               ((x.Converter is not null) && x.Converter.Type.HasContext()));
     }
 
     //--------------------------------------------------------------------------------

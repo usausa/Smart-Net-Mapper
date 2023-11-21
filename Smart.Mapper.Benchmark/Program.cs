@@ -56,7 +56,7 @@ public class MapperBenchmark
 
     private IActionMapper<SimpleSource, SimpleDestination> rawSimpleMapper = default!;
 
-    private ObjectMapper smartMapper = default!;
+    private SmartMapper smartMapper = default!;
 
     private Func<SimpleSource, SimpleDestination> smartSimpleMapper = default!;
 

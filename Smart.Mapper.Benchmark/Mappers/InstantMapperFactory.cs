@@ -16,7 +16,7 @@ public static class InstantMapperFactory
         var actions = new List<Action<TSource, TDestination>>();
 
         var destinationProperties = destinationType.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .ToDictionary(x => x.Name, x => x, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(static x => x.Name, static x => x, StringComparer.OrdinalIgnoreCase);
         foreach (var sourcePi in sourceType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!destinationProperties.TryGetValue(sourcePi.Name, out var destinationPi))

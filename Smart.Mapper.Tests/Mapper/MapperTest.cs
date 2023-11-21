@@ -8,7 +8,7 @@ public class MapperTest
     // Mapper
     //--------------------------------------------------------------------------------
 
-    private static ObjectMapper CreateMapper()
+    private static SmartMapper CreateMapper()
     {
         var config = new MapperConfig();
         config.CreateMap<Source, Destination>();
@@ -129,7 +129,7 @@ public class MapperTest
 
     private const string Profile = "sub";
 
-    private static ObjectMapper CreateProfileMapper()
+    private static SmartMapper CreateProfileMapper()
     {
         var config = new MapperConfig();
         config.CreateMap<Source, Destination>(Profile);

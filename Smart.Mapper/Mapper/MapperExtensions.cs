@@ -12,12 +12,12 @@ public static class MapperExtensions
     // Config
     //--------------------------------------------------------------------------------
 
-    public static ObjectMapper ToMapper(this MapperConfig config) => new(config);
+    public static SmartMapper ToMapper(this MapperConfig config) => new(config);
 
     public static MapperConfig UseServiceProvider<TServiceProvider>(this MapperConfig config)
         where TServiceProvider : IServiceProvider
     {
-        config.Configure(c => c.Add<IServiceProvider, TServiceProvider>());
+        config.Configure(static c => c.Add<IServiceProvider, TServiceProvider>());
         return config;
     }
 
@@ -30,7 +30,7 @@ public static class MapperExtensions
     public static MapperConfig AddMissingHandler<TMissingHandler>(this MapperConfig config)
         where TMissingHandler : IMissingHandler
     {
-        config.Configure(c => c.Add<IMissingHandler, TMissingHandler>());
+        config.Configure(static c => c.Add<IMissingHandler, TMissingHandler>());
         return config;
     }
 
@@ -46,7 +46,7 @@ public static class MapperExtensions
     public static MapperConfig AddRule<TRule>(this MapperConfig config)
         where TRule : IMappingRule
     {
-        config.Configure(c => c.Add<IMappingRule, TRule>());
+        config.Configure(static c => c.Add<IMappingRule, TRule>());
         return config;
     }
 

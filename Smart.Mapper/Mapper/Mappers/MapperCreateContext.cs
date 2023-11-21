@@ -118,7 +118,7 @@ internal sealed class MapperCreateContext
         var matcher = mappingOption.GetMatcher() ?? DefaultMatcher;
 
         var members = new List<MemberMapping>();
-        foreach (var memberOption in this.mappingOption.MemberOptions.Where(x => !x.IsIgnore()).OrderBy(x => x.GetOrder()))
+        foreach (var memberOption in this.mappingOption.MemberOptions.Where(static x => !x.IsIgnore()).OrderBy(static x => x.GetOrder()))
         {
             bool isConst;
             object? constValue;

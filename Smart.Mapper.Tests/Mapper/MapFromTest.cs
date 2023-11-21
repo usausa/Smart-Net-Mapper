@@ -135,7 +135,7 @@ public class MapFromTest
     //--------------------------------------------------------------------------------
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1051:DoNotDeclareVisibleInstanceFields", Justification = "Ignore")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051:DoNotDeclareVisibleInstanceFields", Justification = "Ignore")]
     public class Source
     {
         public int Value { get; set; }

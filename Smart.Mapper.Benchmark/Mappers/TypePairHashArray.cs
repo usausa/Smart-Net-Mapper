@@ -179,7 +179,7 @@ public sealed class TypePairHashArray<T>
     // Public
     //--------------------------------------------------------------------------------
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1062:ValidateArgumentsOfPublicMethods", Justification = "Performance")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:ValidateArgumentsOfPublicMethods", Justification = "Performance")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(Type sourceType, Type targetType, [MaybeNullWhen(false)] out T converter)
     {
@@ -200,7 +200,7 @@ public sealed class TypePairHashArray<T>
         return false;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1062:ValidateArgumentsOfPublicMethods", Justification = "Performance")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:ValidateArgumentsOfPublicMethods", Justification = "Performance")]
     public T AddIfNotExist(Type sourceType, Type targetType, Func<Type, Type, T> valueFactory)
     {
         lock (sync)
@@ -229,7 +229,7 @@ public sealed class TypePairHashArray<T>
     // Inner
     //--------------------------------------------------------------------------------
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Framework only")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Framework only")]
     private sealed class EmptyKey
     {
     }

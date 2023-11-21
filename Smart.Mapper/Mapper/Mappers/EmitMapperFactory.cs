@@ -3,7 +3,7 @@ namespace Smart.Mapper.Mappers;
 using System.Reflection;
 using System.Reflection.Emit;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
 internal sealed class EmitMapperFactory : IMapperFactory
 {
     private readonly IServiceProvider serviceProvider;

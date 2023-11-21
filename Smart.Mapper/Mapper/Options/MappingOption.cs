@@ -40,10 +40,10 @@ public class MappingOption
         SourceType = sourceType;
         DestinationType = destinationType;
         MemberOptions = destinationType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(x => x.CanWrite)
+            .Where(static x => x.CanWrite)
             .Cast<MemberInfo>()
             .Concat(destinationType.GetFields(BindingFlags.Public | BindingFlags.Instance))
-            .Select(x => new MemberOption(x))
+            .Select(static x => new MemberOption(x))
             .ToArray();
     }
 

@@ -91,7 +91,7 @@ public sealed class DefaultOption
 
     internal ConverterEntry? GetConverter(Type sourceType, Type destinationType)
     {
-        return (converters ?? DefaultConverters.Entries).TryGetValue(Tuple.Create(sourceType, destinationType), out var entry) ? entry : null;
+        return (converters ?? DefaultConverters.Entries).GetValueOrDefault(Tuple.Create(sourceType, destinationType));
     }
 
     internal bool TryGetConstValue(Type type, out object? value)

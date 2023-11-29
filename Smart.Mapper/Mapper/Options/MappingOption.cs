@@ -88,7 +88,7 @@ public class MappingOption
 
     private void AddBeforeMapInternal(ActionType type, object value)
     {
-        beforeMaps ??= new List<TypeEntry<ActionType>>();
+        beforeMaps ??= [];
         beforeMaps.Add(new TypeEntry<ActionType>(type, value));
     }
 
@@ -107,7 +107,7 @@ public class MappingOption
 
     private void AddAfterMapInternal(ActionType type, object value)
     {
-        afterMaps ??= new List<TypeEntry<ActionType>>();
+        afterMaps ??= [];
         afterMaps.Add(new TypeEntry<ActionType>(type, value));
     }
 
@@ -136,7 +136,7 @@ public class MappingOption
 
     private void SetConverterInternal(Type sourceType, Type destinationType, ConverterType type, object value)
     {
-        converters ??= new();
+        converters ??= [];
         converters[Tuple.Create(sourceType, destinationType)] = new ConverterEntry(type, sourceType, destinationType, value);
     }
 
@@ -146,7 +146,7 @@ public class MappingOption
 
     public void SetConstValue<TMember>(TMember value)
     {
-        constValues ??= new Dictionary<Type, object?>();
+        constValues ??= [];
         constValues[typeof(TMember)] = value;
     }
 
@@ -156,7 +156,7 @@ public class MappingOption
 
     public void SetNullIfValue<TMember>(TMember value)
     {
-        nullIfValues ??= new Dictionary<Type, object?>();
+        nullIfValues ??= [];
         nullIfValues[typeof(TMember)] = value;
     }
 
@@ -168,9 +168,9 @@ public class MappingOption
 
     internal TypeEntry<FactoryType>? GetFactory() => factory;
 
-    internal IReadOnlyList<TypeEntry<ActionType>> GetBeforeMaps() => beforeMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
+    internal IReadOnlyList<TypeEntry<ActionType>> GetBeforeMaps() => beforeMaps ?? [];
 
-    internal IReadOnlyList<TypeEntry<ActionType>> GetAfterMaps() => afterMaps ?? (IReadOnlyList<TypeEntry<ActionType>>)Array.Empty<TypeEntry<ActionType>>();
+    internal IReadOnlyList<TypeEntry<ActionType>> GetAfterMaps() => afterMaps ?? [];
 
     internal Func<string, string?>? GetMatcher() => matcher;
 

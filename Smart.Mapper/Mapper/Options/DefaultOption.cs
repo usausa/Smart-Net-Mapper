@@ -26,7 +26,7 @@ public sealed class DefaultOption
 
     private void SetFactory(Type type, object value)
     {
-        factories ??= new Dictionary<Type, object>();
+        factories ??= [];
         factories[type] = value;
     }
 
@@ -59,7 +59,7 @@ public sealed class DefaultOption
 
     public void SetConstValue<TMember>(TMember value)
     {
-        constValues ??= new Dictionary<Type, object?>();
+        constValues ??= [];
         constValues[typeof(TMember)] = value;
     }
 
@@ -69,7 +69,7 @@ public sealed class DefaultOption
 
     public void SetNullIfValue<TMember>(TMember value)
     {
-        nullIfValues ??= new Dictionary<Type, object?>();
+        nullIfValues ??= [];
         nullIfValues[typeof(TMember)] = value;
     }
 

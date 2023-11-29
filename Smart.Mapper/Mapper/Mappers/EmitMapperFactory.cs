@@ -77,7 +77,7 @@ internal sealed class EmitMapperFactory : IMapperFactory
         var dynamicMethod = new DynamicMethod(
             "MapAction",
             typeof(void),
-            new[] { holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType },
+            [holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType],
             true);
         var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -97,7 +97,7 @@ internal sealed class EmitMapperFactory : IMapperFactory
         var dynamicMethod = new DynamicMethod(
             "ParameterMapAction",
             typeof(void),
-            new[] { holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType, typeof(object) },
+            [holder.Instance.GetType(), context.DelegateSourceType, context.DelegateDestinationType, typeof(object)],
             true);
         var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -118,7 +118,7 @@ internal sealed class EmitMapperFactory : IMapperFactory
         var dynamicMethod = new DynamicMethod(
             "MapFunc",
             context.DelegateDestinationType,
-            new[] { holder.Instance.GetType(), context.DelegateSourceType },
+            [holder.Instance.GetType(), context.DelegateSourceType],
             true);
         var ilGenerator = dynamicMethod.GetILGenerator();
 
@@ -138,7 +138,7 @@ internal sealed class EmitMapperFactory : IMapperFactory
         var dynamicMethod = new DynamicMethod(
             "MapFunc",
             context.DelegateDestinationType,
-            new[] { holder.Instance.GetType(), context.DelegateSourceType, typeof(object) },
+            [holder.Instance.GetType(), context.DelegateSourceType, typeof(object)],
             true);
         var ilGenerator = dynamicMethod.GetILGenerator();
 

@@ -10,7 +10,6 @@
     <PackageId>Usa.Smart.Mapper</PackageId>
     <Title>Smart.Mapper</Title>
     <Description>Smart mapper library</Description>
-    <Summary>Smart mapper library</Summary>
     <PackageTags>smart mapper</PackageTags>
   </PropertyGroup>
 

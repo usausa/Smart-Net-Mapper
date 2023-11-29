@@ -26,7 +26,7 @@ internal sealed class EmitMapperBuilder
     private LocalBuilder? destinationLocal;
     private LocalBuilder? contextLocal;
 
-    private readonly Dictionary<Type, LocalBuilder> workLocals = new();
+    private readonly Dictionary<Type, LocalBuilder> workLocals = [];
 
     public EmitMapperBuilder(
         ILGenerator ilGenerator,
@@ -140,7 +140,7 @@ internal sealed class EmitMapperBuilder
         {
             ilGenerator.Emit(hasParameter ? (isFunction ? OpCodes.Ldarg_2 : OpCodes.Ldarg_3) : OpCodes.Ldnull);
             EmitLoadField(holder.GetMapperField());
-            ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor(new[] { typeof(object), typeof(INestedMapper) })!);
+            ilGenerator.Emit(OpCodes.Newobj, typeof(ResolutionContext).GetConstructor([typeof(object), typeof(INestedMapper)])!);
             ilGenerator.EmitStloc(contextLocal);
         }
     }
@@ -158,7 +158,7 @@ internal sealed class EmitMapperBuilder
             EmitLoadField(field);
             ilGenerator.Emit(OpCodes.Ldtoken, context.MapDestinationType);
             ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))!);
-            var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), new[] { typeof(Type) })!;
+            var method = typeof(IServiceProvider).GetMethod(nameof(IServiceProvider.GetService), [typeof(Type)])!;
             ilGenerator.Emit(OpCodes.Callvirt, method);
             ilGenerator.EmitTypeConversion(context.MapDestinationType);
 
@@ -381,7 +381,7 @@ internal sealed class EmitMapperBuilder
             if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
             {
                 // Nullable convert required
-                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor([member.Converter.DestinationType])!);
             }
 
             ilGenerator.MarkLabel(setLabel);
@@ -488,7 +488,7 @@ internal sealed class EmitMapperBuilder
             if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
             {
                 // Nullable convert required
-                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor([member.Converter.DestinationType])!);
             }
 
             ilGenerator.MarkLabel(setLabel);
@@ -579,14 +579,14 @@ internal sealed class EmitMapperBuilder
             EmitStackSourceMember(member);
             if (Nullable.GetUnderlyingType(member.Converter.SourceType) == memberType)
             {
-                ilGenerator.Emit(OpCodes.Newobj, member.Converter.SourceType.GetConstructor(new[] { memberType })!);
+                ilGenerator.Emit(OpCodes.Newobj, member.Converter.SourceType.GetConstructor([memberType])!);
             }
             EmitInvokeConverter(member);
 
             if (member.Converter.DestinationType == Nullable.GetUnderlyingType(member.MemberType))
             {
                 // Nullable convert required
-                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor(new[] { member.Converter.DestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, member.MemberType.GetConstructor([member.Converter.DestinationType])!);
             }
         }
         else
@@ -751,7 +751,7 @@ internal sealed class EmitMapperBuilder
             if (opMethod is not null)
             {
                 ilGenerator.Emit(OpCodes.Call, opMethod);
-                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
                 return true;
             }
         }
@@ -779,7 +779,7 @@ internal sealed class EmitMapperBuilder
             {
                 ilGenerator.Emit(OpCodes.Ldloc, local);
                 ilGenerator.Emit(OpCodes.Call, opMethod);
-                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
                 return true;
             }
         }
@@ -805,7 +805,7 @@ internal sealed class EmitMapperBuilder
             if (opMethod is not null)
             {
                 ilGenerator.Emit(OpCodes.Call, opMethod);
-                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
                 return true;
             }
         }
@@ -831,7 +831,7 @@ internal sealed class EmitMapperBuilder
             if (opMethod is not null)
             {
                 ilGenerator.Emit(OpCodes.Call, opMethod);
-                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
                 return true;
             }
         }
@@ -841,7 +841,7 @@ internal sealed class EmitMapperBuilder
         opMethod = FindConversionOperator(nullableSourceType, destinationType, true);
         if (opMethod is not null)
         {
-            ilGenerator.Emit(OpCodes.Newobj, nullableSourceType.GetConstructor(new[] { sourceType })!);
+            ilGenerator.Emit(OpCodes.Newobj, nullableSourceType.GetConstructor([sourceType])!);
             ilGenerator.Emit(OpCodes.Call, opMethod);
             return true;
         }
@@ -852,9 +852,9 @@ internal sealed class EmitMapperBuilder
             opMethod = FindConversionOperator(nullableSourceType, underlyingDestinationType, true);
             if (opMethod is not null)
             {
-                ilGenerator.Emit(OpCodes.Newobj, nullableSourceType.GetConstructor(new[] { sourceType })!);
+                ilGenerator.Emit(OpCodes.Newobj, nullableSourceType.GetConstructor([sourceType])!);
                 ilGenerator.Emit(OpCodes.Call, opMethod);
-                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
                 return true;
             }
         }
@@ -884,7 +884,7 @@ internal sealed class EmitMapperBuilder
         // If destination is nullable, convert to nullable
         if (underlyingDestinationType is not null)
         {
-            ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor(new[] { underlyingDestinationType })!);
+            ilGenerator.Emit(OpCodes.Newobj, destinationType.GetConstructor([underlyingDestinationType])!);
         }
 
         return true;
@@ -938,7 +938,7 @@ internal sealed class EmitMapperBuilder
 
             if (Nullable.GetUnderlyingType(context.DelegateDestinationType) == context.MapDestinationType)
             {
-                ilGenerator.Emit(OpCodes.Newobj, context.DelegateDestinationType.GetConstructor(new[] { context.MapDestinationType })!);
+                ilGenerator.Emit(OpCodes.Newobj, context.DelegateDestinationType.GetConstructor([context.MapDestinationType])!);
             }
         }
 

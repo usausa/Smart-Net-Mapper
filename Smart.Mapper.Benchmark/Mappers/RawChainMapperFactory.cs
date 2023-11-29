@@ -6,18 +6,16 @@ public static class RawChainMapperFactory
     {
         return new ActionMapper<SingleSource, SingleDestination>(
             static () => new SingleDestination(),
-            new Action<SingleSource, SingleDestination>[]
-            {
+            [
                 static (s, d) => d.Value = s.Value
-            });
+            ]);
     }
 
     public static IActionMapper<SimpleSource, SimpleDestination> CreateSimpleMapper()
     {
         return new ActionMapper<SimpleSource, SimpleDestination>(
             static () => new SimpleDestination(),
-            new Action<SimpleSource, SimpleDestination>[]
-            {
+            [
                 static (s, d) => d.Value1 = s.Value1,
                 static (s, d) => d.Value2 = s.Value2,
                 static (s, d) => d.Value3 = s.Value3,
@@ -26,15 +24,14 @@ public static class RawChainMapperFactory
                 static (s, d) => d.Value6 = s.Value6,
                 static (s, d) => d.Value7 = s.Value7,
                 static (s, d) => d.Value8 = s.Value8
-            });
+            ]);
     }
 
     public static IActionMapper<MixedSource, MixedDestination> CreateMixedMapper()
     {
         return new ActionMapper<MixedSource, MixedDestination>(
             static () => new MixedDestination(),
-            new Action<MixedSource, MixedDestination>[]
-            {
+            [
                 static (s, d) => d.StringValue = s.StringValue,
                 static (s, d) => d.IntValue = s.IntValue,
                 static (s, d) => d.LongValue = s.LongValue,
@@ -43,6 +40,6 @@ public static class RawChainMapperFactory
                 static (s, d) => d.DateTimeValue = s.DateTimeValue,
                 static (s, d) => d.BoolValue = s.BoolValue,
                 static (s, d) => d.EnumValue = s.EnumValue
-            });
+            ]);
     }
 }

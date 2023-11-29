@@ -13,7 +13,7 @@ public sealed class MapperConfig
 
     private readonly DefaultOption defaultOption = new();
 
-    private readonly List<MapperEntry> entries = new();
+    private readonly List<MapperEntry> entries = [];
 
     public MapperConfig()
     {

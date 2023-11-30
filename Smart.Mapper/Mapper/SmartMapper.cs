@@ -41,7 +41,7 @@ public sealed class SmartMapper : DisposableObject, INestedMapper
 
         components = config.GetComponentContainer();
 
-        handlers = [.. components.GetAll<IMissingHandler>().OrderByDescending(static x => x.Priority)];
+        handlers = components.GetAll<IMissingHandler>().OrderByDescending(static x => x.Priority).ToArray();
         rules = components.GetAll<IMappingRule>().ToArray();
         factory = components.Get<IMapperFactory>();
 

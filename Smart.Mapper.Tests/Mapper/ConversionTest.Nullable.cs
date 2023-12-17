@@ -1,6 +1,6 @@
 namespace Smart.Mapper;
 
-public partial class ConversionTest
+public sealed partial class ConversionTest
 {
     //--------------------------------------------------------------------------------
     // Same

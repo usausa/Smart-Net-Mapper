@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class NullGuardTest
+public sealed class NullGuardTest
 {
     //--------------------------------------------------------------------------------
     // Class
@@ -108,11 +106,11 @@ public class NullGuardTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
     }
 
-    public class Destination
+    public sealed class Destination
     {
     }
 

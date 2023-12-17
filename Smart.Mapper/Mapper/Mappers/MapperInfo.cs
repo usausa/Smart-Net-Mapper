@@ -1,8 +1,7 @@
 namespace Smart.Mapper.Mappers;
 
-#pragma warning disable 0649
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
+#pragma warning disable SA1401
+#pragma warning disable CA1812
 internal sealed class MapperInfo<TSource, TDestination>
 {
     public Action<TSource, TDestination> MapAction = default!;
@@ -13,4 +12,5 @@ internal sealed class MapperInfo<TSource, TDestination>
 
     public Func<TSource, object?, TDestination> ParameterMapFunc = default!;
 }
-#pragma warning restore 0649
+#pragma warning restore CA1812
+#pragma warning restore SA1401

@@ -2,9 +2,7 @@ namespace Smart.Mapper.Struct;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class StructMappingActionTest
+public sealed class StructMappingActionTest
 {
     //--------------------------------------------------------------------------------
     // BeforeMap
@@ -175,11 +173,9 @@ public class StructMappingActionTest
 
     public sealed class CustomMappingAction : IMappingAction<Source, Destination>
     {
-#pragma warning disable CA1508
         public void Process(Source source, Destination destination, ResolutionContext context)
         {
             destination.ValueDestinationOnly = (int?)context.Parameter ?? source.ValueSourceOnly;
         }
-#pragma warning restore CA1508
     }
 }

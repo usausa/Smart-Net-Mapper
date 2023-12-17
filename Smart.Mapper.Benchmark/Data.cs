@@ -1,18 +1,18 @@
 namespace Smart.Mapper.Benchmark;
 
 // Single
-public class SingleSource
+public sealed class SingleSource
 {
     public int Value { get; set; }
 }
 
-public class SingleDestination
+public sealed class SingleDestination
 {
     public int Value { get; set; }
 }
 
 // Simple
-public class SimpleSource
+public sealed class SimpleSource
 {
     public int Value1 { get; set; }
     public int Value2 { get; set; }
@@ -24,7 +24,7 @@ public class SimpleSource
     public string? Value8 { get; set; }
 }
 
-public class SimpleDestination
+public sealed class SimpleDestination
 {
     public int Value1 { get; set; }
     public int Value2 { get; set; }
@@ -37,7 +37,7 @@ public class SimpleDestination
 }
 
 // Mixed
-public class MixedSource
+public sealed class MixedSource
 {
     public string? StringValue { get; set; }
     public int IntValue { get; set; }
@@ -49,7 +49,7 @@ public class MixedSource
     public MyEnum EnumValue { get; set; }
 }
 
-public class MixedDestination
+public sealed class MixedDestination
 {
     public string? StringValue { get; set; }
     public int IntValue { get; set; }

@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Struct;
 
-using Xunit;
-
-public class StructNullIfTest
+public sealed class StructNullIfTest
 {
     //--------------------------------------------------------------------------------
     // MapFrom

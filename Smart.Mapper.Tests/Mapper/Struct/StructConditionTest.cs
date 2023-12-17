@@ -2,9 +2,7 @@ namespace Smart.Mapper.Struct;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class StructConditionTest
+public sealed class StructConditionTest
 {
     //--------------------------------------------------------------------------------
     // Condition

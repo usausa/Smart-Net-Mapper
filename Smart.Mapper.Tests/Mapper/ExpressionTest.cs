@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class ExpressionTest
+public sealed class ExpressionTest
 {
     [Fact]
     public void InvalidPropertyExpression()
@@ -35,11 +33,11 @@ public class ExpressionTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
 

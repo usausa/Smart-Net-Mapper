@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class MapFromTest
+public sealed class MapFromTest
 {
     //--------------------------------------------------------------------------------
     // MapFrom
@@ -134,9 +132,9 @@ public class MapFromTest
     // Data
     //--------------------------------------------------------------------------------
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051:DoNotDeclareVisibleInstanceFields", Justification = "Ignore")]
-    public class Source
+#pragma warning disable CA1051
+#pragma warning disable SA1401
+    public sealed class Source
     {
         public int Value { get; set; }
 
@@ -144,8 +142,10 @@ public class MapFromTest
 
         public int FieldValue;
     }
+#pragma warning restore SA1401
+#pragma warning restore CA1051
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
     }

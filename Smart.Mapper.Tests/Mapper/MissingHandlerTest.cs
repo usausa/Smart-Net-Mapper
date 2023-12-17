@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Handlers;
 
-using Xunit;
-
-public class MissingHandlerTest
+public sealed class MissingHandlerTest
 {
     //--------------------------------------------------------------------------------
     // Mapper
@@ -47,12 +45,12 @@ public class MissingHandlerTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
     }

@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class MapperTest
+public sealed class MapperTest
 {
     //--------------------------------------------------------------------------------
     // Mapper
@@ -248,12 +246,12 @@ public class MapperTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
     }

@@ -3,7 +3,7 @@ namespace Smart.Mapper.Mappers;
 using System.Reflection;
 using System.Reflection.Emit;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
+#pragma warning disable CA1812
 internal sealed class EmitMapperFactory : IMapperFactory
 {
     private readonly IServiceProvider serviceProvider;
@@ -153,3 +153,4 @@ internal sealed class EmitMapperFactory : IMapperFactory
             holder.Instance);
     }
 }
+#pragma warning restore CA1812

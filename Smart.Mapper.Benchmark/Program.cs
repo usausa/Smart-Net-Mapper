@@ -22,7 +22,7 @@ public static class Program
     }
 }
 
-public class BenchmarkConfig : ManualConfig
+public sealed class BenchmarkConfig : ManualConfig
 {
     public BenchmarkConfig()
     {
@@ -40,7 +40,7 @@ public class BenchmarkConfig : ManualConfig
 }
 
 [Config(typeof(BenchmarkConfig))]
-public class MapperBenchmark
+public sealed class MapperBenchmark
 {
     private const int N = 1000;
 

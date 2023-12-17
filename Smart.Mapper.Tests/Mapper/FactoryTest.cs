@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class FactoryTest
+public sealed class FactoryTest
 {
     //--------------------------------------------------------------------------------
     // ServiceProvider
@@ -150,14 +148,14 @@ public class FactoryTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
 
         public int ValueSourceOnly { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
 
@@ -171,9 +169,7 @@ public class FactoryTest
 
     public sealed class CustomObjectFactory : IObjectFactory<Source, Destination>
     {
-#pragma warning disable CA1508
         public Destination Create(Source source, ResolutionContext context) =>
             new() { ValueDestinationOnly = (int?)context.Parameter ?? source.ValueSourceOnly };
-#pragma warning restore CA1508 // 使用されない条件付きコードを回避する
     }
 }

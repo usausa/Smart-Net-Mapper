@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class ConstTest
+public sealed class ConstTest
 {
     //--------------------------------------------------------------------------------
     // Order
@@ -115,11 +113,11 @@ public class ConstTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public string? StringValue { get; set; }
 
@@ -136,11 +134,12 @@ public class ConstTest
         public DateTime? NullableDateTimeValue { get; set; }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix", Justification = "Ignore")]
+#pragma warning disable CA1711
     public enum MyEnum
     {
         Zero,
         One,
         Two
     }
+#pragma warning restore CA1711
 }

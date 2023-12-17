@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class IgnoreTest
+public sealed class IgnoreTest
 {
     //--------------------------------------------------------------------------------
     // Order
@@ -40,14 +38,14 @@ public class IgnoreTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value1 { get; set; }
 
         public int Value2 { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value1 { get; set; }
 

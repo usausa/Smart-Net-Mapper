@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class OrderTest
+public sealed class OrderTest
 {
     //--------------------------------------------------------------------------------
     // Order
@@ -41,14 +39,14 @@ public class OrderTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value1 { get; set; }
 
         public int Value2 { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         private int order;
 

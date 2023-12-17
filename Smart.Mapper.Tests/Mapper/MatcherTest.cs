@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class MatcherTest
+public sealed class MatcherTest
 {
     //--------------------------------------------------------------------------------
     // Match
@@ -27,7 +25,7 @@ public class MatcherTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int SourceValue1 { get; set; }
 
@@ -36,7 +34,7 @@ public class MatcherTest
         public int SourceValueIgnore { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int DestinationValue1 { get; set; }
 

@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class NestedTest
+public sealed class NestedTest
 {
     private const string Profile = "sub";
 
@@ -462,22 +460,22 @@ public class NestedTest
 
     // Class
 
-    public class SourceInner
+    public sealed class SourceInner
     {
         public int Value { get; set; }
     }
 
-    public class DestinationInner
+    public sealed class DestinationInner
     {
         public int Value { get; set; }
     }
 
-    public class Source
+    public sealed class Source
     {
         public SourceInner? Inner { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public DestinationInner? Inner { get; set; }
     }
@@ -494,12 +492,12 @@ public class NestedTest
         public int Value { get; set; }
     }
 
-    public class Source2
+    public sealed class Source2
     {
         public StructSourceInner? Inner { get; set; }
     }
 
-    public class Destination2
+    public sealed class Destination2
     {
         public StructDestinationInner? Inner { get; set; }
     }

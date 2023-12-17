@@ -1,6 +1,6 @@
 namespace Smart.Mapper.Mappers;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Ignore")]
+#pragma warning disable CA1812
 internal sealed class ReflectionMapperFactory : IMapperFactory
 {
     // IConverterResolver, IFactoryResolver, IFunctionActivatorはDI
@@ -10,3 +10,4 @@ internal sealed class ReflectionMapperFactory : IMapperFactory
         throw new NotImplementedException();
     }
 }
+#pragma warning restore CA1812

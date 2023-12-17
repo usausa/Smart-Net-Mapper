@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class InvalidOperationTest
+public sealed class InvalidOperationTest
 {
     //--------------------------------------------------------------------------------
     // Constructor
@@ -23,11 +21,11 @@ public class InvalidOperationTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
     }
 
-    public class NoDefaultConstructorDestination
+    public sealed class NoDefaultConstructorDestination
     {
         public int Value { get; set; }
 

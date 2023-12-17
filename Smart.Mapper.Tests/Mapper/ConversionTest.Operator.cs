@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
 public partial class ConversionTest
 {
     //--------------------------------------------------------------------------------
@@ -518,17 +516,17 @@ public partial class ConversionTest
         public static explicit operator int(StructValue value) => value.RawValue;
     }
 
-    public class StructValueHolder
+    public sealed class StructValueHolder
     {
         public StructValue Value { get; set; }
     }
 
-    public class NullableStructValueHolder
+    public sealed class NullableStructValueHolder
     {
         public StructValue? Value { get; set; }
     }
 
-    public class ClassValue
+    public sealed class ClassValue
     {
         public int RawValue { get; set; }
 
@@ -536,7 +534,7 @@ public partial class ConversionTest
         public static explicit operator int(ClassValue value) => value.RawValue;
     }
 
-    public class ClassValueHolder
+    public sealed class ClassValueHolder
     {
         public ClassValue? Value { get; set; }
     }
@@ -549,17 +547,17 @@ public partial class ConversionTest
         public static explicit operator int?(StructNullableValue value) => value.RawValue;
     }
 
-    public class StructNullableValueHolder
+    public sealed class StructNullableValueHolder
     {
         public StructNullableValue Value { get; set; }
     }
 
-    public class NullableStructNullableValueHolder
+    public sealed class NullableStructNullableValueHolder
     {
         public StructNullableValue? Value { get; set; }
     }
 
-    public class ClassNullableValue
+    public sealed class ClassNullableValue
     {
         public int? RawValue { get; set; }
 
@@ -567,12 +565,12 @@ public partial class ConversionTest
         public static explicit operator int?(ClassNullableValue value) => value.RawValue;
     }
 
-    public class ClassNullableValueHolder
+    public sealed class ClassNullableValueHolder
     {
         public ClassNullableValue? Value { get; set; }
     }
 
-    public class ClassPair1Value
+    public sealed class ClassPair1Value
     {
         public int RawValue { get; set; }
 
@@ -580,17 +578,17 @@ public partial class ConversionTest
         public static explicit operator ClassPair2Value(ClassPair1Value value) => new() { RawValue = value.RawValue };
     }
 
-    public class ClassPair1ValueHolder
+    public sealed class ClassPair1ValueHolder
     {
         public ClassPair1Value? Value { get; set; }
     }
 
-    public class ClassPair2Value
+    public sealed class ClassPair2Value
     {
         public int RawValue { get; set; }
     }
 
-    public class ClassPair2ValueHolder
+    public sealed class ClassPair2ValueHolder
     {
         public ClassPair2Value? Value { get; set; }
     }
@@ -603,12 +601,12 @@ public partial class ConversionTest
         public static explicit operator StructPair2Value(StructPair1Value value) => new() { RawValue = value.RawValue };
     }
 
-    public class StructPair1ValueHolder
+    public sealed class StructPair1ValueHolder
     {
         public StructPair1Value Value { get; set; }
     }
 
-    public class NullableStructPair1ValueHolder
+    public sealed class NullableStructPair1ValueHolder
     {
         public StructPair1Value? Value { get; set; }
     }
@@ -618,17 +616,17 @@ public partial class ConversionTest
         public int RawValue { get; set; }
     }
 
-    public class StructPair2ValueHolder
+    public sealed class StructPair2ValueHolder
     {
         public StructPair2Value Value { get; set; }
     }
 
-    public class NullableStructPair2ValueHolder
+    public sealed class NullableStructPair2ValueHolder
     {
         public StructPair2Value? Value { get; set; }
     }
 
-    public class CrossPairClassValue
+    public sealed class CrossPairClassValue
     {
         public int RawValue { get; set; }
 
@@ -636,7 +634,7 @@ public partial class ConversionTest
         public static implicit operator CrossPairStructValue(CrossPairClassValue value) => new() { RawValue = value.RawValue };
     }
 
-    public class CrossPairClassValueHolder
+    public sealed class CrossPairClassValueHolder
     {
         public CrossPairClassValue? Value { get; set; }
     }
@@ -646,12 +644,12 @@ public partial class ConversionTest
         public int RawValue { get; set; }
     }
 
-    public class CrossPairStructValueHolder
+    public sealed class CrossPairStructValueHolder
     {
         public CrossPairStructValue Value { get; set; }
     }
 
-    public class NullableCrossPairStructValueHolder
+    public sealed class NullableCrossPairStructValueHolder
     {
         public CrossPairStructValue? Value { get; set; }
     }

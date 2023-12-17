@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class FieldTest
+public sealed class FieldTest
 {
     //--------------------------------------------------------------------------------
     // Mapper
@@ -53,27 +51,31 @@ public class FieldTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051:DoNotDeclareVisibleInstanceFields", Justification = "Ignore")]
-    public class FieldSource
+#pragma warning disable CA1051
+#pragma warning disable SA1401
+    public sealed class FieldSource
     {
         public int Value;
     }
+#pragma warning restore SA1401
+#pragma warning restore CA1051
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051:DoNotDeclareVisibleInstanceFields", Justification = "Ignore")]
-    public class FieldDestination
+#pragma warning disable CA1051
+#pragma warning disable SA1401
+    public sealed class FieldDestination
     {
         public int Value;
     }
+#pragma warning restore SA1401
+#pragma warning restore CA1051
 }

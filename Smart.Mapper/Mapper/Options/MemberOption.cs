@@ -6,7 +6,7 @@ using System.Reflection;
 using Smart.Mapper.Functions;
 using Smart.Mapper.Mappers;
 
-public class MemberOption
+public sealed class MemberOption
 {
     public MemberInfo Member { get; }
 

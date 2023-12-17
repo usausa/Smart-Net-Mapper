@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Struct;
 
-using Xunit;
-
-public class NullableTest
+public sealed class NullableTest
 {
     //--------------------------------------------------------------------------------
     // Nested

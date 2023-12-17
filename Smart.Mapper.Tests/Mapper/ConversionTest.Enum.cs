@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
 public partial class ConversionTest
 {
     //--------------------------------------------------------------------------------
@@ -375,12 +373,12 @@ public partial class ConversionTest
         Max = Int16.MaxValue
     }
 
-    public class Enum16Holder
+    public sealed class Enum16Holder
     {
         public Enum16 Value { get; set; }
     }
 
-    public class NullableEnum16Holder
+    public sealed class NullableEnum16Holder
     {
         public Enum16? Value { get; set; }
     }
@@ -392,12 +390,12 @@ public partial class ConversionTest
         Max = Int32.MaxValue
     }
 
-    public class Enum32Holder
+    public sealed class Enum32Holder
     {
         public Enum32 Value { get; set; }
     }
 
-    public class NullableEnum32Holder
+    public sealed class NullableEnum32Holder
     {
         public Enum32? Value { get; set; }
     }
@@ -409,12 +407,12 @@ public partial class ConversionTest
         Max = Int64.MaxValue
     }
 
-    public class Enum64Holder
+    public sealed class Enum64Holder
     {
         public Enum64 Value { get; set; }
     }
 
-    public class NullableEnum64Holder
+    public sealed class NullableEnum64Holder
     {
         public Enum64? Value { get; set; }
     }

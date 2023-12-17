@@ -4,9 +4,9 @@ using Smart.Mapper.Mappers;
 
 internal static class DefaultConverters
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1305:SpecifyIFormatProvider", Justification = "Ignore")]
     // ReSharper disable MergeConditionalExpression
     // ReSharper disable SpecifyACultureInStringConversionExplicitly
+#pragma warning disable CA1305
     public static Dictionary<Tuple<Type, Type>, ConverterEntry> Entries => new()
     {
         // To Bool
@@ -77,4 +77,5 @@ internal static class DefaultConverters
         { new(typeof(string), typeof(Guid)), new(ConverterType.FuncSource, typeof(string), typeof(Guid), (Func<string, Guid>)Guid.Parse) },
         { new(typeof(Guid), typeof(string)), new(ConverterType.FuncSource, typeof(Guid), typeof(string), (Func<Guid, string>)(static x => x.ToString())) }
     };
+#pragma warning restore CA1305
 }

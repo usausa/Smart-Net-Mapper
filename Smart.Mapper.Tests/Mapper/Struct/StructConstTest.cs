@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Struct;
 
-using Xunit;
-
-public class StructConstTest
+public sealed class StructConstTest
 {
     //--------------------------------------------------------------------------------
     // Order
@@ -114,11 +112,12 @@ public class StructConstTest
         public DateTime? NullableDateTimeValue { get; set; }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix", Justification = "Ignore")]
+#pragma warning disable CA1711
     public enum MyEnum
     {
         Zero,
         One,
         Two
     }
+#pragma warning restore CA1711
 }

@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class MappingActionTest
+public sealed class MappingActionTest
 {
     //--------------------------------------------------------------------------------
     // BeforeMap
@@ -150,14 +148,14 @@ public class MappingActionTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
 
         public int ValueSourceOnly { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
 
@@ -166,11 +164,9 @@ public class MappingActionTest
 
     public sealed class CustomMappingAction : IMappingAction<Source, Destination>
     {
-#pragma warning disable CA1508
         public void Process(Source source, Destination destination, ResolutionContext context)
         {
             destination.ValueDestinationOnly = (int?)context.Parameter ?? source.ValueSourceOnly;
         }
-#pragma warning restore CA1508
     }
 }

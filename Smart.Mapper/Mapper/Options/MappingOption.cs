@@ -5,7 +5,7 @@ using System.Reflection;
 using Smart.Mapper.Functions;
 using Smart.Mapper.Mappers;
 
-public class MappingOption
+public sealed class MappingOption
 {
     public Type SourceType { get; }
 

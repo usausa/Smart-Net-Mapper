@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
 public partial class ConversionTest
 {
     //--------------------------------------------------------------------------------
@@ -38,7 +36,7 @@ public partial class ConversionTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class NullIfClassValue
+    public sealed class NullIfClassValue
     {
         public int RawValue { get; set; }
 
@@ -46,7 +44,7 @@ public partial class ConversionTest
         public static explicit operator int(NullIfClassValue value) => value.RawValue;
     }
 
-    public class NullIfClassValueHolder
+    public sealed class NullIfClassValueHolder
     {
         public NullIfClassValue? Value { get; set; }
     }

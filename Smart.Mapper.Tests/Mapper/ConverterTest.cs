@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class ConverterTest
+public sealed class ConverterTest
 {
     //--------------------------------------------------------------------------------
     // Converter
@@ -259,12 +257,12 @@ public class ConverterTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
     }
 
-    public class NullableSource
+    public sealed class NullableSource
     {
         public int? Value { get; set; }
     }
@@ -274,37 +272,37 @@ public class ConverterTest
         public int RawValue { get; set; }
     }
 
-    public class StructValueSource
+    public sealed class StructValueSource
     {
         public StructValue Value { get; set; }
     }
 
-    public class NullableStructValueSource
+    public sealed class NullableStructValueSource
     {
         public StructValue? Value { get; set; }
     }
 
-    public class ClassValue
+    public sealed class ClassValue
     {
         public int RawValue { get; set; }
     }
 
-    public class ClassValueSource
+    public sealed class ClassValueSource
     {
         public ClassValue? Value { get; set; }
     }
 
-    public class StringDestination
+    public sealed class StringDestination
     {
         public string? Value { get; set; }
     }
 
-    public class BoolDestination
+    public sealed class BoolDestination
     {
         public bool Value { get; set; }
     }
 
-    public class NullableBoolDestination
+    public sealed class NullableBoolDestination
     {
         public bool? Value { get; set; }
     }

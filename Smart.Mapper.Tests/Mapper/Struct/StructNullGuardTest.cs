@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Struct;
 
-using Xunit;
-
-public class StructNullGuardTest
+public sealed class StructNullGuardTest
 {
     //--------------------------------------------------------------------------------
     // Mapper

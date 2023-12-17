@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
 public partial class ConversionTest
 {
     //--------------------------------------------------------------------------------
@@ -78,11 +76,11 @@ public partial class ConversionTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class NoConverterClassValue
+    public sealed class NoConverterClassValue
     {
     }
 
-    public class NoConverterClassValueHolder
+    public sealed class NoConverterClassValueHolder
     {
         public NoConverterClassValue? Value { get; set; }
     }
@@ -91,12 +89,12 @@ public partial class ConversionTest
     {
     }
 
-    public class NoConverterStructValueHolder
+    public sealed class NoConverterStructValueHolder
     {
         public NoConverterStructValue Value { get; set; }
     }
 
-    public class NoConverterNullableStructValueHolder
+    public sealed class NoConverterNullableStructValueHolder
     {
         public NoConverterStructValue? Value { get; set; }
     }

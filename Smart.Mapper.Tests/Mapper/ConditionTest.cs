@@ -2,9 +2,7 @@ namespace Smart.Mapper;
 
 using Smart.Mapper.Functions;
 
-using Xunit;
-
-public class ConditionTest
+public sealed class ConditionTest
 {
     //--------------------------------------------------------------------------------
     // Condition
@@ -105,12 +103,12 @@ public class ConditionTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class Source
+    public sealed class Source
     {
         public int Value { get; set; }
     }
 
-    public class Destination
+    public sealed class Destination
     {
         public int Value { get; set; }
     }

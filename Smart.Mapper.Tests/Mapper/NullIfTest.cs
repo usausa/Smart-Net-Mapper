@@ -1,8 +1,6 @@
 namespace Smart.Mapper;
 
-using Xunit;
-
-public class NullIfTest
+public sealed class NullIfTest
 {
     //--------------------------------------------------------------------------------
     // MapFrom
@@ -66,24 +64,24 @@ public class NullIfTest
     // Data
     //--------------------------------------------------------------------------------
 
-    public class ClassSource
+    public sealed class ClassSource
     {
         public string? Value { get; set; }
     }
 
-    public class ClassDestination
+    public sealed class ClassDestination
     {
         public string? Value { get; set; }
     }
 
-    public class NullableSource
+    public sealed class NullableSource
     {
         public int? Value { get; set; }
 
         public string? StringValue { get; set; }
     }
 
-    public class NullableDestination
+    public sealed class NullableDestination
     {
         public int? Value { get; set; }
     }

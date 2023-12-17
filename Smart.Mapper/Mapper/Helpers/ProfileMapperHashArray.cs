@@ -217,7 +217,7 @@ internal sealed class ProfileMapperHashArray
     {
         lock (sync)
         {
-            // Double checked locking
+            // Double checked-locking
             if (TryGetValue(profile, sourceType, targetType, out var currentValue))
             {
                 return currentValue;
@@ -241,12 +241,13 @@ internal sealed class ProfileMapperHashArray
     // Inner
     //--------------------------------------------------------------------------------
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Framework only")]
+#pragma warning disable CA1812
     private sealed class EmptyKey
     {
     }
+#pragma warning restore CA1812
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Performance")]
+#pragma warning disable SA1401
     private sealed class Node
     {
         public readonly string Profile;
@@ -267,4 +268,5 @@ internal sealed class ProfileMapperHashArray
             Item = item;
         }
     }
+#pragma warning restore SA1401
 }

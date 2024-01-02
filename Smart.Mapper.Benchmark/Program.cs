@@ -40,7 +40,7 @@ public sealed class BenchmarkConfig : ManualConfig
 }
 
 [Config(typeof(BenchmarkConfig))]
-public sealed class MapperBenchmark
+public class MapperBenchmark
 {
     private const int N = 1000;
 

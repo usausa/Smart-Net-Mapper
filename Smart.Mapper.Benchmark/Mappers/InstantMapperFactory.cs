@@ -55,8 +55,6 @@ public static class InstantMapperFactory
             }
         }
 
-        return new ActionMapper<TSource, TDestination>(
-            factory,
-            actions.ToArray());
+        return new ActionMapper<TSource, TDestination>(factory, [.. actions]);
     }
 }

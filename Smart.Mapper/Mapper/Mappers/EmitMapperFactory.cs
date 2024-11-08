@@ -6,6 +6,8 @@ using System.Reflection.Emit;
 #pragma warning disable CA1812
 internal sealed class EmitMapperFactory : IMapperFactory
 {
+    private readonly object sync = new();
+
     private readonly IServiceProvider serviceProvider;
 
     private int typeNo;
@@ -14,9 +16,9 @@ internal sealed class EmitMapperFactory : IMapperFactory
 
     private ModuleBuilder? moduleBuilder;
 
-    private ModuleBuilder ModuleBuilder
+    private TypeBuilder DefineType()
     {
-        get
+        lock (sync)
         {
             if (moduleBuilder is null)
             {
@@ -27,7 +29,12 @@ internal sealed class EmitMapperFactory : IMapperFactory
                     "SmartMapperModule");
             }
 
-            return moduleBuilder;
+            var typeBuilder = moduleBuilder.DefineType(
+                $"Holder_{typeNo}",
+                TypeAttributes.Public | TypeAttributes.AutoLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit);
+            typeNo++;
+
+            return typeBuilder;
         }
     }
 
@@ -42,10 +49,7 @@ internal sealed class EmitMapperFactory : IMapperFactory
         var mapper = CreateMapperInfo(context);
 
         // Holder
-        var typeBuilder = ModuleBuilder.DefineType(
-            $"Holder_{typeNo}",
-            TypeAttributes.Public | TypeAttributes.AutoLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit);
-        typeNo++;
+        var typeBuilder = DefineType();
 
         var holder = new EmitHolderInfo(context, typeBuilder, serviceProvider);
 

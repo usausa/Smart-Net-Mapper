@@ -39,6 +39,7 @@ public sealed class BenchmarkConfig : ManualConfig
     }
 }
 
+#pragma warning disable IDE0320
 [Config(typeof(BenchmarkConfig))]
 public class MapperBenchmark
 {

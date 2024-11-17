@@ -59,7 +59,7 @@ internal sealed class MemberMapping
 
 internal sealed class MapperCreateContext
 {
-    private static readonly Func<string, string?> DefaultMatcher = x => x;
+    private static readonly Func<string, string?> DefaultMatcher = static x => x;
 
     private readonly DefaultOption defaultOption;
 

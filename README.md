@@ -1,5 +1,7 @@
 # Smart-Net-Mapper
 
+[![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper)
+
 ## TODO
 
 - Type conversion

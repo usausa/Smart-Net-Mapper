@@ -46,6 +46,8 @@ public sealed class OrderTest
         public int Value2 { get; set; }
     }
 
+#pragma warning disable IDE0032
+    // ReSharper disable ReplaceWithFieldKeyword
     public sealed class Destination
     {
         private int order;
@@ -78,4 +80,6 @@ public sealed class OrderTest
             }
         }
     }
+    // ReSharper restore ReplaceWithFieldKeyword
+#pragma warning restore IDE0032
 }

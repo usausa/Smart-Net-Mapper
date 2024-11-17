@@ -6,7 +6,11 @@ using System.Reflection.Emit;
 #pragma warning disable CA1812
 internal sealed class EmitMapperFactory : IMapperFactory
 {
+#if NET9_0_OR_GREATER
+    private readonly Lock sync = new();
+#else
     private readonly object sync = new();
+#endif
 
     private readonly IServiceProvider serviceProvider;
 

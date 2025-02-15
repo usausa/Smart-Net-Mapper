@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Analyzers.ruleset" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="Smart.Mapper.sln.DotSettings" />
+    <File Path="test.runsettings" />
+  </Folder>
+  <Project Path="Smart.Mapper/Smart.Mapper.csproj" />
+  <Project Path="Smart.Mapper.Tests/Smart.Mapper.Tests.csproj" />
+  <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
+</Solution>

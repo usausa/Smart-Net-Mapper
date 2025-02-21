@@ -1,6 +1,5 @@
 namespace Smart.Mapper.Helpers;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 internal sealed class ProfileMapperHashArray
@@ -194,7 +193,7 @@ internal sealed class ProfileMapperHashArray
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetValue(string profile, Type sourceType, Type targetType, [NotNullWhen(true)] out object? item)
+    public bool TryGetValue(string profile, Type sourceType, Type targetType, out object item)
     {
         var temp = nodes;
         var node = temp[CalculateHash(profile, sourceType, targetType) & (temp.Length - 1)];
@@ -209,7 +208,7 @@ internal sealed class ProfileMapperHashArray
         }
         while (node is not null);
 
-        item = default;
+        item = default!;
         return false;
     }
 

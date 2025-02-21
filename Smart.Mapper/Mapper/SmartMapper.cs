@@ -129,7 +129,7 @@ public sealed class SmartMapper : DisposableObject, INestedMapper
             info = mapperCache.AddIfNotExist(typeof(TSource), typeof(TDestination), (ts, td) => CreateTypeInfo(null, ts, td));
         }
 
-        return (MapperInfo<TSource, TDestination>)info;
+        return Unsafe.As<MapperInfo<TSource, TDestination>>(info);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -141,7 +141,7 @@ public sealed class SmartMapper : DisposableObject, INestedMapper
             info = profileMapperCache.AddIfNotExist(profile, typeof(TSource), typeof(TDestination), CreateTypeInfo);
         }
 
-        return (MapperInfo<TSource, TDestination>)info;
+        return Unsafe.As<MapperInfo<TSource, TDestination>>(info);
     }
 
     //--------------------------------------------------------------------------------

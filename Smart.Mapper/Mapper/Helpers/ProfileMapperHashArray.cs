@@ -38,7 +38,21 @@ internal sealed class ProfileMapperHashArray
     {
         unchecked
         {
-            return profile.GetHashCode(StringComparison.Ordinal) ^ sourceType.GetHashCode() ^ (targetType.GetHashCode() * 397);
+            return CalcNameHash(profile) ^ sourceType.GetHashCode() ^ (targetType.GetHashCode() * 397);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CalcNameHash(string value)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var c in value)
+            {
+                hash = (c ^ hash) * 16777619;
+            }
+            return (int)hash;
         }
     }
 

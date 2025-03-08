@@ -38,12 +38,12 @@ internal sealed class ProfileMapperHashArray
     {
         unchecked
         {
-            return CalcNameHash(profile) ^ sourceType.GetHashCode() ^ (targetType.GetHashCode() * 397);
+            return CalcProfileHash(profile) ^ sourceType.GetHashCode() ^ (targetType.GetHashCode() * 397);
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CalcNameHash(string value)
+    private static int CalcProfileHash(string value)
     {
         unchecked
         {

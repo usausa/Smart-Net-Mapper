@@ -2,7 +2,6 @@ namespace Smart.Mapper;
 
 using System.Reflection;
 
-using Smart.Linq;
 using Smart.Mapper.Handlers;
 using Smart.Mapper.Rules;
 

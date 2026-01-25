@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="[14.0.0,15.0.0)" />
-    <PackageReference Include="BenchmarkDotNet" Version="0.15.6" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageReference Include="TinyMapper" Version="3.0.3" />
     <PackageReference Include="Usa.Smart.Core" Version="2.5.0" />
   </ItemGroup>

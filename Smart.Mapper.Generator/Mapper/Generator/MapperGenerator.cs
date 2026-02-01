@@ -102,7 +102,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         model.SourceParameterName = sourceParam.Name;
 
         ITypeSymbol destinationType;
-        var customParamStartIndex = 0;
+        int customParamStartIndex;
 
         // Determine if void method with destination parameter or return type method
         if (symbol.ReturnsVoid)
@@ -343,7 +343,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return ConverterMatchResult.NoMatch;
     }
 
-
     private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
@@ -391,7 +390,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         foreach (var method in candidates)
         {
             // Return type must match target type (or be assignable)
-            var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            //var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             // Check for match with custom parameters: (SourceType, customParams...)
             if (model.CustomParameters.Count > 0 &&
@@ -540,7 +539,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             return CallbackMatchResult.MatchWithoutCustomParams;
         }
-
 
         return CallbackMatchResult.NoMatch;
     }
@@ -759,7 +757,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 }
             }
         }
-
 
         // Associate property conditions with mappings from MapProperty attributes
         foreach (var mapping in model.PropertyMappings)
@@ -1398,7 +1395,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 }
             }
 
-
             if (sourcePropPath is not null && sourcePropertyType is not null)
             {
                 var sourceTypeName = sourcePropertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1425,7 +1421,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         // Add nested mappings
         mappings.AddRange(nestedMappings);
-
 
         model.PropertyMappings = mappings;
 
@@ -1626,15 +1621,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         // Remove global:: prefix and System. prefix for comparison
         var normalized = typeName
-            .Replace("global::", "")
-            .Replace("System.", "");
+            .Replace("global::", string.Empty)
+            .Replace("System.", string.Empty);
 
         // Handle nullable types
-        if (normalized.EndsWith("?"))
+        if (normalized.EndsWith("?", StringComparison.Ordinal))
         {
             normalized = normalized.TrimEnd('?');
         }
-        if (normalized.StartsWith("Nullable<") && normalized.EndsWith(">"))
+        if (normalized.StartsWith("Nullable<", StringComparison.Ordinal) && normalized.EndsWith(">", StringComparison.Ordinal))
         {
             normalized = normalized.Substring(9, normalized.Length - 10);
         }
@@ -1782,7 +1777,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             builder.Append(")").NewLine();
         }
-
 
         builder.BeginScope();
 
@@ -2190,7 +2184,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
     // ------------------------------------------------------------
     // Helper
     // ------------------------------------------------------------
-
 
     private static string MakeFilename(string ns, string className)
     {

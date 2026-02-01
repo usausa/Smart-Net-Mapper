@@ -3,6 +3,7 @@ namespace Smart.Mapper;
 using System;
 using System.Runtime.CompilerServices;
 
+#pragma warning disable SA1503
 /// <summary>
 /// Default type converter for property mappings.
 /// Uses generic method with type checking that gets optimized by JIT.

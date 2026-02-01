@@ -14,4 +14,3 @@ public sealed class MapperAttribute : Attribute
     /// </summary>
     public bool AutoMap { get; set; } = true;
 }
-

@@ -1,7 +1,5 @@
 namespace Smart.Mapper;
 
-#region Test Models
-
 public class BasicSource
 {
     public int Id { get; set; }
@@ -159,8 +157,6 @@ public class FlatDestination
 }
 
 
-
-
 // Deep nested test models
 public class DeepNestedChild
 {
@@ -235,7 +231,6 @@ public class NullablePropertySource
     public string NonNullableName { get; set; } = string.Empty;
 }
 
-
 public class NullablePropertyDestination
 {
     public string? NullableName { get; set; }
@@ -297,6 +292,8 @@ public class MapFromContext
 }
 
 // MapFromMethod test models
+#pragma warning disable CA1024
+#pragma warning disable CA1819
 public class MapFromMethodSource
 {
     public int[] Items { get; set; } = [];
@@ -304,6 +301,8 @@ public class MapFromMethodSource
     public int GetItemCount() => Items.Length;
     public int GetItemSum() => Items.Sum();
 }
+#pragma warning restore CA1819
+#pragma warning restore CA1024
 
 public class MapFromMethodDestination
 {
@@ -333,12 +332,14 @@ public class CollectionSourceChild
     public string Name { get; set; } = string.Empty;
 }
 
+#pragma warning disable CA1819
 public class CollectionSource
 {
     public CollectionSourceChild[]? Children { get; set; }
     public List<CollectionSourceChild>? Items { get; set; }
     public int DirectValue { get; set; }
 }
+#pragma warning restore CA1819
 
 public class CollectionDestinationChild
 {
@@ -346,12 +347,14 @@ public class CollectionDestinationChild
     public string Name { get; set; } = string.Empty;
 }
 
+#pragma warning disable CA1819
 public class CollectionDestination
 {
     public List<CollectionDestinationChild>? Children { get; set; }
     public CollectionDestinationChild[]? Items { get; set; }
     public int DirectValue { get; set; }
 }
+#pragma warning restore CA1819
 
 // MapNested test models
 public class NestedObjectSourceChild
@@ -442,10 +445,12 @@ public static class TestCustomConverter
 }
 
 // Custom collection converter test models
+#pragma warning disable CA1819
 public class CustomCollectionSource
 {
     public CollectionSourceChild[]? Numbers { get; set; }
 }
+#pragma warning restore CA1819
 
 public class CustomCollectionDestination
 {
@@ -459,7 +464,11 @@ public static class TestCustomCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null) return default;
+        if (source is null)
+        {
+            return default;
+        }
+
         // Custom: doubles Id value if destination has Id property
         return source.Select(x =>
         {
@@ -476,7 +485,11 @@ public static class TestCustomCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null) return default;
+        if (source is null)
+        {
+            return default;
+        }
+
         // Custom: doubles Id value if destination has Id property
         return source.Select(x =>
         {
@@ -490,16 +503,11 @@ public static class TestCustomCollectionConverter
     }
 }
 
-#endregion
-
-#region Mappers
-
 internal static partial class TestMappers
 {
     // Basic mapping: same property names
     [Mapper]
     public static partial void Map(BasicSource source, BasicDestination destination);
-
 
     // Basic mapping with return type
     [Mapper]
@@ -826,10 +834,6 @@ public class ConditionDestination
     public string? Name { get; set; }
     public bool IsActive { get; set; }
 }
-
-#endregion
-
-#region Tests
 
 public class BasicMappingTests
 {
@@ -1167,7 +1171,6 @@ public class NestedMappingTests
         Assert.NotNull(destination.Outer.Inner);
         Assert.Equal(12345, destination.Outer.Inner.Value);
     }
-
 
     [Fact]
     public void MapToNew_DeepNested_ReturnsDeepNestedObject()
@@ -2073,5 +2076,3 @@ public class CustomConverterTests
         Assert.Equal(6, destination.Numbers[2].Id);
     }
 }
-
-#endregion

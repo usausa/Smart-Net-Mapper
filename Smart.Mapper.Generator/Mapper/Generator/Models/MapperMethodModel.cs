@@ -160,7 +160,6 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
             return false;
         }
 
-
         if (ReferenceEquals(this, other))
         {
             return true;

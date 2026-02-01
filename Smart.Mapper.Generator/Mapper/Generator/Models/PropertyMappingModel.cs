@@ -113,9 +113,6 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
         set => SourcePath = value;
     }
 
-
-
-
     public string TargetName
     {
         get => TargetPath;
@@ -194,8 +191,14 @@ internal sealed class NestedPathSegment : IEquatable<NestedPathSegment>
 
     public bool Equals(NestedPathSegment? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+        {
+            return false;
+        }
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
         return Path == other.Path && TypeName == other.TypeName && IsNullable == other.IsNullable;
     }
 

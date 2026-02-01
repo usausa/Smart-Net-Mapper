@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Smart</RootNamespace>
     <CodeAnalysisRuleSet>..\Analyzers.ruleset</CodeAnalysisRuleSet>
+    <RootNamespace>Smart</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -13,11 +13,19 @@
     <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Compile Remove="Mapper\**" />
-    <EmbeddedResource Remove="Mapper\**" />
-    <None Remove="Mapper\**" />
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <TemplateLibraryGeneratorValue>test</TemplateLibraryGeneratorValue>
+  </PropertyGroup>
+
+  <Import Project="..\Smart.Mapper.props" />
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
@@ -26,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Smart.Mapper.Generator\Smart.Mapper.Generator.csproj" OutputItemType="analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Smart.Mapper\Smart.Mapper.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Smart.Mapper.Generator": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\Develop\\Develop.csproj"
+    }
+  }
+}

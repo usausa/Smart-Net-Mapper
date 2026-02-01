@@ -9,9 +9,14 @@
     <File Path="Directory.Build.targets" />
     <File Path="LICENSE" />
     <File Path="README.md" />
+    <File Path="Smart.Mapper.props" />
     <File Path="Smart.Mapper.sln.DotSettings" />
   </Folder>
-  <Project Path="Smart.Mapper/Smart.Mapper.csproj" />
+  <Project Path="Develop/Develop.csproj" DefaultStartup="true" />
+  <Project Path="Smart.Mapper/Smart.Mapper.csproj">
+    <BuildDependency Project="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
+  </Project>
+  <Project Path="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
   <Project Path="Smart.Mapper.Tests/Smart.Mapper.Tests.csproj" />
   <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
 </Solution>

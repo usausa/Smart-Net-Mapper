@@ -151,31 +151,39 @@ internal static partial class ObjectMapper
 - メソッドの戻り値の型は、ターゲットプロパティの型と一致する必要があります
 - メソッドが見つからない場合、または型が一致しない場合はコンパイルエラーになります
 
-### 4.2.1 ソースオブジェクトのメソッド呼び出し（MapFromMethod）
+### 4.2.1 ソースオブジェクトのメソッド呼び出しまたはプロパティパス（MapFrom）
 
-`[MapFromMethod]` 属性を使用して、ソースオブジェクトのインスタンスメソッドを呼び出し、その結果をターゲットプロパティに設定します。
+`[MapFrom]` 属性を使用して、ソースオブジェクトのメソッド呼び出しまたはプロパティパスからターゲットプロパティに値を設定します。
 
 ```csharp
 public class Source
 {
     public int[] Items { get; set; } = [];
+    public NestedObject Nested { get; set; } = new();
     
     // 引数なしのインスタンスメソッド
     public int GetItemCount() => Items.Length;
     public int GetItemSum() => Items.Sum();
 }
 
+public class NestedObject
+{
+    public int Value { get; set; }
+}
+
 public class Destination
 {
     public int ItemCount { get; set; }
     public int ItemSum { get; set; }
+    public int NestedValue { get; set; }
 }
 
 internal static partial class ObjectMapper
 {
     [Mapper]
-    [MapFromMethod(nameof(Destination.ItemCount), nameof(Source.GetItemCount))]
-    [MapFromMethod(nameof(Destination.ItemSum), nameof(Source.GetItemSum))]
+    [MapFrom(nameof(Destination.ItemCount), nameof(Source.GetItemCount))]  // メソッド呼び出し
+    [MapFrom(nameof(Destination.ItemSum), nameof(Source.GetItemSum))]      // メソッド呼び出し
+    [MapFrom(nameof(Destination.NestedValue), "Nested.Value")]             // プロパティパス
     public static partial void Map(Source source, Destination destination);
 }
 ```
@@ -187,13 +195,15 @@ public static partial void Map(Source source, Destination destination)
 {
     destination.ItemCount = source.GetItemCount();
     destination.ItemSum = source.GetItemSum();
+    destination.NestedValue = source.Nested.Value;
 }
 ```
 
 **注意:**
-- ソースメソッドは引数なしのインスタンスメソッドである必要があります
-- メソッドの戻り値の型は、ターゲットプロパティの型と一致する必要があります
-- 引数が必要な場合は `[MapFrom]` を使用してください
+- メソッド呼び出しの場合、ソースメソッドは引数なしのインスタンスメソッドである必要があります
+- プロパティパスの場合、ドット区切りでネストしたプロパティにアクセスできます
+- 戻り値または最終プロパティの型は、ターゲットプロパティの型と一致する必要があります
+- 引数が必要な計算の場合は `[MapUsing]` を使用してください
 
 ### 4.2.2 自動マッピングの無効化（AutoMap = false）
 
@@ -1125,16 +1135,128 @@ public static partial void Map(Source source, Destination destination)
 ### 17.1 設計方針
 
 - **Generic静的メソッドベース**: インスタンス生成のオーバーヘッドを回避
+- **スペシャライズドメソッドの優先**: 特定の型変換に最適化されたメソッドを優先使用
 - **JIT最適化**: `typeof(T) == typeof(int)` のような条件分岐はJITで最適化される
 - **階層的な適用**: メソッドレベル → クラスレベル → デフォルトの優先順位
 
-### 17.2 デフォルト実装（DefaultMapConverter）
+### 17.2 スペシャライズドメソッド
 
-型変換が必要な場合、`DefaultMapConverter.Convert<TSource, TDestination>()` が使用されます：
+型変換時、ジェネレーターは以下の優先順位でメソッドを選択します：
+
+1. **スペシャライズドメソッド** (存在する場合): `{MethodPrefix}To{TargetTypeName}(sourceType)`
+2. **Genericメソッド** (フォールバック): `{MethodPrefix}<TSource, TDestination>(source)`
+
+#### スペシャライズドメソッドの命名規則
+
+```
+{コンバーターメソッド名}To{ターゲット型名}
+```
+
+例：
+- `ConvertToInt32(string source)` - `string` → `int` 変換
+- `ConvertToString(int source)` - `int` → `string` 変換
+- `ConvertToDateTime(string source)` - `string` → `DateTime` 変換
+
+#### スペシャライズドメソッドの利点
+
+1. **オーバーヘッド削減**: Genericメソッドの型チェック分岐を回避
+2. **直接呼び出し**: JITコンパイル時の最適化が容易
+3. **カルチャ制御**: `CultureInfo.InvariantCulture` などを直接指定可能
+
+#### 例: DefaultValueConverterのスペシャライズドメソッド
 
 ```csharp
-public static class DefaultMapConverter
+public static class DefaultValueConverter
 {
+    // スペシャライズドメソッド（優先使用される）
+    public static int ConvertToInt32(string source)
+        => int.Parse(source, CultureInfo.InvariantCulture);
+
+    public static string ConvertToString(int source)
+        => source.ToString(CultureInfo.InvariantCulture);
+
+    public static DateTime ConvertToDateTime(string source)
+        => DateTime.Parse(source, CultureInfo.InvariantCulture);
+
+    // Genericフォールバック（スペシャライズドメソッドがない場合に使用）
+    public static TDestination Convert<TSource, TDestination>(TSource source)
+    {
+        // 型チェックによる変換
+        // ...
+    }
+}
+```
+
+**生成コード例:**
+
+```csharp
+// スペシャライズドメソッドが存在する場合
+destination.IntValue = DefaultValueConverter.ConvertToInt32(source.StringValue);
+destination.StringValue = DefaultValueConverter.ConvertToString(source.IntValue);
+
+// スペシャライズドメソッドが存在しない場合（Genericフォールバック）
+destination.DecimalValue = DefaultValueConverter.Convert<double, decimal>(source.DoubleValue);
+```
+
+### 17.3 カスタムコンバーターでのスペシャライズドメソッド
+
+カスタムコンバーターでもスペシャライズドメソッドを定義できます：
+
+```csharp
+public static class CustomConverter
+{
+    // スペシャライズドメソッド: string -> int に1000を加算
+    public static int ConvertToInt32(string source)
+    {
+        return int.Parse(source, CultureInfo.InvariantCulture) + 1000;
+    }
+
+    // スペシャライズドメソッド: int -> string に"PREFIX_"を追加
+    public static string ConvertToString(int source)
+    {
+        return $"PREFIX_{source}";
+    }
+
+    // Genericフォールバック
+    public static TDestination Convert<TSource, TDestination>(TSource source)
+    {
+        return DefaultValueConverter.Convert<TSource, TDestination>(source);
+    }
+}
+
+[Mapper]
+[MapConverter(typeof(CustomConverter))]
+public static partial void Map(Source source, Destination destination);
+```
+
+**生成コード:**
+
+```csharp
+// string -> int: スペシャライズドメソッド使用（+1000される）
+destination.IntValue = CustomConverter.ConvertToInt32(source.StringValue);
+
+// int -> string: スペシャライズドメソッド使用（PREFIX_付与）
+destination.StringValue = CustomConverter.ConvertToString(source.IntValue);
+
+// double -> decimal: Genericフォールバック使用
+destination.DecimalValue = CustomConverter.Convert<double, decimal>(source.DoubleValue);
+```
+
+### 17.4 デフォルト実装（DefaultValueConverter）
+
+型変換が必要な場合、`DefaultValueConverter` が使用されます：
+
+```csharp
+public static class DefaultValueConverter
+{
+    // スペシャライズドメソッド群
+    public static int ConvertToInt32(string source) => int.Parse(source, CultureInfo.InvariantCulture);
+    public static long ConvertToInt64(string source) => long.Parse(source, CultureInfo.InvariantCulture);
+    public static string ConvertToString(int source) => source.ToString(CultureInfo.InvariantCulture);
+    public static string ConvertToString(long source) => source.ToString(CultureInfo.InvariantCulture);
+    // ... 他の型のスペシャライズドメソッド
+
+    // Genericフォールバック
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {
@@ -1153,17 +1275,16 @@ public static class DefaultMapConverter
 }
 ```
 
-### 17.3 コンバーターが使用されるケース
+### 17.5 コンバーターが使用されるケース
 
 **コンバーターが使用される（明示的な変換が必要）:**
 
-| ソース型 | ターゲット型 | 説明 |
-|----------|-------------|------|
-| `string` | `int` | パース変換 |
-| `int` | `string` | ToString変換 |
-| `long` | `int` | ナローイング変換（明示的キャストが必要） |
-| `double` | `decimal` | 異なる数値型間の変換 |
-| `int?` | `string` | Nullable値の文字列変換 |
+| ソース型 | ターゲット型 | 使用メソッド |
+|----------|-------------|-------------|
+| `string` | `int` | `ConvertToInt32(string)` |
+| `int` | `string` | `ConvertToString(int)` |
+| `long` | `int` | `Convert<long, int>` (Generic) |
+| `double` | `decimal` | `Convert<double, decimal>` (Generic) |
 
 **コンバーターが使用されない（直接代入）:**
 
@@ -1173,25 +1294,8 @@ public static class DefaultMapConverter
 | `int` | `long` | 暗黙的なワイドニング変換 |
 | `int` | `int?` | 非NullableからNullableへ |
 | `int?` | `int` | null-forgiving演算子（`!`）で処理 |
-| `float` | `double` | 暗黙的なワイドニング変換 |
 
-**生成コード例:**
-
-```csharp
-// 暗黙的変換（int -> long）: コンバーター不使用
-destination.LongValue = source.IntValue;
-
-// 明示的変換が必要（string -> int）: コンバーター使用
-destination.IntValue = global::MapperLibrary.DefaultMapConverter.Convert<string, int>(source.StringValue);
-
-// 同じ型: コンバーター不使用
-destination.Id = source.Id;
-
-// Nullable -> 非Nullable: null-forgiving演算子
-destination.Value = source.NullableValue!;
-```
-
-### 17.4 カスタムコンバーターの指定
+### 17.6 カスタムコンバーターの指定
 
 #### 指定レベルと優先順位
 
@@ -1200,7 +1304,7 @@ destination.Value = source.NullableValue!;
 | MapPropertyのConverterプロパティ | 指定したプロパティのみ | 最高 |
 | Mapperメソッドの`[MapConverter]` | そのメソッドの全プロパティ | 中 |
 | クラスの`[MapConverter]` | クラス内の全Mapperメソッド | 低 |
-| デフォルト | DefaultMapConverter | 最低 |
+| デフォルト | DefaultValueConverter | 最低 |
 
 #### 属性
 
@@ -1210,21 +1314,28 @@ public sealed class MapConverterAttribute : Attribute
 {
     /// <summary>
     /// コンバーター型。以下のシグネチャの静的メソッドが必要：
-    /// TDestination Convert&lt;TSource, TDestination&gt;(TSource source)
+    /// - スペシャライズド: {Method}To{TargetType}(sourceType) （任意）
+    /// - Generic: TDestination {Method}&lt;TSource, TDestination&gt;(TSource source) （必須）
     /// </summary>
     public Type ConverterType { get; }
-    
+
+    /// <summary>
+    /// メソッド名のプレフィックス。デフォルトは "Convert"。
+    /// スペシャライズドメソッドは "{Method}To{TargetType}" の形式で検索されます。
+    /// </summary>
+    public string Method { get; set; } = "Convert";
+
     public MapConverterAttribute(Type converterType) { ... }
 }
 ```
 
-### 17.5 使用例
+### 17.7 使用例
 
 #### プロパティレベルの指定（MapPropertyのConverterプロパティ）
 
 ```csharp
 [Mapper]
-[MapProperty(nameof(Source.Value), nameof(Destination.FormattedValue), Converter = nameof(FormatValue))]
+[MapProperty(nameof(Destination.FormattedValue), nameof(Source.Value), Converter = nameof(FormatValue))]
 public static partial void Map(Source source, Destination destination);
 
 private static string FormatValue(int value)
@@ -1239,17 +1350,13 @@ private static string FormatValue(int value)
 // カスタムコンバーターの実装
 public static class CustomConverter
 {
+    // スペシャライズドメソッド（優先使用）
+    public static string ConvertToString(int source) => $"ID_{source}";
+
+    // Genericフォールバック
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {
-        // カスタム変換: int -> string (プレフィックス付き)
-        if (typeof(TSource) == typeof(int) && typeof(TDestination) == typeof(string))
-        {
-            var value = (int)(object)source!;
-            return (TDestination)(object)$"ID_{value}";
-        }
-
-        // その他はデフォルトコンバーターにフォールバック
-        return DefaultMapConverter.Convert<TSource, TDestination>(source);
+        return DefaultValueConverter.Convert<TSource, TDestination>(source);
     }
 }
 

@@ -137,6 +137,17 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// </summary>
     public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;
 
+    /// <summary>
+    /// Gets or sets the specialized converter method name (e.g., "ConvertToInt32" for string -> int).
+    /// If set, this method will be used instead of the generic Convert method.
+    /// </summary>
+    public string? SpecializedConverterMethod { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a specialized converter method is available.
+    /// </summary>
+    public bool HasSpecializedConverter => !string.IsNullOrEmpty(SpecializedConverterMethod);
+
     // Legacy property names for compatibility
     public string SourceName
     {
@@ -173,6 +184,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                ConverterAcceptsCustomParameters == other.ConverterAcceptsCustomParameters &&
                ConditionMethod == other.ConditionMethod &&
                ConditionAcceptsCustomParameters == other.ConditionAcceptsCustomParameters &&
+               SpecializedConverterMethod == other.SpecializedConverterMethod &&
                TargetPathSegments.SequenceEqual(other.TargetPathSegments) &&
                SourcePathSegments.SequenceEqual(other.SourcePathSegments);
     }
@@ -195,6 +207,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + ConverterAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (ConditionMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + ConditionAcceptsCustomParameters.GetHashCode();
+            hash = (hash * 31) + (SpecializedConverterMethod?.GetHashCode() ?? 0);
             return hash;
         }
     }

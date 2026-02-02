@@ -182,6 +182,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         BuildPropertyMappings(sourceType, destinationType, model);
 
+        // Detect specialized converter methods for property mappings
+        DetectSpecializedConverterMethods(model, symbol);
+
         // Validate Converter methods if specified
         var converterError = ValidateConverterMethods(symbol, model, syntax);
         if (converterError is not null)
@@ -1618,6 +1621,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var isSourceNullable = IsNullableSymbol(sourcePropertyType);
                 var isTargetNullable = IsNullableSymbol(destProp.Type);
 
+                // Get Order and DefinitionOrder from original mapping if exists
+                var order = 0;
+                var definitionOrder = 0;
+                if (originalMappings.TryGetValue(destProp.Name, out var origMapping))
+                {
+                    order = origMapping.Order;
+                    definitionOrder = origMapping.DefinitionOrder;
+                }
+
                 var mapping = new PropertyMappingModel
                 {
                     SourcePath = sourcePropPath,
@@ -1628,7 +1640,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     IsSourceNullable = isSourceNullable,
                     IsTargetNullable = isTargetNullable,
                     ConverterMethod = converterMethod,
-                    ConditionMethod = conditionMethod
+                    ConditionMethod = conditionMethod,
+                    Order = order,
+                    DefinitionOrder = definitionOrder
                 };
 
                 mappings.Add(mapping);
@@ -2060,9 +2074,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(destVarName).Append(".").Append(kvp.Key).Append(" ??= new ").Append(kvp.Value).Append("();").NewLine();
         }
 
-        // Group mappings by whether they require null check
-        var mappingsWithoutNullCheck = method.PropertyMappings.Where(m => !m.RequiresNullCheck).ToList();
-        var mappingsWithNullCheck = method.PropertyMappings.Where(m => m.RequiresNullCheck).ToList();
+        // Group mappings by whether they require null check (sorted by Order, then DefinitionOrder)
+        var sortedMappings = method.PropertyMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
+        var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck).ToList();
+        var mappingsWithNullCheck = sortedMappings.Where(m => m.RequiresNullCheck).ToList();
 
         // Generate property mappings without null check
         foreach (var mapping in mappingsWithoutNullCheck)
@@ -2392,18 +2407,200 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var sourceExpr = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
         var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
-        var converterMethodName = method.MapConverterMethodName;
 
-        // Use generic converter for type conversion
-        // DefaultValueConverter.Convert<TSource, TDest>(source.Value)
-        builder.Append(converterTypeName)
-               .Append(".").Append(converterMethodName).Append("<")
-               .Append(mapping.SourceType)
-               .Append(", ")
-               .Append(mapping.TargetType)
-               .Append(">(")
-               .Append(sourceExpr)
-               .Append(")");
+        // Check if specialized converter method should be used
+        if (mapping.HasSpecializedConverter)
+        {
+            // Use specialized converter method: Converter.ConvertToInt32(source.Value)
+            builder.Append(converterTypeName)
+                   .Append(".")
+                   .Append(mapping.SpecializedConverterMethod!)
+                   .Append("(")
+                   .Append(sourceExpr)
+                   .Append(")");
+        }
+        else
+        {
+            // Use generic converter for type conversion
+            // DefaultValueConverter.Convert<TSource, TDest>(source.Value)
+            var converterMethodName = method.MapConverterMethodName;
+            builder.Append(converterTypeName)
+                   .Append(".").Append(converterMethodName).Append("<")
+                   .Append(mapping.SourceType)
+                   .Append(", ")
+                   .Append(mapping.TargetType)
+                   .Append(">(")
+                   .Append(sourceExpr)
+                   .Append(")");
+        }
+    }
+
+    private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
+    {
+        // Get the converter type to check for specialized methods
+        ITypeSymbol? converterType = null;
+
+        if (model.MapConverterTypeName is not null)
+        {
+            // Custom converter - find the type
+            converterType = FindConverterType(mapperMethod, model.MapConverterTypeName);
+        }
+        else
+        {
+            // DefaultValueConverter - find from compilation
+            converterType = mapperMethod.ContainingAssembly
+                .GetTypeByMetadataName("Smart.Mapper.DefaultValueConverter");
+        }
+
+        if (converterType is null)
+        {
+            return;
+        }
+
+        var methodPrefix = model.MapConverterMethodName; // e.g., "Convert"
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Try to find specialized method: {MethodPrefix}To{TargetTypeName}
+            var targetSimpleName = GetSimpleTypeName(mapping.TargetType);
+            var specializedMethodName = $"{methodPrefix}To{targetSimpleName}";
+
+            var specializedMethod = FindSpecializedMethod(
+                converterType,
+                specializedMethodName,
+                mapping.SourceType,
+                mapping.TargetType);
+
+            if (specializedMethod is not null)
+            {
+                mapping.SpecializedConverterMethod = specializedMethodName;
+            }
+        }
+    }
+
+    private static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string converterTypeName)
+    {
+        // Remove "global::" prefix if present
+        var typeName = converterTypeName;
+        if (typeName.StartsWith("global::", StringComparison.Ordinal))
+        {
+            typeName = typeName.Substring("global::".Length);
+        }
+
+        // Try to find in the containing assembly first
+        var type = mapperMethod.ContainingAssembly.GetTypeByMetadataName(typeName);
+        if (type is not null)
+        {
+            return type;
+        }
+
+        // Try to find in referenced assemblies
+        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+        {
+            type = reference.GetTypeByMetadataName(typeName);
+            if (type is not null)
+            {
+                return type;
+            }
+        }
+
+        return null;
+    }
+
+    private static IMethodSymbol? FindSpecializedMethod(
+        ITypeSymbol converterType,
+        string methodName,
+        string sourceType,
+        string targetType)
+    {
+        // Get the simple source type name for parameter matching
+        var sourceSimpleName = GetSimpleTypeName(sourceType);
+
+        var methods = converterType.GetMembers(methodName)
+            .OfType<IMethodSymbol>()
+            .Where(m => m.IsStatic && m.Parameters.Length == 1)
+            .ToList();
+
+        foreach (var method in methods)
+        {
+            var paramType = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            // Check if parameter type matches source type
+            // and return type matches target type
+            if (paramType == sourceType && returnType == targetType)
+            {
+                return method;
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetSimpleTypeName(string fullyQualifiedTypeName)
+    {
+        // Extract simple type name from fully qualified name
+        // e.g., "global::System.Int32" -> "Int32", "int" -> "Int32", "string" -> "String"
+
+        // Handle aliases
+        var typeName = fullyQualifiedTypeName switch
+        {
+            "int" => "Int32",
+            "global::System.Int32" => "Int32",
+            "long" => "Int64",
+            "global::System.Int64" => "Int64",
+            "short" => "Int16",
+            "global::System.Int16" => "Int16",
+            "byte" => "Byte",
+            "global::System.Byte" => "Byte",
+            "sbyte" => "SByte",
+            "global::System.SByte" => "SByte",
+            "uint" => "UInt32",
+            "global::System.UInt32" => "UInt32",
+            "ulong" => "UInt64",
+            "global::System.UInt64" => "UInt64",
+            "ushort" => "UInt16",
+            "global::System.UInt16" => "UInt16",
+            "float" => "Single",
+            "global::System.Single" => "Single",
+            "double" => "Double",
+            "global::System.Double" => "Double",
+            "decimal" => "Decimal",
+            "global::System.Decimal" => "Decimal",
+            "bool" => "Boolean",
+            "global::System.Boolean" => "Boolean",
+            "string" => "String",
+            "global::System.String" => "String",
+            "global::System.DateTime" => "DateTime",
+            "global::System.Guid" => "Guid",
+            _ => ExtractLastSegment(fullyQualifiedTypeName)
+        };
+
+        return typeName;
+    }
+
+    private static string ExtractLastSegment(string fullyQualifiedTypeName)
+    {
+        // Remove "global::" prefix if present
+        var name = fullyQualifiedTypeName;
+        if (name.StartsWith("global::", StringComparison.Ordinal))
+        {
+            name = name.Substring("global::".Length);
+        }
+
+        // Get the last segment after the last dot
+        var lastDot = name.LastIndexOf('.');
+        if (lastDot >= 0)
+        {
+            return name.Substring(lastDot + 1);
+        }
+
+        return name;
     }
 
     // ------------------------------------------------------------

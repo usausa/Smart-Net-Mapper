@@ -955,9 +955,9 @@ public class SpecializedConverterSource
 
 public class SpecializedConverterDestination
 {
-    public int StringValue { get; set; }  // string -> int uses specialized method
-    public string IntValue { get; set; } = string.Empty;  // int -> string uses generic
-    public decimal DoubleValue { get; set; }  // double -> decimal uses generic
+    public int StringValue { get; set; }  // string -> int uses specialized ConvertToInt32
+    public string IntValue { get; set; } = string.Empty;  // int -> string uses specialized ConvertToString
+    public decimal DoubleValue { get; set; }  // double -> decimal uses generic Convert
 }
 
 // Converter with specialized methods
@@ -967,7 +967,14 @@ public static class SpecializedConverter
     public static int ConvertToInt32(string source)
     {
         // Add 1000 to distinguish from generic conversion
-        return int.Parse(source) + 1000;
+        return int.Parse(source, System.Globalization.CultureInfo.InvariantCulture) + 1000;
+    }
+
+    // Specialized method for int -> string (will be preferred over generic)
+    public static string ConvertToString(int source)
+    {
+        // Add prefix to distinguish from generic conversion
+        return $"SPEC_{source}";
     }
 
     // Generic fallback
@@ -1214,7 +1221,9 @@ public class ExtendedTypeConversionTests
         Assert.Contains("3.14159", destination.DoubleValue);
         Assert.Contains("99.99", destination.DecimalValue);
         Assert.Equal("True", destination.BoolValue);
-        Assert.Equal(dateTime.ToString(), destination.DateTimeValue);
+        // DateTime is formatted using InvariantCulture (MM/dd/yyyy format)
+        Assert.Contains("01/15/2024", destination.DateTimeValue);
+        Assert.Contains("10:30:00", destination.DateTimeValue);
         Assert.Equal(guid, destination.GuidString);
     }
 }
@@ -2341,11 +2350,8 @@ public class MapFromPropertyPathTests
 public class SpecializedConverterTests
 {
     [Fact]
-    public void MapWithSpecializedConverter_UsesGenericConvert()
+    public void MapWithSpecializedConverter_UsesSpecializedMethodsWhenAvailable()
     {
-        // Note: Current implementation doesn't support specialized methods yet.
-        // This test verifies the generic converter is used.
-        
         // Arrange
         var source = new SpecializedConverterSource
         {
@@ -2359,9 +2365,47 @@ public class SpecializedConverterTests
         TestMappers.MapWithSpecializedConverter(source, destination);
 
         // Assert
-        // All conversions use generic Convert method
-        Assert.Equal(42, destination.StringValue);   // Generic Convert
-        Assert.Equal("100", destination.IntValue);   // Generic Convert
-        Assert.Equal(3.14m, destination.DoubleValue); // Generic Convert
+        // StringValue uses specialized ConvertToInt32 which adds 1000
+        Assert.Equal(1042, destination.StringValue);
+
+        // IntValue uses specialized ConvertToString which adds "SPEC_" prefix
+        Assert.Equal("SPEC_100", destination.IntValue);
+
+        // DoubleValue uses generic Convert (no specialized method for double -> decimal)
+        Assert.Equal(3.14m, destination.DoubleValue);
+    }
+}
+
+// =================================================================
+// DefaultValueConverter specialized method tests
+// =================================================================
+
+public class DefaultValueConverterSpecializedTests
+{
+    [Fact]
+    public void DefaultValueConverter_StringToInt_UsesSpecializedMethod()
+    {
+        // Test that string -> int uses ConvertToInt32
+        var result = DefaultValueConverter.ConvertToInt32("123");
+        Assert.Equal(123, result);
+    }
+
+    [Fact]
+    public void DefaultValueConverter_IntToString_UsesSpecializedMethod()
+    {
+        // Test that int -> string uses ConvertToString
+        var result = DefaultValueConverter.ConvertToString(456);
+        Assert.Equal("456", result);
+    }
+
+    [Fact]
+    public void DefaultValueConverter_GenericConvert_StillWorks()
+    {
+        // Test that generic Convert still works as fallback
+        var intResult = DefaultValueConverter.Convert<string, int>("789");
+        Assert.Equal(789, intResult);
+
+        var stringResult = DefaultValueConverter.Convert<int, string>(321);
+        Assert.Equal("321", stringResult);
     }
 }

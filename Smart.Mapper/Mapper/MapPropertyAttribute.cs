@@ -9,24 +9,14 @@ using System;
 public sealed class MapPropertyAttribute : Attribute
 {
     /// <summary>
-    /// Gets the source property name.
-    /// </summary>
-    public string Source { get; }
-
-    /// <summary>
     /// Gets the target property name.
     /// </summary>
     public string Target { get; }
 
     /// <summary>
-    /// Gets or sets the mapper type for nested object mapping.
+    /// Gets or sets the source property name.
     /// </summary>
-    public Type? MapperType { get; set; }
-
-    /// <summary>
-    /// Gets or sets the mapper method name. Default is "Map".
-    /// </summary>
-    public string? MapperMethod { get; set; }
+    public string? Source { get; set; }
 
     /// <summary>
     /// Gets or sets the converter method name for type conversion.
@@ -34,13 +24,32 @@ public sealed class MapPropertyAttribute : Attribute
     public string? Converter { get; set; }
 
     /// <summary>
+    /// Gets or sets the behavior when the source value is null.
+    /// </summary>
+    public NullBehavior NullBehavior { get; set; } = NullBehavior.SetDefault;
+
+    /// <summary>
+    /// Gets or sets the order of this mapping. Lower values are processed first.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="MapPropertyAttribute"/> class.
     /// </summary>
-    /// <param name="source">The source property name.</param>
     /// <param name="target">The target property name.</param>
-    public MapPropertyAttribute(string source, string target)
+    public MapPropertyAttribute(string target)
     {
-        Source = source;
         Target = target;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapPropertyAttribute"/> class.
+    /// </summary>
+    /// <param name="target">The target property name.</param>
+    /// <param name="source">The source property name.</param>
+    public MapPropertyAttribute(string target, string source)
+    {
+        Target = target;
+        Source = source;
     }
 }

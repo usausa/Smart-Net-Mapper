@@ -11,14 +11,14 @@ public sealed class AfterMapAttribute : Attribute
     /// <summary>
     /// Gets the method name to call after mapping.
     /// </summary>
-    public string MethodName { get; }
+    public string Method { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AfterMapAttribute"/> class.
     /// </summary>
-    /// <param name="methodName">The method name to call after mapping.</param>
-    public AfterMapAttribute(string methodName)
+    /// <param name="method">The method name to call after mapping.</param>
+    public AfterMapAttribute(string method)
     {
-        MethodName = methodName;
+        Method = method;
     }
 }

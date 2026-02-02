@@ -5,6 +5,22 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
+/// Represents the null behavior for property mapping.
+/// </summary>
+internal enum NullBehaviorType
+{
+    /// <summary>
+    /// Sets default! to the target property when the source is null.
+    /// </summary>
+    SetDefault = 0,
+
+    /// <summary>
+    /// Skips setting the target property when the source is null.
+    /// </summary>
+    Skip = 1
+}
+
+/// <summary>
 /// Represents a property mapping configuration.
 /// </summary>
 internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
@@ -74,7 +90,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether null coalescing is required for the assignment.
     /// This is true when source is nullable but target is not (terminal element).
     /// </summary>
-    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable;
+    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable && NullBehavior == NullBehaviorType.SetDefault;
 
     /// <summary>
     /// Gets or sets the converter method name for custom type conversion.
@@ -105,6 +121,21 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether a condition is specified.
     /// </summary>
     public bool HasCondition => !string.IsNullOrEmpty(ConditionMethod);
+
+    /// <summary>
+    /// Gets or sets the order of this mapping.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the definition order (for stable sorting within same Order).
+    /// </summary>
+    public int DefinitionOrder { get; set; }
+
+    /// <summary>
+    /// Gets or sets the null behavior for this mapping.
+    /// </summary>
+    public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.SetDefault;
 
     // Legacy property names for compatibility
     public string SourceName

@@ -40,7 +40,7 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     /// <summary>
     /// Gets or sets the mapper method name.
     /// </summary>
-    public string MapperMethod { get; set; } = string.Empty;
+    public string Mapper { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets a value indicating whether the mapper method returns a value (vs void).
@@ -56,6 +56,16 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     /// Gets or sets a value indicating whether the source is nullable.
     /// </summary>
     public bool IsSourceNullable { get; set; }
+
+    /// <summary>
+    /// Gets or sets the order of this mapping.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the definition order (for stable sorting within same Order).
+    /// </summary>
+    public int DefinitionOrder { get; set; }
 
     public bool Equals(MapCollectionModel? other)
     {
@@ -75,10 +85,12 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
                TargetName == other.TargetName &&
                TargetType == other.TargetType &&
                TargetElementType == other.TargetElementType &&
-               MapperMethod == other.MapperMethod &&
+               Mapper == other.Mapper &&
                MapperReturnsValue == other.MapperReturnsValue &&
                TargetIsArray == other.TargetIsArray &&
-               IsSourceNullable == other.IsSourceNullable;
+               IsSourceNullable == other.IsSourceNullable &&
+               Order == other.Order &&
+               DefinitionOrder == other.DefinitionOrder;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapCollectionModel);
@@ -90,7 +102,9 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
             var hash = 17;
             hash = (hash * 31) + (SourceName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (MapperMethod?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Mapper?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Order.GetHashCode();
+            hash = (hash * 31) + DefinitionOrder.GetHashCode();
             return hash;
         }
     }

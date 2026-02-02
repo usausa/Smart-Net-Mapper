@@ -4,6 +4,7 @@ using System;
 
 /// <summary>
 /// Specifies a constant value to be set on the target property.
+/// For dynamic expressions like DateTime.Now, use <see cref="MapExpressionAttribute"/> instead.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class MapConstantAttribute : Attribute
@@ -19,10 +20,9 @@ public sealed class MapConstantAttribute : Attribute
     public object? Value { get; }
 
     /// <summary>
-    /// Gets or sets an expression string to evaluate instead of a constant value.
-    /// When set, this takes precedence over <see cref="Value"/>.
+    /// Gets or sets the order of this mapping. Lower values are processed first.
     /// </summary>
-    public string? Expression { get; set; }
+    public int Order { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MapConstantAttribute"/> class.
@@ -52,6 +52,11 @@ public sealed class MapConstantAttribute<T> : Attribute
     /// Gets the constant value to set.
     /// </summary>
     public T Value { get; }
+
+    /// <summary>
+    /// Gets or sets the order of this mapping. Lower values are processed first.
+    /// </summary>
+    public int Order { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MapConstantAttribute{T}"/> class.

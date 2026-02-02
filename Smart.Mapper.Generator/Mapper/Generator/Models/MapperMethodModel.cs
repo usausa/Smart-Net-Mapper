@@ -92,9 +92,14 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public List<ConstantMappingModel> ConstantMappings { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the MapFrom mappings (computed from source via a method).
+    /// Gets or sets the expression mappings (dynamic values like DateTime.Now).
     /// </summary>
-    public List<MapFromModel> MapFromMappings { get; set; } = [];
+    public List<ExpressionMappingModel> ExpressionMappings { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the MapMethod mappings (computed from source via a method).
+    /// </summary>
+    public List<MapMethodModel> MapMethodMappings { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the MapFromMethod mappings (calling a method on source).
@@ -143,9 +148,15 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
 
     /// <summary>
     /// Gets or sets the custom type converter type name.
-    /// If null, DefaultMapConverter is used.
+    /// If null, DefaultValueConverter is used.
     /// </summary>
     public string? MapConverterTypeName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the method name prefix for the custom converter.
+    /// Default is "Convert".
+    /// </summary>
+    public string MapConverterMethodName { get; set; } = "Convert";
 
     /// <summary>
     /// Gets or sets the custom collection converter type name.

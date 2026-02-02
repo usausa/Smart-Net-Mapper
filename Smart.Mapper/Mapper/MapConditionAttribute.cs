@@ -3,50 +3,44 @@ namespace Smart.Mapper;
 using System;
 
 /// <summary>
-/// Specifies a condition method that determines whether to execute the mapping.
+/// Specifies a condition that determines whether to execute the mapping.
+/// When Target is null, the condition applies to the entire mapping.
+/// When Target is specified, the condition applies only to that specific property.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class MapConditionAttribute : Attribute
 {
     /// <summary>
-    /// Gets the name of the condition method.
+    /// Gets or sets the target property name.
+    /// When null, the condition applies to the entire mapping.
     /// </summary>
-    public string MethodName { get; }
+    public string? Target { get; set; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MapConditionAttribute"/> class.
+    /// Gets the name of the condition property or method.
+    /// The generator will search for a matching property or method that returns bool.
     /// </summary>
-    /// <param name="methodName">The name of the condition method that returns bool.</param>
-    public MapConditionAttribute(string methodName)
+    public string Condition { get; }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapConditionAttribute"/> class
+    /// for a global condition that applies to the entire mapping.
+    /// </summary>
+    /// <param name="condition">The name of the condition property or method that returns bool.</param>
+    public MapConditionAttribute(string condition)
     {
-        MethodName = methodName;
+        Condition = condition;
     }
-}
-
-/// <summary>
-/// Specifies a condition for a specific property mapping.
-/// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public sealed class MapPropertyConditionAttribute : Attribute
-{
-    /// <summary>
-    /// Gets the target property name.
-    /// </summary>
-    public string Target { get; }
 
     /// <summary>
-    /// Gets the name of the condition method.
-    /// </summary>
-    public string MethodName { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MapPropertyConditionAttribute"/> class.
+    /// Initializes a new instance of the <see cref="MapConditionAttribute"/> class
+    /// for a property-level condition.
     /// </summary>
     /// <param name="target">The target property name.</param>
-    /// <param name="methodName">The name of the condition method that returns bool.</param>
-    public MapPropertyConditionAttribute(string target, string methodName)
+    /// <param name="condition">The name of the condition property or method that returns bool.</param>
+    public MapConditionAttribute(string target, string condition)
     {
         Target = target;
-        MethodName = methodName;
+        Condition = condition;
     }
 }

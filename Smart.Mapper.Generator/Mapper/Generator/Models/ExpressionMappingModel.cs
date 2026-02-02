@@ -3,9 +3,9 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 
 /// <summary>
-/// Represents a constant value mapping configuration.
+/// Represents an expression mapping configuration.
 /// </summary>
-internal sealed class ConstantMappingModel : IEquatable<ConstantMappingModel>
+internal sealed class ExpressionMappingModel : IEquatable<ExpressionMappingModel>
 {
     /// <summary>
     /// Gets or sets the target property name.
@@ -13,14 +13,9 @@ internal sealed class ConstantMappingModel : IEquatable<ConstantMappingModel>
     public string TargetName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the constant value as a string representation.
+    /// Gets or sets the expression to evaluate.
     /// </summary>
-    public string? Value { get; set; }
-
-    /// <summary>
-    /// Gets or sets the target property type.
-    /// </summary>
-    public string TargetType { get; set; } = string.Empty;
+    public string Expression { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the order of this mapping.
@@ -32,7 +27,7 @@ internal sealed class ConstantMappingModel : IEquatable<ConstantMappingModel>
     /// </summary>
     public int DefinitionOrder { get; set; }
 
-    public bool Equals(ConstantMappingModel? other)
+    public bool Equals(ExpressionMappingModel? other)
     {
         if (other is null)
         {
@@ -45,13 +40,12 @@ internal sealed class ConstantMappingModel : IEquatable<ConstantMappingModel>
         }
 
         return TargetName == other.TargetName &&
-               Value == other.Value &&
-               TargetType == other.TargetType &&
+               Expression == other.Expression &&
                Order == other.Order &&
                DefinitionOrder == other.DefinitionOrder;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as ConstantMappingModel);
+    public override bool Equals(object? obj) => Equals(obj as ExpressionMappingModel);
 
     public override int GetHashCode()
     {
@@ -59,8 +53,7 @@ internal sealed class ConstantMappingModel : IEquatable<ConstantMappingModel>
         {
             var hash = 17;
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (Value?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Expression?.GetHashCode() ?? 0);
             hash = (hash * 31) + Order.GetHashCode();
             hash = (hash * 31) + DefinitionOrder.GetHashCode();
             return hash;

@@ -3,9 +3,10 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 
 /// <summary>
-/// Represents a MapFrom mapping (target property computed from source via a method).
+/// Represents a MapMethod mapping (target property computed from source via a method).
+/// This replaces the old MapFromModel.
 /// </summary>
-internal sealed class MapFromModel : IEquatable<MapFromModel>
+internal sealed class MapMethodModel : IEquatable<MapMethodModel>
 {
     /// <summary>
     /// Gets or sets the target property name.
@@ -20,7 +21,7 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
     /// <summary>
     /// Gets or sets the method name that computes the value.
     /// </summary>
-    public string MethodName { get; set; } = string.Empty;
+    public string Method { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the return type of the method.
@@ -32,7 +33,17 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
     /// </summary>
     public bool AcceptsCustomParameters { get; set; }
 
-    public bool Equals(MapFromModel? other)
+    /// <summary>
+    /// Gets or sets the order of this mapping.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the definition order (for stable sorting within same Order).
+    /// </summary>
+    public int DefinitionOrder { get; set; }
+
+    public bool Equals(MapMethodModel? other)
     {
         if (other is null)
         {
@@ -46,12 +57,14 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
 
         return TargetName == other.TargetName &&
                TargetType == other.TargetType &&
-               MethodName == other.MethodName &&
+               Method == other.Method &&
                MethodReturnType == other.MethodReturnType &&
-               AcceptsCustomParameters == other.AcceptsCustomParameters;
+               AcceptsCustomParameters == other.AcceptsCustomParameters &&
+               Order == other.Order &&
+               DefinitionOrder == other.DefinitionOrder;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as MapFromModel);
+    public override bool Equals(object? obj) => Equals(obj as MapMethodModel);
 
     public override int GetHashCode()
     {
@@ -60,9 +73,11 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
             var hash = 17;
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (MethodName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Method?.GetHashCode() ?? 0);
             hash = (hash * 31) + (MethodReturnType?.GetHashCode() ?? 0);
             hash = (hash * 31) + AcceptsCustomParameters.GetHashCode();
+            hash = (hash * 31) + Order.GetHashCode();
+            hash = (hash * 31) + DefinitionOrder.GetHashCode();
             return hash;
         }
     }

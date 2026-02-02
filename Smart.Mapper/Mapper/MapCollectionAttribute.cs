@@ -9,28 +9,42 @@ using System;
 public sealed class MapCollectionAttribute : Attribute
 {
     /// <summary>
-    /// Gets the source property name.
-    /// </summary>
-    public string Source { get; }
-
-    /// <summary>
     /// Gets the target property name.
     /// </summary>
     public string Target { get; }
 
     /// <summary>
+    /// Gets or sets the source property name.
+    /// </summary>
+    public string? Source { get; set; }
+
+    /// <summary>
     /// Gets or sets the mapper method name to use for mapping each element.
     /// </summary>
-    public string MapperMethod { get; set; } = string.Empty;
+    public string Mapper { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the order of this mapping. Lower values are processed first.
+    /// </summary>
+    public int Order { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MapCollectionAttribute"/> class.
     /// </summary>
-    /// <param name="source">The source property name.</param>
     /// <param name="target">The target property name.</param>
-    public MapCollectionAttribute(string source, string target)
+    public MapCollectionAttribute(string target)
     {
-        Source = source;
         Target = target;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapCollectionAttribute"/> class.
+    /// </summary>
+    /// <param name="target">The target property name.</param>
+    /// <param name="source">The source property name.</param>
+    public MapCollectionAttribute(string target, string source)
+    {
+        Target = target;
+        Source = source;
     }
 }

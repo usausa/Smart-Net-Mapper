@@ -6,7 +6,7 @@ using System;
 /// Specifies a target property that is computed from source using a custom method.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public sealed class MapFromAttribute : Attribute
+public sealed class MapMethodAttribute : Attribute
 {
     /// <summary>
     /// Gets the target property name.
@@ -16,16 +16,21 @@ public sealed class MapFromAttribute : Attribute
     /// <summary>
     /// Gets the method name that computes the value from source.
     /// </summary>
-    public string MethodName { get; }
+    public string Method { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MapFromAttribute"/> class.
+    /// Gets or sets the order of this mapping. Lower values are processed first.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapMethodAttribute"/> class.
     /// </summary>
     /// <param name="target">The target property name.</param>
-    /// <param name="methodName">The method name that computes the value.</param>
-    public MapFromAttribute(string target, string methodName)
+    /// <param name="method">The method name that computes the value.</param>
+    public MapMethodAttribute(string target, string method)
     {
         Target = target;
-        MethodName = methodName;
+        Method = method;
     }
 }

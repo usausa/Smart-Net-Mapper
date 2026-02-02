@@ -3,10 +3,11 @@ namespace Smart.Mapper;
 using System;
 
 /// <summary>
-/// Specifies that the target property is set from the result of calling a method on the source object.
+/// Specifies an expression to be evaluated and set on the target property.
+/// Use this for dynamic values like DateTime.Now.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public sealed class MapFromMethodAttribute : Attribute
+public sealed class MapExpressionAttribute : Attribute
 {
     /// <summary>
     /// Gets the target property name.
@@ -14,9 +15,9 @@ public sealed class MapFromMethodAttribute : Attribute
     public string Target { get; }
 
     /// <summary>
-    /// Gets the method name to call on the source object.
+    /// Gets the expression string to evaluate.
     /// </summary>
-    public string Method { get; }
+    public string Expression { get; }
 
     /// <summary>
     /// Gets or sets the order of this mapping. Lower values are processed first.
@@ -24,13 +25,13 @@ public sealed class MapFromMethodAttribute : Attribute
     public int Order { get; set; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MapFromMethodAttribute"/> class.
+    /// Initializes a new instance of the <see cref="MapExpressionAttribute"/> class.
     /// </summary>
     /// <param name="target">The target property name.</param>
-    /// <param name="method">The method name to call on the source object.</param>
-    public MapFromMethodAttribute(string target, string method)
+    /// <param name="expression">The expression string to evaluate.</param>
+    public MapExpressionAttribute(string target, string expression)
     {
         Target = target;
-        Method = method;
+        Expression = expression;
     }
 }

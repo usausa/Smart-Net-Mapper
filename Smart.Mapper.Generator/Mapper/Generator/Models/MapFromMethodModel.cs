@@ -20,12 +20,22 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
     /// <summary>
     /// Gets or sets the method name to call on the source object.
     /// </summary>
-    public string SourceMethod { get; set; } = string.Empty;
+    public string Method { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the return type of the source method.
     /// </summary>
     public string MethodReturnType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the order of this mapping.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the definition order (for stable sorting within same Order).
+    /// </summary>
+    public int DefinitionOrder { get; set; }
 
     public bool Equals(MapFromMethodModel? other)
     {
@@ -41,8 +51,10 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
 
         return TargetName == other.TargetName &&
                TargetType == other.TargetType &&
-               SourceMethod == other.SourceMethod &&
-               MethodReturnType == other.MethodReturnType;
+               Method == other.Method &&
+               MethodReturnType == other.MethodReturnType &&
+               Order == other.Order &&
+               DefinitionOrder == other.DefinitionOrder;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapFromMethodModel);
@@ -54,8 +66,10 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
             var hash = 17;
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (SourceMethod?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Method?.GetHashCode() ?? 0);
             hash = (hash * 31) + (MethodReturnType?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Order.GetHashCode();
+            hash = (hash * 31) + DefinitionOrder.GetHashCode();
             return hash;
         }
     }

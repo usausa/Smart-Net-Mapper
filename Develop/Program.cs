@@ -58,6 +58,7 @@ internal static partial class ObjectMapper
     [MapProperty("SourceName", "DestName")]
     public static partial void Map(DiffSource source, DiffDestination destination);
 
+
     [Mapper]
     [MapIgnore("Secret")]
     public static partial void Map(IgnoreSource source, IgnoreDestination destination);
@@ -66,7 +67,7 @@ internal static partial class ObjectMapper
     [Mapper]
     [MapConstant("Status", "Active")]
     [MapConstant("Version", 1)]
-    [MapConstant("CreatedAt", null, Expression = "System.DateTime.Now")]
+    [MapExpression("CreatedAt", "System.DateTime.Now")]
     public static partial void Map(ConstantSource source, ConstantDestination destination);
 
     // Phase 2: BeforeMap/AfterMap

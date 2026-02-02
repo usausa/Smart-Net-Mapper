@@ -14,15 +14,23 @@ public sealed class MapConverterAttribute : Attribute
     /// Gets the converter type.
     /// The type must have a static method with signature:
     /// <code>TDestination Convert&lt;TSource, TDestination&gt;(TSource source)</code>
+    /// or a non-generic method matching the specific types.
     /// </summary>
-    public Type ConverterType { get; }
+    public Type Converter { get; }
+
+    /// <summary>
+    /// Gets or sets the method name prefix for conversion.
+    /// Default is "Convert".
+    /// The generator will also search for "{Method}To{DestinationType}" methods.
+    /// </summary>
+    public string Method { get; set; } = "Convert";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MapConverterAttribute"/> class.
     /// </summary>
-    /// <param name="converterType">The converter type.</param>
-    public MapConverterAttribute(Type converterType)
+    /// <param name="converter">The converter type.</param>
+    public MapConverterAttribute(Type converter)
     {
-        ConverterType = converterType;
+        Converter = converter;
     }
 }

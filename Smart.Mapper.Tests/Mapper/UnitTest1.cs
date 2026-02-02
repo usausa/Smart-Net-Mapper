@@ -440,7 +440,7 @@ public static class TestCustomConverter
         }
 
         // Fallback to default converter
-        return DefaultMapConverter.Convert<TSource, TDestination>(source);
+        return DefaultValueConverter.Convert<TSource, TDestination>(source);
     }
 }
 
@@ -515,14 +515,14 @@ internal static partial class TestMappers
 
     // Different property names mapping
     [Mapper]
-    [MapProperty(nameof(DifferentPropertySource.SourceId), nameof(DifferentPropertyDestination.DestId))]
-    [MapProperty(nameof(DifferentPropertySource.SourceName), nameof(DifferentPropertyDestination.DestName))]
+    [MapProperty(nameof(DifferentPropertyDestination.DestId), nameof(DifferentPropertySource.SourceId))]
+    [MapProperty(nameof(DifferentPropertyDestination.DestName), nameof(DifferentPropertySource.SourceName))]
     public static partial void Map(DifferentPropertySource source, DifferentPropertyDestination destination);
 
     // Different property names mapping with return type
     [Mapper]
-    [MapProperty(nameof(DifferentPropertySource.SourceId), nameof(DifferentPropertyDestination.DestId))]
-    [MapProperty(nameof(DifferentPropertySource.SourceName), nameof(DifferentPropertyDestination.DestName))]
+    [MapProperty(nameof(DifferentPropertyDestination.DestId), nameof(DifferentPropertySource.SourceId))]
+    [MapProperty(nameof(DifferentPropertyDestination.DestName), nameof(DifferentPropertySource.SourceName))]
     public static partial DifferentPropertyDestination MapToNew(DifferentPropertySource source);
 
     // Ignore property mapping
@@ -538,7 +538,7 @@ internal static partial class TestMappers
     [Mapper]
     [MapConstant(nameof(ConstantDestination.Status), "Active")]
     [MapConstant(nameof(ConstantDestination.Version), 1)]
-    [MapConstant(nameof(ConstantDestination.CreatedAt), null, Expression = "System.DateTime.Now")]
+    [MapExpression(nameof(ConstantDestination.CreatedAt), "System.DateTime.Now")]
     public static partial void Map(ConstantSource source, ConstantDestination destination);
 
     // Phase 2: BeforeMap and AfterMap
@@ -567,44 +567,44 @@ internal static partial class TestMappers
 
     // Nested mapping: flat source to nested destination
     [Mapper]
-    [MapProperty(nameof(FlatSource.Value1), $"{nameof(NestedDestination.Child1)}.{nameof(DestinationChild.Value)}")]
-    [MapProperty(nameof(FlatSource.Value2), $"{nameof(NestedDestination.Child2)}.{nameof(DestinationChild.Value)}")]
-    [MapProperty(nameof(FlatSource.Value3), $"{nameof(NestedDestination.Child3)}.{nameof(DestinationChild.Value)}")]
+    [MapProperty($"{nameof(NestedDestination.Child1)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value1))]
+    [MapProperty($"{nameof(NestedDestination.Child2)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value2))]
+    [MapProperty($"{nameof(NestedDestination.Child3)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value3))]
     public static partial void Map(FlatSource source, NestedDestination destination);
 
     // Nested mapping: flat source to nested destination with return type
     [Mapper]
-    [MapProperty(nameof(FlatSource.Value1), $"{nameof(NestedDestination.Child1)}.{nameof(DestinationChild.Value)}")]
-    [MapProperty(nameof(FlatSource.Value2), $"{nameof(NestedDestination.Child2)}.{nameof(DestinationChild.Value)}")]
-    [MapProperty(nameof(FlatSource.Value3), $"{nameof(NestedDestination.Child3)}.{nameof(DestinationChild.Value)}")]
+    [MapProperty($"{nameof(NestedDestination.Child1)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value1))]
+    [MapProperty($"{nameof(NestedDestination.Child2)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value2))]
+    [MapProperty($"{nameof(NestedDestination.Child3)}.{nameof(DestinationChild.Value)}", nameof(FlatSource.Value3))]
     public static partial NestedDestination MapToNew(FlatSource source);
 
     // Nested mapping: nested source to flat destination (flatten)
     [Mapper]
-    [MapProperty($"{nameof(NestedSource.Child)}.{nameof(NestedSourceChild.Id)}", nameof(FlatDestination.ChildId))]
-    [MapProperty($"{nameof(NestedSource.Child)}.{nameof(NestedSourceChild.Name)}", nameof(FlatDestination.ChildName))]
+    [MapProperty(nameof(FlatDestination.ChildId), $"{nameof(NestedSource.Child)}.{nameof(NestedSourceChild.Id)}")]
+    [MapProperty(nameof(FlatDestination.ChildName), $"{nameof(NestedSource.Child)}.{nameof(NestedSourceChild.Name)}")]
     public static partial void Map(NestedSource source, FlatDestination destination);
 
     // Deep nested mapping: flat source to deep nested destination
     [Mapper]
-    [MapProperty(nameof(DeepSource.DeepValue), $"{nameof(DeepNestedDestination.Outer)}.{nameof(DeepNestedParent.Inner)}.{nameof(DeepNestedChild.Value)}")]
+    [MapProperty($"{nameof(DeepNestedDestination.Outer)}.{nameof(DeepNestedParent.Inner)}.{nameof(DeepNestedChild.Value)}", nameof(DeepSource.DeepValue))]
     public static partial void Map(DeepSource source, DeepNestedDestination destination);
 
     // Deep nested mapping with return type
     [Mapper]
-    [MapProperty(nameof(DeepSource.DeepValue), $"{nameof(DeepNestedDestination.Outer)}.{nameof(DeepNestedParent.Inner)}.{nameof(DeepNestedChild.Value)}")]
+    [MapProperty($"{nameof(DeepNestedDestination.Outer)}.{nameof(DeepNestedParent.Inner)}.{nameof(DeepNestedChild.Value)}", nameof(DeepSource.DeepValue))]
     public static partial DeepNestedDestination MapToNew(DeepSource source);
 
     // Deep nested mapping: deep nested source to flat destination (multi-level flatten)
     [Mapper]
-    [MapProperty($"{nameof(DeepNestedSource.Outer)}.{nameof(DeepSourceOuter.Inner)}.{nameof(DeepSourceInner.Value)}", nameof(DeepFlatDestination.OuterInnerValue))]
-    [MapProperty($"{nameof(DeepNestedSource.Outer)}.{nameof(DeepSourceOuter.Inner)}.{nameof(DeepSourceInner.Name)}", nameof(DeepFlatDestination.OuterInnerName))]
+    [MapProperty(nameof(DeepFlatDestination.OuterInnerValue), $"{nameof(DeepNestedSource.Outer)}.{nameof(DeepSourceOuter.Inner)}.{nameof(DeepSourceInner.Value)}")]
+    [MapProperty(nameof(DeepFlatDestination.OuterInnerName), $"{nameof(DeepNestedSource.Outer)}.{nameof(DeepSourceOuter.Inner)}.{nameof(DeepSourceInner.Name)}")]
     public static partial void Map(DeepNestedSource source, DeepFlatDestination destination);
 
     // Null handling: nested source to flat destination (with nullable source child)
     [Mapper]
-    [MapProperty($"{nameof(NullableNestedSource.Child)}.{nameof(NullableNestedSourceChild.Id)}", nameof(NullableNestedFlatDestination.ChildId))]
-    [MapProperty($"{nameof(NullableNestedSource.Child)}.{nameof(NullableNestedSourceChild.Name)}", nameof(NullableNestedFlatDestination.ChildName))]
+    [MapProperty(nameof(NullableNestedFlatDestination.ChildId), $"{nameof(NullableNestedSource.Child)}.{nameof(NullableNestedSourceChild.Id)}")]
+    [MapProperty(nameof(NullableNestedFlatDestination.ChildName), $"{nameof(NullableNestedSource.Child)}.{nameof(NullableNestedSourceChild.Name)}")]
     public static partial void Map(NullableNestedSource source, NullableNestedFlatDestination destination);
 
     // Null handling: simple nullable properties
@@ -638,13 +638,13 @@ internal static partial class TestMappers
 
     // Converter: without custom parameters
     [Mapper]
-    [MapProperty(nameof(ConverterSource.Value), nameof(ConverterDestination.ConvertedValue), Converter = nameof(ConvertIntToString))]
+    [MapProperty(nameof(ConverterDestination.ConvertedValue), nameof(ConverterSource.Value), Converter = nameof(ConvertIntToString))]
     public static partial void MapWithConverter(ConverterSource source, ConverterDestination destination);
 
     // Converter: with custom parameters
     [Mapper]
-    [MapProperty(nameof(ConverterSource.Value), nameof(ConverterDestination.ConvertedValue), Converter = nameof(ConvertIntToStringWithContext))]
-    [MapProperty(nameof(ConverterSource.Text), nameof(ConverterDestination.FormattedText), Converter = nameof(FormatTextWithContext))]
+    [MapProperty(nameof(ConverterDestination.ConvertedValue), nameof(ConverterSource.Value), Converter = nameof(ConvertIntToStringWithContext))]
+    [MapProperty(nameof(ConverterDestination.FormattedText), nameof(ConverterSource.Text), Converter = nameof(FormatTextWithContext))]
     public static partial void MapWithConverterAndContext(ConverterSource source, ConverterDestination destination, CustomMappingContext context);
 
     private static void OnBeforeMapWithContext(BasicSource source, BasicDestination destination, CustomMappingContext context)
@@ -691,7 +691,7 @@ internal static partial class TestMappers
 
     // Condition: Property-level condition
     [Mapper]
-    [MapPropertyCondition(nameof(ConditionDestination.Name), nameof(ShouldMapName))]
+    [MapCondition(nameof(ConditionDestination.Name), nameof(ShouldMapName))]
     public static partial void MapWithPropertyCondition(ConditionSource source, ConditionDestination destination);
 
     // Condition: Generic MapConstant test
@@ -711,10 +711,10 @@ internal static partial class TestMappers
         return !string.IsNullOrEmpty(name);
     }
 
-    // MapFrom: basic usage
+    // MapMethod: basic usage
     [Mapper]
-    [MapFrom(nameof(MapFromDestination.FullName), nameof(CombineFullName))]
-    [MapFrom(nameof(MapFromDestination.UpperCaseName), nameof(GetUpperCaseName))]
+    [MapMethod(nameof(MapFromDestination.FullName), nameof(CombineFullName))]
+    [MapMethod(nameof(MapFromDestination.UpperCaseName), nameof(GetUpperCaseName))]
     public static partial void Map(MapFromSource source, MapFromDestination destination);
 
     private static string CombineFullName(MapFromSource source)
@@ -727,9 +727,9 @@ internal static partial class TestMappers
         return $"{source.FirstName} {source.LastName}".ToUpperInvariant();
     }
 
-    // MapFrom: with custom parameters
+    // MapMethod: with custom parameters
     [Mapper]
-    [MapFrom(nameof(MapFromDestination.FullName), nameof(CombineFullNameWithContext))]
+    [MapMethod(nameof(MapFromDestination.FullName), nameof(CombineFullNameWithContext))]
     public static partial MapFromDestination MapWithContext(MapFromSource source, MapFromContext context);
 
     private static string CombineFullNameWithContext(MapFromSource source, MapFromContext context)
@@ -745,13 +745,13 @@ internal static partial class TestMappers
 
     // AutoMap = false: only explicitly mapped properties
     [Mapper(AutoMap = false)]
-    [MapProperty(nameof(AutoMapSource.Id), nameof(AutoMapDestination.Id))]
+    [MapProperty(nameof(AutoMapDestination.Id), nameof(AutoMapSource.Id))]
     public static partial void MapExplicit(AutoMapSource source, AutoMapDestination destination);
 
     // AutoMap = false: with multiple MapProperty
     [Mapper(AutoMap = false)]
-    [MapProperty(nameof(AutoMapSource.Id), nameof(AutoMapDestination.Id))]
-    [MapProperty(nameof(AutoMapSource.Name), nameof(AutoMapDestination.Name))]
+    [MapProperty(nameof(AutoMapDestination.Id), nameof(AutoMapSource.Id))]
+    [MapProperty(nameof(AutoMapDestination.Name), nameof(AutoMapSource.Name))]
     public static partial AutoMapDestination MapExplicitToNew(AutoMapSource source);
 
     // MapCollection: child mapper (return value pattern)
@@ -760,13 +760,13 @@ internal static partial class TestMappers
 
     // MapCollection: array to List and List to array
     [Mapper]
-    [MapCollection(nameof(CollectionSource.Children), nameof(CollectionDestination.Children), MapperMethod = nameof(MapCollectionChild))]
-    [MapCollection(nameof(CollectionSource.Items), nameof(CollectionDestination.Items), MapperMethod = nameof(MapCollectionChild))]
+    [MapCollection(nameof(CollectionDestination.Children), nameof(CollectionSource.Children), Mapper = nameof(MapCollectionChild))]
+    [MapCollection(nameof(CollectionDestination.Items), nameof(CollectionSource.Items), Mapper = nameof(MapCollectionChild))]
     public static partial void Map(CollectionSource source, CollectionDestination destination);
 
     // MapCollection: with return type
     [Mapper]
-    [MapCollection(nameof(CollectionSource.Children), nameof(CollectionDestination.Children), MapperMethod = nameof(MapCollectionChild))]
+    [MapCollection(nameof(CollectionDestination.Children), nameof(CollectionSource.Children), Mapper = nameof(MapCollectionChild))]
     [MapIgnore(nameof(CollectionDestination.Items))]  // Ignore Items to test single collection mapping
     public static partial CollectionDestination MapToNew(CollectionSource source);
 
@@ -776,12 +776,12 @@ internal static partial class TestMappers
 
     // MapNested: basic usage
     [Mapper]
-    [MapNested(nameof(NestedObjectSource.Child), nameof(NestedObjectDestination.Child), MapperMethod = nameof(MapNestedChild))]
+    [MapNested(nameof(NestedObjectDestination.Child), nameof(NestedObjectSource.Child), Mapper = nameof(MapNestedChild))]
     public static partial void Map(NestedObjectSource source, NestedObjectDestination destination);
 
     // MapNested: with return type
     [Mapper]
-    [MapNested(nameof(NestedObjectSource.Child), nameof(NestedObjectDestination.Child), MapperMethod = nameof(MapNestedChild))]
+    [MapNested(nameof(NestedObjectDestination.Child), nameof(NestedObjectSource.Child), Mapper = nameof(MapNestedChild))]
     public static partial NestedObjectDestination MapToNew(NestedObjectSource source);
 
     // MapCollection with void mapper
@@ -789,7 +789,7 @@ internal static partial class TestMappers
     public static partial void MapVoidChild(VoidMapperSourceChild source, VoidMapperDestinationChild destination);
 
     [Mapper]
-    [MapCollection(nameof(VoidMapperSource.Children), nameof(VoidMapperDestination.Children), MapperMethod = nameof(MapVoidChild))]
+    [MapCollection(nameof(VoidMapperDestination.Children), nameof(VoidMapperSource.Children), Mapper = nameof(MapVoidChild))]
     public static partial void Map(VoidMapperSource source, VoidMapperDestination destination);
 
     // MapNested with void mapper
@@ -797,7 +797,7 @@ internal static partial class TestMappers
     public static partial void MapNestedChildVoid(NestedObjectSourceChild source, NestedObjectDestinationChild destination);
 
     [Mapper]
-    [MapNested(nameof(NestedObjectSource.Child), nameof(NestedObjectDestination.Child), MapperMethod = nameof(MapNestedChildVoid))]
+    [MapNested(nameof(NestedObjectDestination.Child), nameof(NestedObjectSource.Child), Mapper = nameof(MapNestedChildVoid))]
     public static partial void MapWithVoidNested(NestedObjectSource source, NestedObjectDestination destination);
 
     // Custom type converter test
@@ -808,7 +808,7 @@ internal static partial class TestMappers
     // Custom collection converter test - using CollectionSourceChild to CollectionDestinationChild
     [Mapper]
     [CollectionConverter(typeof(TestCustomCollectionConverter))]
-    [MapCollection(nameof(CustomCollectionSource.Numbers), nameof(CustomCollectionDestination.Numbers), MapperMethod = nameof(MapCollectionChild))]
+    [MapCollection(nameof(CustomCollectionDestination.Numbers), nameof(CustomCollectionSource.Numbers), Mapper = nameof(MapCollectionChild))]
     public static partial void MapWithCustomCollectionConverter(CustomCollectionSource source, CustomCollectionDestination destination);
 }
 

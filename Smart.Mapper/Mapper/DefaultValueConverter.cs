@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 /// Default type converter for property mappings.
 /// Uses generic method with type checking that gets optimized by JIT.
 /// </summary>
-public static class DefaultMapConverter
+public static class DefaultValueConverter
 {
     /// <summary>
     /// Converts a value from source type to destination type.

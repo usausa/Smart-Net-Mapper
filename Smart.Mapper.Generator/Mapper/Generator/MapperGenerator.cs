@@ -1621,6 +1621,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var isSourceNullable = IsNullableSymbol(sourcePropertyType);
                 var isTargetNullable = IsNullableSymbol(destProp.Type);
 
+                // Get underlying types for nullable handling
+                var sourceUnderlyingType = GetUnderlyingType(sourcePropertyType);
+                var targetUnderlyingType = GetUnderlyingType(destProp.Type);
+                var sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var targetUnderlyingTypeName = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
                 // Get Order and DefinitionOrder from original mapping if exists
                 var order = 0;
                 var definitionOrder = 0;
@@ -1636,7 +1642,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     TargetPath = destProp.Name,
                     SourceType = sourceTypeName,
                     TargetType = destTypeName,
-                    RequiresConversion = RequiresTypeConversion(sourceTypeName, destTypeName, isSourceNullable, isTargetNullable),
+                    SourceUnderlyingType = sourceUnderlyingTypeName,
+                    TargetUnderlyingType = targetUnderlyingTypeName,
+                    RequiresConversion = RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName, isSourceNullable, isTargetNullable),
                     IsSourceNullable = isSourceNullable,
                     IsTargetNullable = isTargetNullable,
                     ConverterMethod = converterMethod,
@@ -1664,6 +1672,27 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    private static ITypeSymbol GetUnderlyingType(ITypeSymbol type)
+    {
+        // For Nullable<T> value types, return T
+        if (type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
+            type is INamedTypeSymbol namedType &&
+            namedType.TypeArguments.Length == 1)
+        {
+            return namedType.TypeArguments[0];
+        }
+
+        // For nullable reference types, return the underlying type
+        if (type.NullableAnnotation == NullableAnnotation.Annotated &&
+            type is INamedTypeSymbol refType)
+        {
+            return refType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+        }
+
+        // Not nullable, return as-is
+        return type;
+    }
+
     private static bool IsNullableSymbol(ITypeSymbol type)
     {
         // Check for nullable reference type
@@ -1677,6 +1706,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             return true;
         }
+
 
         return false;
     }
@@ -1716,6 +1746,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 mapping.SourceType = finalSourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 mapping.IsSourceNullable = IsNullableSymbol(finalSourceProp.Type);
+                var sourceUnderlyingType = GetUnderlyingType(finalSourceProp.Type);
+                mapping.SourceUnderlyingType = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
         else
@@ -1726,6 +1758,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 mapping.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 mapping.IsSourceNullable = IsNullableSymbol(sourceProp.Type);
+                var sourceUnderlyingType = GetUnderlyingType(sourceProp.Type);
+                mapping.SourceUnderlyingType = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
 
@@ -1760,6 +1794,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 mapping.TargetType = finalProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 mapping.IsTargetNullable = IsNullableSymbol(finalProp.Type);
+                var targetUnderlyingType = GetUnderlyingType(finalProp.Type);
+                mapping.TargetUnderlyingType = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
         else
@@ -1770,16 +1806,18 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 mapping.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 mapping.IsTargetNullable = IsNullableSymbol(destProp.Type);
+                var targetUnderlyingType = GetUnderlyingType(destProp.Type);
+                mapping.TargetUnderlyingType = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
 
         // Determine if conversion is needed
-        // Conversion is NOT needed when:
-        // - Same type (int -> int)
-        // - Implicit numeric widening (int -> long, float -> double)
-        // - Nullable to non-nullable of same type (int? -> int, handled by null coalescing)
-        // - Non-nullable to nullable (int -> int?)
-        if (!string.IsNullOrEmpty(mapping.SourceType) && !string.IsNullOrEmpty(mapping.TargetType))
+        // Use underlying types for comparison (without nullable wrapper)
+        if (!string.IsNullOrEmpty(mapping.SourceUnderlyingType) && !string.IsNullOrEmpty(mapping.TargetUnderlyingType))
+        {
+            mapping.RequiresConversion = RequiresTypeConversion(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType, mapping.IsSourceNullable, mapping.IsTargetNullable);
+        }
+        else if (!string.IsNullOrEmpty(mapping.SourceType) && !string.IsNullOrEmpty(mapping.TargetType))
         {
             mapping.RequiresConversion = RequiresTypeConversion(mapping.SourceType, mapping.TargetType, mapping.IsSourceNullable, mapping.IsTargetNullable);
         }
@@ -2285,6 +2323,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Indent().Append("return ").Append(destVarName).Append(";").NewLine();
         }
 
+
         builder.EndScope();
     }
 
@@ -2306,6 +2345,28 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.BeginScope();
         }
 
+        // Handle nullable source with type conversion
+        // When source is nullable (e.g., int?) and conversion is needed (e.g., int? -> string),
+        // we need to check for null first, then convert the underlying value
+        if (mapping.IsSourceNullable && mapping.RequiresConversion && !mapping.HasConverter)
+        {
+            BuildNullableSourceConversion(builder, mapping, sourceParamName, destVarName, method, nullChecked);
+        }
+        else
+        {
+            // Standard assignment
+            BuildStandardAssignment(builder, mapping, sourceParamName, destVarName, method, nullChecked);
+        }
+
+        // Close property-level condition scope if present
+        if (mapping.HasCondition)
+        {
+            builder.EndScope();
+        }
+    }
+
+    private static void BuildStandardAssignment(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked)
+    {
         builder.Indent();
         builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
 
@@ -2343,11 +2404,111 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         builder.Append(";").NewLine();
+    }
 
-        // Close property-level condition scope if present
-        if (mapping.HasCondition)
+    private static void BuildNullableSourceConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked)
+    {
+        var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+
+        // Check if source is a Nullable<T> value type (int?, etc.)
+        var isNullableValueType = mapping.SourceType.Contains("?") ||
+                                   mapping.SourceType.Contains("Nullable<");
+
+        if (mapping.NullBehavior == NullBehaviorType.Skip)
         {
+            // Skip when null
+            builder.Indent().Append("if (").Append(sourceAccessor).Append(" is not null)").NewLine();
+            builder.BeginScope();
+            builder.Indent();
+            builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
+
+            // For Nullable<T> value types, access .Value to get the underlying type
+            if (isNullableValueType)
+            {
+                BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
+            }
+            else
+            {
+                BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+            }
+
+            builder.Append(";").NewLine();
             builder.EndScope();
+        }
+        else
+        {
+            // Default behavior: convert if not null, otherwise use default
+            if (mapping.IsTargetNullable)
+            {
+                // Target is nullable, use conditional expression
+                builder.Indent();
+                builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
+                builder.Append(sourceAccessor).Append(" is not null ? ");
+
+                if (isNullableValueType)
+                {
+                    BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
+                }
+                else
+                {
+                    BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+                }
+
+                builder.Append(" : default;").NewLine();
+            }
+            else
+            {
+                // Target is non-nullable - need to handle null case
+                // Generate: destination.Prop = source.NullableProp is not null
+                //              ? Converter.ConvertToXxx(source.NullableProp.Value)
+                //              : default!;
+                builder.Indent();
+                builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
+                builder.Append(sourceAccessor).Append(" is not null ? ");
+
+                if (isNullableValueType)
+                {
+                    BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
+                }
+                else
+                {
+                    BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+                }
+
+                builder.Append(" : default!;").NewLine();
+            }
+        }
+    }
+
+    private static void BuildTypeConversionWithValueAccess(SourceBuilder builder, PropertyMappingModel mapping, string sourceAccessor, MapperMethodModel method)
+    {
+        var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
+
+        if (mapping.HasSpecializedConverter)
+        {
+            // Use specialized converter method with .Value access
+            builder.Append(converterTypeName)
+                   .Append(".")
+                   .Append(mapping.SpecializedConverterMethod!)
+                   .Append("(")
+                   .Append(sourceAccessor)
+                   .Append(".Value)");
+        }
+        else
+        {
+            // Use generic converter with underlying types and .Value access
+            var converterMethodName = method.MapConverterMethodName;
+            var sourceTypeForConversion = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+            var targetTypeForConversion = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+
+            builder.Append(converterTypeName)
+                   .Append(".").Append(converterMethodName).Append("<")
+                   .Append(sourceTypeForConversion)
+                   .Append(", ")
+                   .Append(targetTypeForConversion)
+                   .Append(">(")
+                   .Append(sourceAccessor)
+                   .Append(".Value)");
         }
     }
 
@@ -2422,13 +2583,17 @@ public sealed class MapperGenerator : IIncrementalGenerator
         else
         {
             // Use generic converter for type conversion
-            // DefaultValueConverter.Convert<TSource, TDest>(source.Value)
+            // Use underlying types (without nullable wrapper) for the conversion
+            // DefaultValueConverter.Convert<TSourceUnderlying, TDestUnderlying>(source.Value)
             var converterMethodName = method.MapConverterMethodName;
+            var sourceTypeForConversion = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+            var targetTypeForConversion = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+
             builder.Append(converterTypeName)
                    .Append(".").Append(converterMethodName).Append("<")
-                   .Append(mapping.SourceType)
+                   .Append(sourceTypeForConversion)
                    .Append(", ")
-                   .Append(mapping.TargetType)
+                   .Append(targetTypeForConversion)
                    .Append(">(")
                    .Append(sourceExpr)
                    .Append(")");
@@ -2466,15 +2631,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // Try to find specialized method: {MethodPrefix}To{TargetTypeName}
-            var targetSimpleName = GetSimpleTypeName(mapping.TargetType);
+            // Try to find specialized method using underlying types
+            // e.g., for int? -> string, look for ConvertToString with int parameter
+            var sourceTypeForLookup = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+            var targetTypeForLookup = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+
+            var targetSimpleName = GetSimpleTypeName(targetTypeForLookup);
             var specializedMethodName = $"{methodPrefix}To{targetSimpleName}";
 
             var specializedMethod = FindSpecializedMethod(
                 converterType,
                 specializedMethodName,
-                mapping.SourceType,
-                mapping.TargetType);
+                sourceTypeForLookup,
+                targetTypeForLookup);
 
             if (specializedMethod is not null)
             {

@@ -123,6 +123,7 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(bool source) => source.ToString();
 
+
     /// <summary>Converts DateTime to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateTime source) => source.ToString(CultureInfo.InvariantCulture);
@@ -137,46 +138,23 @@ public static class DefaultValueConverter
 
     /// <summary>
     /// Converts a value from source type to destination type (generic fallback).
+    /// This method is called only when:
+    /// - No specialized method exists (e.g., ConvertToInt32)
+    /// - Actual type conversion is required (not same type, not nullable wrapping/unwrapping)
+    /// - Nullable handling has already been done by the generated code
     /// </summary>
-    /// <typeparam name="TSource">The source type.</typeparam>
-    /// <typeparam name="TDestination">The destination type.</typeparam>
+    /// <typeparam name="TSource">The source type (non-nullable, after generator's null handling).</typeparam>
+    /// <typeparam name="TDestination">The destination type (non-nullable target type).</typeparam>
     /// <param name="source">The source value.</param>
     /// <returns>The converted value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {
-        // Same type - no conversion needed
-        if (typeof(TSource) == typeof(TDestination))
-        {
-            return (TDestination)(object)source!;
-        }
-
-        // Nullable<T> -> T (get value)
-        var sourceUnderlyingType = Nullable.GetUnderlyingType(typeof(TSource));
-        if (sourceUnderlyingType == typeof(TDestination))
-        {
-            return (TDestination)(object)source!;
-        }
-
-        // T -> Nullable<T>
-        if (Nullable.GetUnderlyingType(typeof(TDestination)) == typeof(TSource))
-        {
-            return (TDestination)(object)source!;
-        }
-
-        // Nullable<T> -> string (special case: call ToString on underlying value)
-        if (sourceUnderlyingType is not null && typeof(TDestination) == typeof(string))
-        {
-            if (source is null)
-            {
-                return default!;
-            }
-            return (TDestination)(object)source.ToString()!;
-        }
-
         // Numeric conversions - JIT will optimize away unused branches
         return ConvertNumeric<TSource, TDestination>(source);
     }
+
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static TDestination ConvertNumeric<TSource, TDestination>(TSource source)

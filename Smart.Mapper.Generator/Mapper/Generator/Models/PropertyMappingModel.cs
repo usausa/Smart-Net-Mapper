@@ -46,6 +46,18 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public string TargetType { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the underlying source type for nullable types.
+    /// If source is int?, this would be int. If source is not nullable, this is same as SourceType.
+    /// </summary>
+    public string SourceUnderlyingType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the underlying target type for nullable types.
+    /// If target is int?, this would be int. If target is not nullable, this is same as TargetType.
+    /// </summary>
+    public string TargetUnderlyingType { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets a value indicating whether type conversion is required.
     /// </summary>
     public bool RequiresConversion { get; set; }
@@ -161,6 +173,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
         set => TargetPath = value;
     }
 
+
     public bool Equals(PropertyMappingModel? other)
     {
         if (other is null)
@@ -177,6 +190,8 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                TargetPath == other.TargetPath &&
                SourceType == other.SourceType &&
                TargetType == other.TargetType &&
+               SourceUnderlyingType == other.SourceUnderlyingType &&
+               TargetUnderlyingType == other.TargetUnderlyingType &&
                RequiresConversion == other.RequiresConversion &&
                IsSourceNullable == other.IsSourceNullable &&
                IsTargetNullable == other.IsTargetNullable &&
@@ -200,6 +215,8 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + (TargetPath?.GetHashCode() ?? 0);
             hash = (hash * 31) + (SourceType?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (SourceUnderlyingType?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (TargetUnderlyingType?.GetHashCode() ?? 0);
             hash = (hash * 31) + RequiresConversion.GetHashCode();
             hash = (hash * 31) + IsSourceNullable.GetHashCode();
             hash = (hash * 31) + IsTargetNullable.GetHashCode();

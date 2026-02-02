@@ -1257,19 +1257,15 @@ public static class DefaultValueConverter
     // ... 他の型のスペシャライズドメソッド
 
     // Genericフォールバック
+    // Genericフォールバック（スペシャライズドメソッドがない場合に使用）
+    // 注意: Nullable処理はSource Generator側で行われる
+    //       このメソッドには常に非Nullable型が渡される
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {
-        // 同じ型
-        if (typeof(TSource) == typeof(TDestination))
-        {
-            return (TDestination)(object)source!;
-        }
-
-        // Nullable<T> -> T
-        // T -> Nullable<T>
         // 数値変換（int, long, double, etc.）
         // string <-> 数値/bool/DateTime/Guid
+        // フォールバック処理
         // ...
     }
 }
@@ -1277,25 +1273,52 @@ public static class DefaultValueConverter
 
 ### 17.5 コンバーターが使用されるケース
 
-**コンバーターが使用される（明示的な変換が必要）:**
+**コンバーターが使用される（型変換が必要）:**
 
-| ソース型 | ターゲット型 | 使用メソッド |
-|----------|-------------|-------------|
-| `string` | `int` | `ConvertToInt32(string)` |
-| `int` | `string` | `ConvertToString(int)` |
-| `long` | `int` | `Convert<long, int>` (Generic) |
-| `double` | `decimal` | `Convert<double, decimal>` (Generic) |
+| ソース型 | ターゲット型 | 生成コード |
+|----------|-------------|-----------|
+| `string` | `int` | `ConvertToInt32(source.Value)` |
+| `int` | `string` | `ConvertToString(source.Value)` |
+| `int?` | `string` | `source.Value is not null ? ConvertToString(source.Value.Value) : default!` |
+| `long` | `int` | `Convert<long, int>(source.Value)` |
 
 **コンバーターが使用されない（直接代入）:**
 
-| ソース型 | ターゲット型 | 説明 |
-|----------|-------------|------|
-| `int` | `int` | 同じ型 |
-| `int` | `long` | 暗黙的なワイドニング変換 |
-| `int` | `int?` | 非NullableからNullableへ |
-| `int?` | `int` | null-forgiving演算子（`!`）で処理 |
+| ソース型 | ターゲット型 | 生成コード |
+|----------|-------------|-----------|
+| `int` | `int` | `destination.Prop = source.Prop;` |
+| `int` | `long` | `destination.Prop = source.Prop;` (暗黙的変換) |
+| `int` | `int?` | `destination.Prop = source.Prop;` |
+| `int?` | `int` | `destination.Prop = source.Prop!;` (null-forgiving) |
 
-### 17.6 カスタムコンバーターの指定
+### 17.6 Nullable型の変換処理
+
+Nullable型の処理はSource Generator側で行われ、コンバーターにはアンダーライング型（非Nullable）が渡されます。
+
+**例: int? → string の変換**
+
+```csharp
+// ソースコード
+public class Source { public int? NullableValue { get; set; } }
+public class Destination { public string StringValue { get; set; } }
+
+// 生成されるコード
+destination.StringValue = source.NullableValue is not null
+    ? DefaultValueConverter.ConvertToString(source.NullableValue.Value)  // int -> string
+    : default!;
+```
+
+**NullBehavior.Skip の場合:**
+
+```csharp
+// NullBehavior = NullBehavior.Skip が指定された場合
+if (source.NullableValue is not null)
+{
+    destination.StringValue = DefaultValueConverter.ConvertToString(source.NullableValue.Value);
+}
+```
+
+### 17.7 カスタムコンバーターの指定
 
 #### 指定レベルと優先順位
 
@@ -1329,7 +1352,7 @@ public sealed class MapConverterAttribute : Attribute
 }
 ```
 
-### 17.7 使用例
+### 17.8 使用例
 
 #### プロパティレベルの指定（MapPropertyのConverterプロパティ）
 

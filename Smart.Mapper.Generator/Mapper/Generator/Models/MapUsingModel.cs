@@ -3,10 +3,10 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 
 /// <summary>
-/// Represents a MapMethod mapping (target property computed from source via a method).
-/// This replaces the old MapFromModel.
+/// Represents a MapUsing mapping (target property computed from source via a method in containing class).
+/// Supports custom parameters similar to AfterMap/BeforeMap.
 /// </summary>
-internal sealed class MapMethodModel : IEquatable<MapMethodModel>
+internal sealed class MapUsingModel : IEquatable<MapUsingModel>
 {
     /// <summary>
     /// Gets or sets the target property name.
@@ -43,7 +43,7 @@ internal sealed class MapMethodModel : IEquatable<MapMethodModel>
     /// </summary>
     public int DefinitionOrder { get; set; }
 
-    public bool Equals(MapMethodModel? other)
+    public bool Equals(MapUsingModel? other)
     {
         if (other is null)
         {
@@ -64,7 +64,7 @@ internal sealed class MapMethodModel : IEquatable<MapMethodModel>
                DefinitionOrder == other.DefinitionOrder;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as MapMethodModel);
+    public override bool Equals(object? obj) => Equals(obj as MapUsingModel);
 
     public override int GetHashCode()
     {

@@ -3,10 +3,11 @@ namespace Smart.Mapper;
 using System;
 
 /// <summary>
-/// Specifies that the target property is set from the result of calling a method on the source object.
+/// Specifies a target property that is computed from source using a custom method in the containing class.
+/// The method can accept custom parameters similar to AfterMap/BeforeMap.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public sealed class MapFromMethodAttribute : Attribute
+public sealed class MapUsingAttribute : Attribute
 {
     /// <summary>
     /// Gets the target property name.
@@ -14,7 +15,7 @@ public sealed class MapFromMethodAttribute : Attribute
     public string Target { get; }
 
     /// <summary>
-    /// Gets the method name to call on the source object.
+    /// Gets the method name that computes the value from source.
     /// </summary>
     public string Method { get; }
 
@@ -24,11 +25,11 @@ public sealed class MapFromMethodAttribute : Attribute
     public int Order { get; set; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MapFromMethodAttribute"/> class.
+    /// Initializes a new instance of the <see cref="MapUsingAttribute"/> class.
     /// </summary>
     /// <param name="target">The target property name.</param>
-    /// <param name="method">The method name to call on the source object.</param>
-    public MapFromMethodAttribute(string target, string method)
+    /// <param name="method">The method name that computes the value.</param>
+    public MapUsingAttribute(string target, string method)
     {
         Target = target;
         Method = method;

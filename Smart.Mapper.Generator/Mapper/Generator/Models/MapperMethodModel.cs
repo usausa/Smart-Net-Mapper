@@ -97,14 +97,14 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public List<ExpressionMappingModel> ExpressionMappings { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the MapMethod mappings (computed from source via a method).
+    /// Gets or sets the MapUsing mappings (computed from source via a method in containing class).
     /// </summary>
-    public List<MapMethodModel> MapMethodMappings { get; set; } = [];
+    public List<MapUsingModel> MapUsingMappings { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the MapFromMethod mappings (calling a method on source).
+    /// Gets or sets the MapFrom mappings (source expression - method call or property path).
     /// </summary>
-    public List<MapFromMethodModel> MapFromMethodMappings { get; set; } = [];
+    public List<MapFromModel> MapFromMappings { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the MapCollection mappings (collection properties using a mapper method).

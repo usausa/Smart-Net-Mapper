@@ -12,7 +12,7 @@ internal enum NullBehaviorType
     /// <summary>
     /// Sets default! to the target property when the source is null.
     /// </summary>
-    SetDefault = 0,
+    Default = 0,
 
     /// <summary>
     /// Skips setting the target property when the source is null.
@@ -90,7 +90,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether null coalescing is required for the assignment.
     /// This is true when source is nullable but target is not (terminal element).
     /// </summary>
-    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable && NullBehavior == NullBehaviorType.SetDefault;
+    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable && NullBehavior == NullBehaviorType.Default;
 
     /// <summary>
     /// Gets or sets the converter method name for custom type conversion.
@@ -135,7 +135,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// <summary>
     /// Gets or sets the null behavior for this mapping.
     /// </summary>
-    public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.SetDefault;
+    public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;
 
     // Legacy property names for compatibility
     public string SourceName

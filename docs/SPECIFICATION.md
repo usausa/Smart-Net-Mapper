@@ -53,26 +53,31 @@ public static partial Destination Map(Source source)
 | `[Mapper]` | マッピングメソッドの指定 | Method |
 | `[Mapper(AutoMap = false)]` | 自動マッピング無効化 | Method |
 | `[MapProperty]` | プロパティ間のマッピング指定 | Method |
-| `[MapFrom]` | 静的メソッドによる値の合成 | Method |
-| `[MapFromMethod]` | ソースオブジェクトのメソッド呼び出し | Method |
+| `[MapUsing]` | 静的メソッドによる値の計算（カスタムパラメーター対応） | Method |
+| `[MapFrom]` | ソースオブジェクトのメソッド呼び出しまたはプロパティパス | Method |
 | `[MapConstant]` | 固定値の設定 | Method |
 | `[MapConstant<T>]` | 型指定の固定値設定（C# 11+） | Method |
+| `[MapExpression]` | 動的式の設定（例: DateTime.Now） | Method |
 | `[MapIgnore]` | マッピング除外 | Method |
 | `[AfterMap]` | マッピング後の追加処理 | Method |
 | `[BeforeMap]` | マッピング前の追加処理 | Method |
-| `[MapCondition]` | マッピング全体の条件 | Method |
-| `[MapPropertyCondition]` | プロパティレベルの条件 | Method |
+| `[MapCondition]` | マッピング条件（グローバルまたはプロパティ単位） | Method |
 | `[MapCollection]` | コレクションマッピング | Method |
 | `[MapNested]` | 子オブジェクトマッピング | Method |
-| `[MapConverter]` | メソッドレベルのカスタム型変換器 | Method |
-| `[CollectionConverter]` | カスタムコレクション変換器 | Method |
+| `[MapConverter]` | カスタム型変換器 | Method, Class |
+| `[CollectionConverter]` | カスタムコレクション変換器 | Method, Class |
 
-### 3.2 クラス/アセンブリレベル属性
+### 3.2 属性パラメーターの順序
 
-| 属性 | 用途 | 適用対象 |
-|------|------|----------|
-| `[MapConverter]` | カスタム型変換器の指定 | Class, Method |
-| `[CollectionConverter]` | カスタムコレクション変換器 | Class, Method |
+すべての属性で、第1引数は**ターゲット**（destination）プロパティ名です：
+
+```csharp
+[MapProperty("TargetProperty", "SourceProperty")]     // Target first
+[MapUsing("TargetProperty", "ComputeMethod")]         // Target first
+[MapFrom("TargetProperty", "SourceMethodOrPath")]     // Target first
+[MapCollection("TargetProperty", "SourceProperty")]   // Target first
+[MapNested("TargetProperty", "SourceProperty")]       // Target first
+```
 
 ## 4. 詳細仕様
 
@@ -82,8 +87,8 @@ public static partial Destination Map(Source source)
 internal static partial class ObjectMapper
 {
     [Mapper]
-    [MapProperty(nameof(Source.SourceName), nameof(Destination.DestinationName))]
-    [MapProperty(nameof(Source.Code), nameof(Destination.Id))]  // 複数指定可能
+    [MapProperty(nameof(Destination.DestinationName), nameof(Source.SourceName))]
+    [MapProperty(nameof(Destination.Id), nameof(Source.Code))]  // 複数指定可能
     public static partial void Map(Source source, Destination destination);
 }
 ```

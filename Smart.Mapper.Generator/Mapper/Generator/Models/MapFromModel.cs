@@ -3,9 +3,9 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 
 /// <summary>
-/// Represents a MapFromMethod mapping (target property set from calling a method on source).
+/// Represents a MapFrom mapping (target property set from source expression - method call or property path).
 /// </summary>
-internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
+internal sealed class MapFromModel : IEquatable<MapFromModel>
 {
     /// <summary>
     /// Gets or sets the target property name.
@@ -18,14 +18,19 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
     public string TargetType { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the method name to call on the source object.
+    /// Gets or sets the source expression (method name or property path).
     /// </summary>
-    public string Method { get; set; } = string.Empty;
+    public string From { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the return type of the source method.
+    /// Gets or sets a value indicating whether the source expression is a method call.
     /// </summary>
-    public string MethodReturnType { get; set; } = string.Empty;
+    public bool IsMethodCall { get; set; }
+
+    /// <summary>
+    /// Gets or sets the return type of the source expression.
+    /// </summary>
+    public string ReturnType { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the order of this mapping.
@@ -37,7 +42,7 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
     /// </summary>
     public int DefinitionOrder { get; set; }
 
-    public bool Equals(MapFromMethodModel? other)
+    public bool Equals(MapFromModel? other)
     {
         if (other is null)
         {
@@ -51,13 +56,14 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
 
         return TargetName == other.TargetName &&
                TargetType == other.TargetType &&
-               Method == other.Method &&
-               MethodReturnType == other.MethodReturnType &&
+               From == other.From &&
+               IsMethodCall == other.IsMethodCall &&
+               ReturnType == other.ReturnType &&
                Order == other.Order &&
                DefinitionOrder == other.DefinitionOrder;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as MapFromMethodModel);
+    public override bool Equals(object? obj) => Equals(obj as MapFromModel);
 
     public override int GetHashCode()
     {
@@ -66,8 +72,9 @@ internal sealed class MapFromMethodModel : IEquatable<MapFromMethodModel>
             var hash = 17;
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (Method?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (MethodReturnType?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (From?.GetHashCode() ?? 0);
+            hash = (hash * 31) + IsMethodCall.GetHashCode();
+            hash = (hash * 31) + (ReturnType?.GetHashCode() ?? 0);
             hash = (hash * 31) + Order.GetHashCode();
             hash = (hash * 31) + DefinitionOrder.GetHashCode();
             return hash;

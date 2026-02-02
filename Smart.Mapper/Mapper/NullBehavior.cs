@@ -9,7 +9,7 @@ public enum NullBehavior
     /// Sets default! to the target property when the source is null.
     /// This is the default behavior.
     /// </summary>
-    SetDefault = 0,
+    Default = 0,
 
     /// <summary>
     /// Skips setting the target property when the source is null.

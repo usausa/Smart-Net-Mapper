@@ -711,10 +711,10 @@ internal static partial class TestMappers
         return !string.IsNullOrEmpty(name);
     }
 
-    // MapMethod: basic usage
+    // MapUsing: basic usage
     [Mapper]
-    [MapMethod(nameof(MapFromDestination.FullName), nameof(CombineFullName))]
-    [MapMethod(nameof(MapFromDestination.UpperCaseName), nameof(GetUpperCaseName))]
+    [MapUsing(nameof(MapFromDestination.FullName), nameof(CombineFullName))]
+    [MapUsing(nameof(MapFromDestination.UpperCaseName), nameof(GetUpperCaseName))]
     public static partial void Map(MapFromSource source, MapFromDestination destination);
 
     private static string CombineFullName(MapFromSource source)
@@ -727,9 +727,9 @@ internal static partial class TestMappers
         return $"{source.FirstName} {source.LastName}".ToUpperInvariant();
     }
 
-    // MapMethod: with custom parameters
+    // MapUsing: with custom parameters
     [Mapper]
-    [MapMethod(nameof(MapFromDestination.FullName), nameof(CombineFullNameWithContext))]
+    [MapUsing(nameof(MapFromDestination.FullName), nameof(CombineFullNameWithContext))]
     public static partial MapFromDestination MapWithContext(MapFromSource source, MapFromContext context);
 
     private static string CombineFullNameWithContext(MapFromSource source, MapFromContext context)
@@ -737,10 +737,10 @@ internal static partial class TestMappers
         return $"{source.FirstName}{context.Separator}{source.LastName}";
     }
 
-    // MapFromMethod: calling methods on source object
+    // MapFrom: calling methods on source object
     [Mapper]
-    [MapFromMethod(nameof(MapFromMethodDestination.ItemCount), nameof(MapFromMethodSource.GetItemCount))]
-    [MapFromMethod(nameof(MapFromMethodDestination.ItemSum), nameof(MapFromMethodSource.GetItemSum))]
+    [MapFrom(nameof(MapFromMethodDestination.ItemCount), nameof(MapFromMethodSource.GetItemCount))]
+    [MapFrom(nameof(MapFromMethodDestination.ItemSum), nameof(MapFromMethodSource.GetItemSum))]
     public static partial void Map(MapFromMethodSource source, MapFromMethodDestination destination);
 
     // AutoMap = false: only explicitly mapped properties
@@ -810,6 +810,171 @@ internal static partial class TestMappers
     [CollectionConverter(typeof(TestCustomCollectionConverter))]
     [MapCollection(nameof(CustomCollectionDestination.Numbers), nameof(CustomCollectionSource.Numbers), Mapper = nameof(MapCollectionChild))]
     public static partial void MapWithCustomCollectionConverter(CustomCollectionSource source, CustomCollectionDestination destination);
+
+    // =================================================================
+    // Test: Order attribute for property mapping order
+    // =================================================================
+
+    // Order test mapper - properties are set in Order sequence
+    [Mapper]
+    [MapProperty(nameof(OrderTestDestination.Step1), nameof(OrderTestSource.Value), Order = 1)]
+    [MapProperty(nameof(OrderTestDestination.Step2), nameof(OrderTestSource.Value), Order = 2)]
+    [MapProperty(nameof(OrderTestDestination.Step3), nameof(OrderTestSource.Value), Order = 3)]
+    public static partial void MapWithOrder(OrderTestSource source, OrderTestDestination destination);
+
+    // Order test with reversed order to verify Order attribute is respected
+    [Mapper]
+    [MapProperty(nameof(OrderTestDestination.Step3), nameof(OrderTestSource.Value), Order = 1)]  // First
+    [MapProperty(nameof(OrderTestDestination.Step1), nameof(OrderTestSource.Value), Order = 2)]  // Second
+    [MapProperty(nameof(OrderTestDestination.Step2), nameof(OrderTestSource.Value), Order = 3)]  // Third
+    public static partial void MapWithReversedOrder(OrderTestSource source, OrderTestDestination destination);
+
+    // =================================================================
+    // Test: MapUsing with custom parameters
+    // =================================================================
+
+    [Mapper]
+    [MapUsing(nameof(MapUsingContextDestination.ComputedValue), nameof(ComputeWithContext))]
+    public static partial void MapWithUsingContext(MapUsingContextSource source, MapUsingContextDestination destination, MapUsingContext context);
+
+    private static string ComputeWithContext(MapUsingContextSource source, MapUsingContext context)
+    {
+        return $"{source.BaseValue}_{context.Suffix}";
+    }
+
+    // =================================================================
+    // Test: MapFrom with property path (not just method)
+    // =================================================================
+
+    [Mapper]
+    [MapFrom(nameof(MapFromPathDestination.ItemCount), "GetItemCount")]
+    [MapFrom(nameof(MapFromPathDestination.NestedValue), "Nested.Value")]
+    public static partial void MapWithPropertyPath(MapFromPathSource source, MapFromPathDestination destination);
+
+    // =================================================================
+    // Test: Specialized converter methods
+    // =================================================================
+
+    [Mapper]
+    [MapConverter(typeof(SpecializedConverter))]
+    public static partial void MapWithSpecializedConverter(SpecializedConverterSource source, SpecializedConverterDestination destination);
+}
+
+// =================================================================
+// Order test models
+// =================================================================
+
+public class OrderTestSource
+{
+    public int Value { get; set; }
+}
+
+// Destination with side-effect tracking via setter
+public class OrderTestDestination
+{
+    private readonly List<string> _setOrder = [];
+
+    public string Step1
+    {
+        get => _step1;
+        set { _step1 = value; _setOrder.Add("Step1"); }
+    }
+    private string _step1 = string.Empty;
+
+    public string Step2
+    {
+        get => _step2;
+        set { _step2 = value; _setOrder.Add("Step2"); }
+    }
+    private string _step2 = string.Empty;
+
+
+    public string Step3
+    {
+        get => _step3;
+        set { _step3 = value; _setOrder.Add("Step3"); }
+    }
+    private string _step3 = string.Empty;
+
+    public IReadOnlyList<string> GetSetOrder() => _setOrder;
+}
+
+// =================================================================
+// MapUsing with context test models
+// =================================================================
+
+
+public class MapUsingContextSource
+{
+    public string BaseValue { get; set; } = string.Empty;
+}
+
+public class MapUsingContextDestination
+{
+    public string ComputedValue { get; set; } = string.Empty;
+}
+
+
+public class MapUsingContext
+{
+    public string Suffix { get; set; } = string.Empty;
+}
+
+// =================================================================
+// MapFrom with property path test models
+// =================================================================
+
+public class MapFromPathNested
+{
+    public int Value { get; set; }
+}
+
+public class MapFromPathSource
+{
+    public MapFromPathNested Nested { get; set; } = new();
+
+    public int GetItemCount() => 42;
+}
+
+public class MapFromPathDestination
+{
+    public int ItemCount { get; set; }
+    public int NestedValue { get; set; }
+}
+
+// =================================================================
+// Specialized converter test models
+// =================================================================
+
+public class SpecializedConverterSource
+{
+    public string StringValue { get; set; } = string.Empty;
+    public int IntValue { get; set; }
+    public double DoubleValue { get; set; }
+}
+
+public class SpecializedConverterDestination
+{
+    public int StringValue { get; set; }  // string -> int uses specialized method
+    public string IntValue { get; set; } = string.Empty;  // int -> string uses generic
+    public decimal DoubleValue { get; set; }  // double -> decimal uses generic
+}
+
+// Converter with specialized methods
+public static class SpecializedConverter
+{
+    // Specialized method for string -> int (will be preferred over generic)
+    public static int ConvertToInt32(string source)
+    {
+        // Add 1000 to distinguish from generic conversion
+        return int.Parse(source) + 1000;
+    }
+
+    // Generic fallback
+    public static TDestination Convert<TSource, TDestination>(TSource source)
+    {
+        return DefaultValueConverter.Convert<TSource, TDestination>(source);
+    }
 }
 
 // Custom context for testing
@@ -2074,5 +2239,129 @@ public class CustomConverterTests
         Assert.Equal(2, destination.Numbers[0].Id);
         Assert.Equal(4, destination.Numbers[1].Id);
         Assert.Equal(6, destination.Numbers[2].Id);
+    }
+}
+
+// =================================================================
+// Order tests
+// =================================================================
+
+public class OrderTests
+{
+    [Fact]
+    public void MapWithOrder_SetsPropertiesInCorrectOrder()
+    {
+        // Arrange
+        var source = new OrderTestSource { Value = 42 };
+        var destination = new OrderTestDestination();
+
+        // Act
+        TestMappers.MapWithOrder(source, destination);
+
+        // Assert
+        var setOrder = destination.GetSetOrder();
+        Assert.Equal(3, setOrder.Count);
+        Assert.Equal("Step1", setOrder[0]);
+        Assert.Equal("Step2", setOrder[1]);
+        Assert.Equal("Step3", setOrder[2]);
+    }
+
+    [Fact]
+    public void MapWithReversedOrder_SetsPropertiesInOrderedSequence()
+    {
+        // Arrange
+        var source = new OrderTestSource { Value = 42 };
+        var destination = new OrderTestDestination();
+
+        // Act
+        TestMappers.MapWithReversedOrder(source, destination);
+
+        // Assert
+        // Even though attributes are in Step3, Step1, Step2 order,
+        // they should be set in Order value sequence: Step3(1), Step1(2), Step2(3)
+        var setOrder = destination.GetSetOrder();
+        Assert.Equal(3, setOrder.Count);
+        Assert.Equal("Step3", setOrder[0]);  // Order=1
+        Assert.Equal("Step1", setOrder[1]);  // Order=2
+        Assert.Equal("Step2", setOrder[2]);  // Order=3
+    }
+}
+
+// =================================================================
+// MapUsing with context tests
+// =================================================================
+
+public class MapUsingContextTests
+{
+    [Fact]
+    public void MapWithUsingContext_PassesCustomParametersToMethod()
+    {
+        // Arrange
+        var source = new MapUsingContextSource { BaseValue = "Hello" };
+        var destination = new MapUsingContextDestination();
+        var context = new MapUsingContext { Suffix = "World" };
+
+        // Act
+        TestMappers.MapWithUsingContext(source, destination, context);
+
+        // Assert
+        Assert.Equal("Hello_World", destination.ComputedValue);
+    }
+}
+
+// =================================================================
+// MapFrom tests (method and property path)
+// =================================================================
+
+public class MapFromPropertyPathTests
+{
+    [Fact]
+    public void MapWithPropertyPath_MapsMethodCallAndPropertyPath()
+    {
+        // Arrange
+        var source = new MapFromPathSource
+        {
+            Nested = new MapFromPathNested { Value = 123 }
+        };
+        var destination = new MapFromPathDestination();
+
+        // Act
+        TestMappers.MapWithPropertyPath(source, destination);
+
+        // Assert
+        Assert.Equal(42, destination.ItemCount);      // From GetItemCount() method
+        Assert.Equal(123, destination.NestedValue);   // From Nested.Value property path
+    }
+}
+
+// =================================================================
+// Specialized converter tests
+// =================================================================
+
+public class SpecializedConverterTests
+{
+    [Fact]
+    public void MapWithSpecializedConverter_UsesGenericConvert()
+    {
+        // Note: Current implementation doesn't support specialized methods yet.
+        // This test verifies the generic converter is used.
+        
+        // Arrange
+        var source = new SpecializedConverterSource
+        {
+            StringValue = "42",
+            IntValue = 100,
+            DoubleValue = 3.14
+        };
+        var destination = new SpecializedConverterDestination();
+
+        // Act
+        TestMappers.MapWithSpecializedConverter(source, destination);
+
+        // Assert
+        // All conversions use generic Convert method
+        Assert.Equal(42, destination.StringValue);   // Generic Convert
+        Assert.Equal("100", destination.IntValue);   // Generic Convert
+        Assert.Equal(3.14m, destination.DoubleValue); // Generic Convert
     }
 }

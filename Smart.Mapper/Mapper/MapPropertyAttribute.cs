@@ -26,7 +26,7 @@ public sealed class MapPropertyAttribute : Attribute
     /// <summary>
     /// Gets or sets the behavior when the source value is null.
     /// </summary>
-    public NullBehavior NullBehavior { get; set; } = NullBehavior.SetDefault;
+    public NullBehavior NullBehavior { get; set; } = NullBehavior.Default;
 
     /// <summary>
     /// Gets or sets the order of this mapping. Lower values are processed first.

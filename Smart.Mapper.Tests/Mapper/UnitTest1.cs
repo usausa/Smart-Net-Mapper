@@ -356,6 +356,55 @@ public class CollectionDestination
 }
 #pragma warning restore CA1819
 
+// MapCollection with custom converter test models
+public class CustomCollectionConverterSourceChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+#pragma warning disable CA1819
+public class CustomCollectionConverterSource
+{
+    public List<CustomCollectionConverterSourceChild>? Children { get; set; }
+}
+#pragma warning restore CA1819
+
+public class CustomCollectionConverterDestChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class CustomCollectionConverterDestination
+{
+    public IReadOnlyList<CustomCollectionConverterDestChild>? Children { get; set; }
+}
+
+// Custom collection converter with specialized method
+public static class TestCollectionConverter
+{
+    public static TDest[] ToArray<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        return DefaultCollectionConverter.ToArray(source, mapper)!;
+    }
+
+    public static List<TDest> ToList<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        return DefaultCollectionConverter.ToList(source, mapper)!;
+    }
+
+    // Custom converter method for IReadOnlyList
+    public static IReadOnlyList<TDest> ToReadOnlyList<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return [];
+        }
+        return source.Select(mapper).ToList().AsReadOnly();
+    }
+}
+
 // MapNested test models
 public class NestedObjectSourceChild
 {
@@ -791,6 +840,15 @@ internal static partial class TestMappers
     [Mapper]
     [MapCollection(nameof(VoidMapperDestination.Children), nameof(VoidMapperSource.Children), Mapper = nameof(MapVoidChild))]
     public static partial void Map(VoidMapperSource source, VoidMapperDestination destination);
+
+    // MapCollection with custom converter method
+    [Mapper]
+    public static partial CustomCollectionConverterDestChild MapCustomCollectionChild(CustomCollectionConverterSourceChild source);
+
+    [Mapper]
+    [CollectionConverter(typeof(TestCollectionConverter))]
+    [MapCollection(nameof(CustomCollectionConverterDestination.Children), nameof(CustomCollectionConverterSource.Children), Mapper = nameof(MapCustomCollectionChild), Method = nameof(TestCollectionConverter.ToReadOnlyList))]
+    public static partial void MapWithCustomCollectionConverter2(CustomCollectionConverterSource source, CustomCollectionConverterDestination destination);
 
     // MapNested with void mapper
     [Mapper]
@@ -2109,6 +2167,52 @@ public class MapCollectionTests
         Assert.Equal(2, destination.Children.Count);
         Assert.Equal(100, destination.Children[0].Id);
         Assert.Equal(200, destination.Children[1].Id);
+    }
+
+    [Fact]
+    public void MapCollection_WithCustomConverter_UsesSpecifiedMethod()
+    {
+        // Arrange
+        var source = new CustomCollectionConverterSource
+        {
+            Children =
+            [
+                new CustomCollectionConverterSourceChild { Id = 1, Name = "Item1" },
+                new CustomCollectionConverterSourceChild { Id = 2, Name = "Item2" },
+                new CustomCollectionConverterSourceChild { Id = 3, Name = "Item3" }
+            ]
+        };
+        var destination = new CustomCollectionConverterDestination();
+
+        // Act
+        TestMappers.MapWithCustomCollectionConverter2(source, destination);
+
+        // Assert
+        Assert.NotNull(destination.Children);
+        Assert.IsAssignableFrom<IReadOnlyList<CustomCollectionConverterDestChild>>(destination.Children);
+        Assert.Equal(3, destination.Children.Count);
+        Assert.Equal(1, destination.Children[0].Id);
+        Assert.Equal("Item1", destination.Children[0].Name);
+        Assert.Equal(2, destination.Children[1].Id);
+        Assert.Equal(3, destination.Children[2].Id);
+    }
+
+    [Fact]
+    public void MapCollection_WithCustomConverter_NullSource_ReturnsEmptyCollection()
+    {
+        // Arrange
+        var source = new CustomCollectionConverterSource
+        {
+            Children = null
+        };
+        var destination = new CustomCollectionConverterDestination();
+
+        // Act
+        TestMappers.MapWithCustomCollectionConverter2(source, destination);
+
+        // Assert
+        Assert.NotNull(destination.Children);
+        Assert.Empty(destination.Children);  // Custom converter returns empty list for null
     }
 }
 

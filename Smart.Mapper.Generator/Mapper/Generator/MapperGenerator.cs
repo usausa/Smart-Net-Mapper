@@ -805,6 +805,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var targetName = attribute.ConstructorArguments[0].Value?.ToString() ?? string.Empty;
                     string? sourceName = null;
                     var mapper = string.Empty;
+                    string? converter = null;
                     var order = 0;
 
                     if (attribute.ConstructorArguments.Length >= 2)
@@ -822,6 +823,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         {
                             mapper = m;
                         }
+                        else if (namedArg.Key == "Method" && namedArg.Value.Value is string conv)
+                        {
+                            converter = conv;
+                        }
                         else if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
                         {
                             order = ord;
@@ -833,6 +838,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         TargetName = targetName,
                         SourceName = sourceName ?? targetName,
                         Mapper = mapper,
+                        Converter = converter,
                         Order = order,
                         DefinitionOrder = definitionOrder++
                     });
@@ -2269,8 +2275,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Use collection converter
             builder.Append(collectionConverterTypeName).Append(".");
 
-            // Choose ToArray or ToList based on target type
-            if (mapCollection.TargetIsArray)
+            // Choose converter method: custom Converter, or ToArray/ToList based on target type
+            if (mapCollection.HasCustomConverter)
+            {
+                builder.Append(mapCollection.Converter!);
+            }
+            else if (mapCollection.TargetIsArray)
             {
                 builder.Append("ToArray");
             }

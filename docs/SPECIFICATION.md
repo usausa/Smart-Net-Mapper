@@ -891,24 +891,37 @@ public static partial void Map(Source source, Destination destination)
 
 ### 14.2 属性
 
+
 ```csharp
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class MapCollectionAttribute : Attribute
 {
-    /// <summary>ソースプロパティ名</summary>
-    public string Source { get; }
-    
     /// <summary>ターゲットプロパティ名</summary>
     public string Target { get; }
     
-    /// <summary>子要素のマッパーメソッド名（必須）</summary>
-    public string MapperMethod { get; set; }
+    /// <summary>ソースプロパティ名（省略時はTargetと同じ）</summary>
+    public string? Source { get; set; }
     
-    public MapCollectionAttribute(string source, string target) { ... }
+    /// <summary>子要素のマッパーメソッド名（必須）</summary>
+    public string Mapper { get; set; }
+    
+    /// <summary>
+    /// コレクション変換メソッド名（オプション）。
+    /// 指定がなければ、配列の場合は ToArray、それ以外は ToList を使用。
+    /// </summary>
+    public string? Converter { get; set; }
+    
+    /// <summary>実行順序</summary>
+    public int Order { get; set; }
+    
+    public MapCollectionAttribute(string target) { ... }
+    public MapCollectionAttribute(string target, string source) { ... }
 }
 ```
 
 ### 14.3 使用例
+
+#### 基本的な使用
 
 ```csharp
 public class SourceChild
@@ -939,9 +952,54 @@ internal static partial class ObjectMapper
     
     // 2. コレクションマッピングを指定
     [Mapper]
-    [MapCollection(nameof(Source.Children), nameof(Destination.Children), MapperMethod = nameof(MapChild))]
+    [MapCollection(nameof(Destination.Children), nameof(Source.Children), Mapper = nameof(MapChild))]
     public static partial void Map(Source source, Destination destination);
 }
+```
+
+#### カスタムコンバーターメソッドの使用
+
+`IReadOnlyList<T>` のような特殊なコレクション型に変換する場合：
+
+```csharp
+public class CustomCollectionConverter
+{
+    // ToArray と ToList は必須
+    public static TDest[] ToArray<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+        => DefaultCollectionConverter.ToArray(source, mapper)!;
+
+    public static List<TDest> ToList<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+        => DefaultCollectionConverter.ToList(source, mapper)!;
+
+    // カスタム変換メソッド
+    public static IReadOnlyList<TDest> ToReadOnlyList<TSource, TDest>(
+        IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        if (source is null) return [];
+        return source.Select(mapper).ToList().AsReadOnly();
+    }
+}
+
+public class Destination
+{
+    public IReadOnlyList<DestinationChild> Children { get; set; }
+}
+
+internal static partial class ObjectMapper
+{
+    [Mapper]
+    public static partial DestinationChild MapChild(SourceChild source);
+    
+    [Mapper]
+    [CollectionConverter(typeof(CustomCollectionConverter))]
+    [MapCollection(nameof(Destination.Children), Mapper = nameof(MapChild), Converter = nameof(CustomCollectionConverter.ToReadOnlyList))]
+    public static partial void Map(Source source, Destination destination);
+}
+```
+
+**生成コード例:**
+```csharp
+destination.Children = CustomCollectionConverter.ToReadOnlyList<SourceChild, DestinationChild>(source.Children, MapChild)!;
 ```
 
 **生成コード:**

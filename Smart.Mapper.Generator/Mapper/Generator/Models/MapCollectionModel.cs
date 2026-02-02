@@ -67,6 +67,17 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     /// </summary>
     public int DefinitionOrder { get; set; }
 
+    /// <summary>
+    /// Gets or sets the custom converter method name.
+    /// If null, ToArray is used for arrays, ToList for others.
+    /// </summary>
+    public string? Converter { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a custom converter is specified.
+    /// </summary>
+    public bool HasCustomConverter => !string.IsNullOrEmpty(Converter);
+
     public bool Equals(MapCollectionModel? other)
     {
         if (other is null)
@@ -90,7 +101,8 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
                TargetIsArray == other.TargetIsArray &&
                IsSourceNullable == other.IsSourceNullable &&
                Order == other.Order &&
-               DefinitionOrder == other.DefinitionOrder;
+               DefinitionOrder == other.DefinitionOrder &&
+               Converter == other.Converter;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapCollectionModel);
@@ -105,6 +117,7 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
             hash = (hash * 31) + (Mapper?.GetHashCode() ?? 0);
             hash = (hash * 31) + Order.GetHashCode();
             hash = (hash * 31) + DefinitionOrder.GetHashCode();
+            hash = (hash * 31) + (Converter?.GetHashCode() ?? 0);
             return hash;
         }
     }

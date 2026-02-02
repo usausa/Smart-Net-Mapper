@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
 
-[assembly: CLSCompliant(true)]
+[assembly: CLSCompliant(false)]
 
 [assembly: InternalsVisibleTo("Smart.Mapper.Tests")]

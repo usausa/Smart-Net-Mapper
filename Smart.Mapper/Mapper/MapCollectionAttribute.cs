@@ -24,6 +24,13 @@ public sealed class MapCollectionAttribute : Attribute
     public string Mapper { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the converter method name to use for converting the collection.
+    /// If not specified, ToArray is used for array targets, ToList for others.
+    /// The method should have signature: TDestCollection Method&lt;TSource, TDest&gt;(IEnumerable&lt;TSource&gt;, Func&lt;TSource, TDest&gt;)
+    /// </summary>
+    public string? Method { get; set; }
+
+    /// <summary>
     /// Gets or sets the order of this mapping. Lower values are processed first.
     /// </summary>
     public int Order { get; set; }

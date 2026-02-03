@@ -116,6 +116,7 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     /// </summary>
     public List<MapNestedModel> MapNestedMappings { get; set; } = [];
 
+
     /// <summary>
     /// Gets or sets the method name to call before mapping.
     /// </summary>
@@ -135,16 +136,6 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     /// Gets or sets a value indicating whether AfterMap method accepts custom parameters.
     /// </summary>
     public bool AfterMapAcceptsCustomParameters { get; set; }
-
-    /// <summary>
-    /// Gets or sets the global condition method name for the entire mapping.
-    /// </summary>
-    public string? ConditionMethod { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the global condition method accepts custom parameters.
-    /// </summary>
-    public bool ConditionAcceptsCustomParameters { get; set; }
 
     /// <summary>
     /// Gets or sets the custom type converter type name.
@@ -193,9 +184,7 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                BeforeMapMethod == other.BeforeMapMethod &&
                BeforeMapAcceptsCustomParameters == other.BeforeMapAcceptsCustomParameters &&
                AfterMapMethod == other.AfterMapMethod &&
-               AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters &&
-               ConditionMethod == other.ConditionMethod &&
-               ConditionAcceptsCustomParameters == other.ConditionAcceptsCustomParameters;
+               AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapperMethodModel);
@@ -219,8 +208,6 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
             hash = (hash * 31) + BeforeMapAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (AfterMapMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + AfterMapAcceptsCustomParameters.GetHashCode();
-            hash = (hash * 31) + (ConditionMethod?.GetHashCode() ?? 0);
-            hash = (hash * 31) + ConditionAcceptsCustomParameters.GetHashCode();
             return hash;
         }
     }

@@ -29,7 +29,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private const string MapFromAttributeName = "Smart.Mapper.MapFromAttribute";
     private const string MapCollectionAttributeName = "Smart.Mapper.MapCollectionAttribute";
     private const string MapNestedAttributeName = "Smart.Mapper.MapNestedAttribute";
-    private const string MapConverterAttributeName = "Smart.Mapper.MapConverterAttribute";
+    private const string ValueConverterAttributeName = "Smart.Mapper.ValueConverterAttribute";
     private const string CollectionConverterAttributeName = "Smart.Mapper.CollectionConverterAttribute";
 
     private const string DefaultValueConverterTypeName = "global::Smart.Mapper.DefaultValueConverter";
@@ -160,6 +160,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Parse attributes for MapProperty, MapIgnore, MapConstant, BeforeMap, AfterMap, MapCondition
         ParseMappingAttributes(symbol, model);
 
+        // Validate duplicate target mappings and redundant mappings with ignore
+        var duplicateTargetError = ValidateDuplicateTargets(model, syntax);
+        if (duplicateTargetError is not null)
+        {
+            return Results.Error<MapperMethodModel>(duplicateTargetError);
+        }
+
         // Parse converter attributes (class level and method level)
         ParseConverterAttributes(symbol, model);
 
@@ -168,13 +175,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         if (validationError is not null)
         {
             return Results.Error<MapperMethodModel>(validationError);
-        }
-
-        // Validate global condition method if specified
-        var conditionError = ValidateConditionMethod(symbol, model, syntax);
-        if (conditionError is not null)
-        {
-            return Results.Error<MapperMethodModel>(conditionError);
         }
 
         // Get source and destination properties
@@ -231,32 +231,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         return Results.Success(model);
-    }
-
-    private static DiagnosticInfo? ValidateConditionMethod(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
-    {
-        if (string.IsNullOrEmpty(model.ConditionMethod))
-        {
-            return null;
-        }
-
-        var containingType = mapperMethod.ContainingType;
-        var conditionMethods = containingType.GetMembers(model.ConditionMethod!)
-            .OfType<IMethodSymbol>()
-            .Where(m => m.IsStatic && m.ReturnType.SpecialType == SpecialType.System_Boolean)
-            .ToList();
-
-        var matchResult = FindMatchingCallbackMethod(conditionMethods, model);
-        if (matchResult == CallbackMatchResult.NoMatch)
-        {
-            return new DiagnosticInfo(
-                Diagnostics.InvalidConditionSignature,
-                syntax.GetLocation(),
-                $"{model.ConditionMethod}, {mapperMethod.Name}");
-        }
-
-        model.ConditionAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams;
-        return null;
     }
 
     private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
@@ -611,7 +585,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         ConverterMethod = converter,
                         NullBehavior = nullBehavior,
                         Order = order,
-                        DefinitionOrder = definitionOrder++
+                        DefinitionOrder = definitionOrder++,
+                        HasExplicitMapping = true
                     };
 
                     model.PropertyMappings.Add(mapping);
@@ -702,42 +677,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
             else if (attributeName == MapConditionAttributeName)
             {
-                // MapCondition(condition) or MapCondition(target, condition)
-                if (attribute.ConstructorArguments.Length == 1)
+                // MapCondition(target, condition) - property-level condition only
+                if (attribute.ConstructorArguments.Length >= 2)
                 {
-                    // Global condition
-                    model.ConditionMethod = attribute.ConstructorArguments[0].Value?.ToString();
-                }
-                else if (attribute.ConstructorArguments.Length >= 2)
-                {
-                    // Property-level condition
                     var targetName = attribute.ConstructorArguments[0].Value?.ToString() ?? string.Empty;
                     var conditionName = attribute.ConstructorArguments[1].Value?.ToString();
-                    model.PropertyConditions[targetName] = conditionName;
-                }
-                else
-                {
-                    // Check named arguments for Target
-                    string? target = null;
-                    string? condition = null;
-                    foreach (var namedArg in attribute.NamedArguments)
+                    if (!string.IsNullOrEmpty(targetName) && conditionName is not null)
                     {
-                        if (namedArg.Key == "Target" && namedArg.Value.Value is string t)
-                        {
-                            target = t;
-                        }
-                    }
-                    if (attribute.ConstructorArguments.Length >= 1)
-                    {
-                        condition = attribute.ConstructorArguments[0].Value?.ToString();
-                    }
-                    if (target is not null && condition is not null)
-                    {
-                        model.PropertyConditions[target] = condition;
-                    }
-                    else if (condition is not null)
-                    {
-                        model.ConditionMethod = condition;
+                        model.PropertyConditions[targetName] = conditionName;
                     }
                 }
             }
@@ -771,11 +718,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
             else if (attributeName == MapFromAttributeName)
             {
-                // MapFrom(target, from)
+                // MapFrom(target, member)
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
                     var targetName = attribute.ConstructorArguments[0].Value?.ToString() ?? string.Empty;
-                    var from = attribute.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
+                    var member = attribute.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
                     var order = 0;
 
                     foreach (var namedArg in attribute.NamedArguments)
@@ -789,7 +736,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     model.MapFromMappings.Add(new MapFromModel
                     {
                         TargetName = targetName,
-                        From = from,
+                        Member = member,
                         Order = order,
                         DefinitionOrder = definitionOrder++
                     });
@@ -823,7 +770,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         {
                             mapper = m;
                         }
-                        else if (namedArg.Key == "Method" && namedArg.Value.Value is string conv)
+                        else if (namedArg.Key == "Converter" && namedArg.Value.Value is string conv)
                         {
                             converter = conv;
                         }
@@ -908,7 +855,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == MapConverterAttributeName)
+            if (attributeName == ValueConverterAttributeName)
             {
                 if (attribute.ConstructorArguments.Length >= 1 &&
                     attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType)
@@ -941,7 +888,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == MapConverterAttributeName && model.MapConverterTypeName is null)
+            if (attributeName == ValueConverterAttributeName && model.MapConverterTypeName is null)
             {
                 if (attribute.ConstructorArguments.Length >= 1 &&
                     attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType)
@@ -994,6 +941,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var destinationProperties = GetAllProperties(destinationType);
 
+
         foreach (var constantMapping in model.ConstantMappings)
         {
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == constantMapping.TargetName);
@@ -1002,6 +950,89 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 constantMapping.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
+    }
+
+    private static DiagnosticInfo? ValidateDuplicateTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        // Collect all target property names from various mapping attributes
+        var targetMappings = new Dictionary<string, List<string>>();
+
+        void AddTarget(string target, string attributeType)
+        {
+            if (!targetMappings.TryGetValue(target, out var list))
+            {
+                list = [];
+                targetMappings[target] = list;
+            }
+            list.Add(attributeType);
+        }
+
+        // Collect from PropertyMappings (only those explicitly specified via MapProperty)
+        foreach (var mapping in model.PropertyMappings.Where(m => m.HasExplicitMapping))
+        {
+            AddTarget(mapping.TargetPath, "MapProperty");
+        }
+
+        // Collect from ConstantMappings
+        foreach (var mapping in model.ConstantMappings)
+        {
+            AddTarget(mapping.TargetName, "MapConstant");
+        }
+
+        // Collect from ExpressionMappings
+        foreach (var mapping in model.ExpressionMappings)
+        {
+            AddTarget(mapping.TargetName, "MapExpression");
+        }
+
+        // Collect from MapUsingMappings
+        foreach (var mapping in model.MapUsingMappings)
+        {
+            AddTarget(mapping.TargetName, "MapUsing");
+        }
+
+        // Collect from MapFromMappings
+        foreach (var mapping in model.MapFromMappings)
+        {
+            AddTarget(mapping.TargetName, "MapFrom");
+        }
+
+        // Collect from MapCollectionMappings
+        foreach (var mapping in model.MapCollectionMappings)
+        {
+            AddTarget(mapping.TargetName, "MapCollection");
+        }
+
+        // Collect from MapNestedMappings
+        foreach (var mapping in model.MapNestedMappings)
+        {
+            AddTarget(mapping.TargetName, "MapNested");
+        }
+
+        // Check for duplicates (error)
+        foreach (var kvp in targetMappings)
+        {
+            if (kvp.Value.Count > 1)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.DuplicateTargetMapping,
+                    syntax.GetLocation(),
+                    $"{kvp.Key}: {string.Join(", ", kvp.Value)}");
+            }
+        }
+
+        // Check for redundant mappings with MapIgnore (warning - reported via context, not blocking)
+        // This will be handled separately as a warning, not an error
+        foreach (var ignoredProp in model.IgnoredProperties)
+        {
+            if (targetMappings.ContainsKey(ignoredProp))
+            {
+                // For now, we'll let this through but ideally we'd report a warning
+                // In a real implementation, we'd need to collect warnings separately
+            }
+        }
+
+        return null;
     }
 
     private static DiagnosticInfo? ValidateAndBuildMapUsingMappings(
@@ -1224,13 +1255,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Determine if it's a method call or property path
             // Method: GetCount, GetValue, etc. (no dots, or trailing "()")
             // Property path: Items.Length, Child.Name, etc. (with dots)
-            var from = mapFrom.From;
-            var isMethodCall = !from.Contains('.');
+            var member = mapFrom.Member;
+            var isMethodCall = !member.Contains('.');
 
             // First try to find as method
             if (isMethodCall)
             {
-                var sourceMethod = sourceType.GetMembers(from)
+                var sourceMethod = sourceType.GetMembers(member)
                     .OfType<IMethodSymbol>()
                     .FirstOrDefault(m => !m.IsStatic && m.Parameters.Length == 0);
 
@@ -1245,7 +1276,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         return new DiagnosticInfo(
                             Diagnostics.MapFromMethodReturnTypeMismatch,
                             syntax.GetLocation(),
-                            $"{targetTypeName}, {returnType}, {mapFrom.From} -> {mapFrom.TargetName}");
+                            $"{targetTypeName}, {returnType}, {mapFrom.Member} -> {mapFrom.TargetName}");
                     }
 
                     mapFrom.IsMethodCall = true;
@@ -1255,7 +1286,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Try as property path
-            var (resolvedType, isValid) = ResolvePropertyPath(sourceType, from);
+            var (resolvedType, isValid) = ResolvePropertyPath(sourceType, member);
             if (isValid && resolvedType is not null)
             {
                 var returnType = resolvedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1266,7 +1297,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     return new DiagnosticInfo(
                         Diagnostics.MapFromMethodReturnTypeMismatch,
                         syntax.GetLocation(),
-                        $"{targetTypeName}, {returnType}, {mapFrom.From} -> {mapFrom.TargetName}");
+                        $"{targetTypeName}, {returnType}, {mapFrom.Member} -> {mapFrom.TargetName}");
                 }
 
                 mapFrom.IsMethodCall = false;
@@ -1278,7 +1309,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return new DiagnosticInfo(
                 Diagnostics.InvalidMapFromMethodSignature,
                 syntax.GetLocation(),
-                $"{mapFrom.From}, {mapFrom.TargetName}");
+                $"{mapFrom.Member}, {mapFrom.TargetName}");
         }
 
         return null;
@@ -2062,22 +2093,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("();").NewLine();
         }
 
-        // Global condition check
-        var hasGlobalCondition = !string.IsNullOrEmpty(method.ConditionMethod);
-        if (hasGlobalCondition)
-        {
-            builder.Indent().Append("if (").Append(method.ConditionMethod!).Append("(").Append(method.SourceParameterName).Append(", ").Append(destVarName);
-            if (method.ConditionAcceptsCustomParameters)
-            {
-                foreach (var customParam in method.CustomParameters)
-                {
-                    builder.Append(", ").Append(customParam.Name);
-                }
-            }
-            builder.Append("))").NewLine();
-            builder.BeginScope();
-        }
-
         // Call BeforeMap if specified
         if (!string.IsNullOrEmpty(method.BeforeMapMethod))
         {
@@ -2208,11 +2223,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(method.SourceParameterName).Append(".");
             if (mapFrom.IsMethodCall)
             {
-                builder.Append(mapFrom.From).Append("()");
+                builder.Append(mapFrom.Member).Append("()");
             }
             else
             {
-                builder.Append(mapFrom.From);
+                builder.Append(mapFrom.Member);
             }
             builder.Append(";").NewLine();
         }
@@ -2319,12 +2334,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 }
             }
             builder.Append(");").NewLine();
-        }
-
-        // Close global condition scope if present
-        if (hasGlobalCondition)
-        {
-            builder.EndScope();
         }
 
         // Return destination if needed

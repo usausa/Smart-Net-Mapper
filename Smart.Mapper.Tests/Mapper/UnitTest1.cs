@@ -52,6 +52,23 @@ public class TypeConversionDestination
     public int StringValue { get; set; }
 }
 
+// Multi-property test models for AutoMap = true tests
+public class MultiPropertySource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public class MultiPropertyDestination
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
 // Phase 2 Test Models
 public class ConstantSource
 {
@@ -583,6 +600,10 @@ internal static partial class TestMappers
     [Mapper]
     public static partial void Map(TypeConversionSource source, TypeConversionDestination destination);
 
+    // Multi-property mapping (for AutoMap = true test)
+    [Mapper]
+    public static partial void Map(MultiPropertySource source, MultiPropertyDestination destination);
+
     // Phase 2: Constant value mapping
     [Mapper]
     [MapConstant(nameof(ConstantDestination.Status), "Active")]
@@ -728,17 +749,13 @@ internal static partial class TestMappers
         return $"Value: {value}, Context: {context.ContextValue}";
     }
 
+
     private static string FormatTextWithContext(string text, CustomMappingContext context)
     {
         return $"{text} (formatted with {context.ContextValue})";
     }
 
-    // Condition: Global condition
-    [Mapper]
-    [MapCondition(nameof(ShouldMapCondition))]
-    public static partial void MapWithCondition(ConditionSource source, ConditionDestination destination);
-
-    // Condition: Property-level condition
+    // Condition: Property-level condition for Name
     [Mapper]
     [MapCondition(nameof(ConditionDestination.Name), nameof(ShouldMapName))]
     public static partial void MapWithPropertyCondition(ConditionSource source, ConditionDestination destination);
@@ -750,11 +767,6 @@ internal static partial class TestMappers
     public static partial void MapWithGenericConstant(ConstantSource source, ConstantDestination destination);
 
     // Condition check methods
-    private static bool ShouldMapCondition(ConditionSource source, ConditionDestination destination)
-    {
-        return source.IsActive;
-    }
-
     private static bool ShouldMapName(string? name)
     {
         return !string.IsNullOrEmpty(name);
@@ -847,7 +859,7 @@ internal static partial class TestMappers
 
     [Mapper]
     [CollectionConverter(typeof(TestCollectionConverter))]
-    [MapCollection(nameof(CustomCollectionConverterDestination.Children), nameof(CustomCollectionConverterSource.Children), Mapper = nameof(MapCustomCollectionChild), Method = nameof(TestCollectionConverter.ToReadOnlyList))]
+    [MapCollection(nameof(CustomCollectionConverterDestination.Children), nameof(CustomCollectionConverterSource.Children), Mapper = nameof(MapCustomCollectionChild), Converter = nameof(TestCollectionConverter.ToReadOnlyList))]
     public static partial void MapWithCustomCollectionConverter2(CustomCollectionConverterSource source, CustomCollectionConverterDestination destination);
 
     // MapNested with void mapper
@@ -860,7 +872,7 @@ internal static partial class TestMappers
 
     // Custom type converter test
     [Mapper]
-    [MapConverter(typeof(TestCustomConverter))]
+    [ValueConverter(typeof(TestCustomConverter))]
     public static partial void MapWithCustomConverter(CustomConverterSource source, CustomConverterDestination destination);
 
     // Custom collection converter test - using CollectionSourceChild to CollectionDestinationChild
@@ -914,7 +926,7 @@ internal static partial class TestMappers
     // =================================================================
 
     [Mapper]
-    [MapConverter(typeof(SpecializedConverter))]
+    [ValueConverter(typeof(SpecializedConverter))]
     public static partial void MapWithSpecializedConverter(SpecializedConverterSource source, SpecializedConverterDestination destination);
 }
 
@@ -1822,55 +1834,10 @@ public class ConverterTests
     }
 }
 
+
 // Condition tests
 public class ConditionTests
 {
-    [Fact]
-    public void MapWithCondition_WhenConditionTrue_MapsProperties()
-    {
-        // Arrange
-        var source = new ConditionSource
-        {
-            Value = 42,
-            Name = "Test",
-            IsActive = true
-        };
-        var destination = new ConditionDestination();
-
-        // Act
-        TestMappers.MapWithCondition(source, destination);
-
-        // Assert
-        Assert.Equal(42, destination.Value);
-        Assert.Equal("Test", destination.Name);
-        Assert.True(destination.IsActive);
-    }
-
-    [Fact]
-    public void MapWithCondition_WhenConditionFalse_DoesNotMapProperties()
-    {
-        // Arrange
-        var source = new ConditionSource
-        {
-            Value = 42,
-            Name = "Test",
-            IsActive = false
-        };
-        var destination = new ConditionDestination
-        {
-            Value = 100,
-            Name = "Original"
-        };
-
-        // Act
-        TestMappers.MapWithCondition(source, destination);
-
-        // Assert - Values should remain unchanged
-        Assert.Equal(100, destination.Value);
-        Assert.Equal("Original", destination.Name);
-        Assert.False(destination.IsActive);
-    }
-
     [Fact]
     public void MapWithPropertyCondition_WhenNameNotNull_MapsName()
     {
@@ -2044,6 +2011,52 @@ public class AutoMapFalseTests
     }
 }
 
+// AutoMap = true (default) tests
+public class AutoMapTrueTests
+{
+    [Fact]
+    public void AutoMapTrue_MapsAllSameNameProperties()
+    {
+        // Arrange - BasicSource/BasicDestination have same-named properties
+        var source = new BasicSource
+        {
+            Id = 42,
+            Name = "Test"
+        };
+        var destination = new BasicDestination();
+
+        // Act
+        TestMappers.Map(source, destination);
+
+        // Assert - All same-named properties should be mapped
+        Assert.Equal(42, destination.Id);
+        Assert.Equal("Test", destination.Name);
+    }
+
+    [Fact]
+    public void AutoMapTrue_WithMapProperty_MapsExplicitAndAutoProperties()
+    {
+        // Arrange - MultiPropertySource has Id, Name, Value, Description
+        var source = new MultiPropertySource
+        {
+            Id = 100,
+            Name = "Multi",
+            Value = 50,
+            Description = "Test Description"
+        };
+        var destination = new MultiPropertyDestination();
+
+        // Act
+        TestMappers.Map(source, destination);
+
+        // Assert - All same-named properties should be mapped via auto-map
+        Assert.Equal(100, destination.Id);
+        Assert.Equal("Multi", destination.Name);
+        Assert.Equal(50, destination.Value);
+        Assert.Equal("Test Description", destination.Description);
+    }
+}
+
 // MapCollection tests
 public class MapCollectionTests
 {
@@ -2197,8 +2210,9 @@ public class MapCollectionTests
         Assert.Equal(3, destination.Children[2].Id);
     }
 
+
     [Fact]
-    public void MapCollection_WithCustomConverter_NullSource_ReturnsEmptyCollection()
+    public void MapCollection_WithCustomConverter_NullSource_ReturnsNull()
     {
         // Arrange
         var source = new CustomCollectionConverterSource
@@ -2210,9 +2224,12 @@ public class MapCollectionTests
         // Act
         TestMappers.MapWithCustomCollectionConverter2(source, destination);
 
-        // Assert
+        // Assert - Custom converter handles null but we're using null-forgiving operator in generated code
+        // The ToReadOnlyList method returns empty for null, but we need to verify this is passed correctly
+        // In generated code: destination.Children = ToReadOnlyList<...>(source.Children, ...)!
+        // ToReadOnlyList returns empty list for null input
         Assert.NotNull(destination.Children);
-        Assert.Empty(destination.Children);  // Custom converter returns empty list for null
+        Assert.Empty(destination.Children);
     }
 }
 

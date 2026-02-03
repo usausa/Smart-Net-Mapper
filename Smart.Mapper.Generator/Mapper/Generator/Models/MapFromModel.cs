@@ -18,9 +18,9 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
     public string TargetType { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the source expression (method name or property path).
+    /// Gets or sets the source member name (method name or property path).
     /// </summary>
-    public string From { get; set; } = string.Empty;
+    public string Member { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets a value indicating whether the source expression is a method call.
@@ -56,7 +56,7 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
 
         return TargetName == other.TargetName &&
                TargetType == other.TargetType &&
-               From == other.From &&
+               Member == other.Member &&
                IsMethodCall == other.IsMethodCall &&
                ReturnType == other.ReturnType &&
                Order == other.Order &&
@@ -72,7 +72,7 @@ internal sealed class MapFromModel : IEquatable<MapFromModel>
             var hash = 17;
             hash = (hash * 31) + (TargetName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TargetType?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (From?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Member?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsMethodCall.GetHashCode();
             hash = (hash * 31) + (ReturnType?.GetHashCode() ?? 0);
             hash = (hash * 31) + Order.GetHashCode();

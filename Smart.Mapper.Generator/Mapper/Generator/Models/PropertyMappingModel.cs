@@ -135,6 +135,12 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public bool HasCondition => !string.IsNullOrEmpty(ConditionMethod);
 
     /// <summary>
+    /// Gets or sets a value indicating whether this mapping was explicitly specified via MapProperty attribute.
+    /// Used to distinguish from auto-mapped properties.
+    /// </summary>
+    public bool HasExplicitMapping { get; set; }
+
+    /// <summary>
     /// Gets or sets the order of this mapping.
     /// </summary>
     public int Order { get; set; }
@@ -195,6 +201,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                RequiresConversion == other.RequiresConversion &&
                IsSourceNullable == other.IsSourceNullable &&
                IsTargetNullable == other.IsTargetNullable &&
+               HasExplicitMapping == other.HasExplicitMapping &&
                ConverterMethod == other.ConverterMethod &&
                ConverterAcceptsCustomParameters == other.ConverterAcceptsCustomParameters &&
                ConditionMethod == other.ConditionMethod &&
@@ -220,6 +227,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + RequiresConversion.GetHashCode();
             hash = (hash * 31) + IsSourceNullable.GetHashCode();
             hash = (hash * 31) + IsTargetNullable.GetHashCode();
+            hash = (hash * 31) + HasExplicitMapping.GetHashCode();
             hash = (hash * 31) + (ConverterMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + ConverterAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (ConditionMethod?.GetHashCode() ?? 0);

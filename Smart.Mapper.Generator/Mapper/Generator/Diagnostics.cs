@@ -115,4 +115,20 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor DuplicateTargetMapping { get; } = new(
+        id: "ML0015",
+        title: "Duplicate target mapping",
+        messageFormat: "Multiple mapping attributes specify the same target property. [{0}]",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor RedundantMappingWithIgnore { get; } = new(
+        id: "ML0016",
+        title: "Redundant mapping with MapIgnore",
+        messageFormat: "A mapping attribute is specified for a property that is also marked with MapIgnore. [{0}]",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

@@ -53,6 +53,13 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     public bool TargetIsArray { get; set; }
 
     /// <summary>
+    /// Gets or sets the collection converter method name used when no custom converter is specified.
+    /// Defaults are determined by the target type (ToArray / ToList / ToImmutableArray / ToImmutableList /
+    /// ToImmutableHashSet / ToHashSet / ToFrozenSet).
+    /// </summary>
+    public string TargetCollectionMethod { get; set; } = "ToList";
+
+    /// <summary>
     /// Gets or sets a value indicating whether the source is nullable.
     /// </summary>
     public bool IsSourceNullable { get; set; }

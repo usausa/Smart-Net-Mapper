@@ -131,4 +131,12 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnmappedDestinationProperty { get; } = new(
+        id: "ML0017",
+        title: "Unmapped destination property",
+        messageFormat: "Destination property '{0}' is not mapped (strict mode).",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

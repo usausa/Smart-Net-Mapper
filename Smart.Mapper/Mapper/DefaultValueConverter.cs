@@ -2,6 +2,7 @@ namespace Smart.Mapper;
 
 using System;
 using System.Globalization;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1503
@@ -131,6 +132,94 @@ public static class DefaultValueConverter
     /// <summary>Converts Guid to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(Guid source) => source.ToString();
+
+    // ============================================================
+    // Specialized methods: string <-> date/time types (.NET 6+)
+    // ============================================================
+
+    /// <summary>Converts string to DateOnly.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DateOnly ConvertToDateOnly(string source) => DateOnly.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to TimeOnly.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TimeOnly ConvertToTimeOnly(string source) => TimeOnly.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to DateTimeOffset.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DateTimeOffset ConvertToDateTimeOffset(string source) => DateTimeOffset.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to TimeSpan.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TimeSpan ConvertToTimeSpan(string source) => TimeSpan.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts DateOnly to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(DateOnly source) => source.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>Converts TimeOnly to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(TimeOnly source) => source.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>Converts DateTimeOffset to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(DateTimeOffset source) => source.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>Converts TimeSpan to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(TimeSpan source) => source.ToString("c", CultureInfo.InvariantCulture);
+
+    // ============================================================
+    // Specialized methods: string <-> .NET 7+ numeric types
+    // ============================================================
+
+    /// <summary>Converts string to Half.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(string source) => Half.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts int to Half.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(int source) => (Half)source;
+
+    /// <summary>Converts long to Half.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(long source) => (Half)source;
+
+    /// <summary>Converts double to Half.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(double source) => (Half)source;
+
+    /// <summary>Converts float to Half.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(float source) => (Half)source;
+
+    /// <summary>Converts string to Int128.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Int128 ConvertToInt128(string source) => Int128.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to UInt128.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static UInt128 ConvertToUInt128(string source) => UInt128.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to BigInteger.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BigInteger ConvertToBigInteger(string source) => BigInteger.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts Half to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(Half source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts Int128 to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(Int128 source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts UInt128 to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(UInt128 source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts BigInteger to string.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(BigInteger source) => source.ToString(CultureInfo.InvariantCulture);
 
     // ============================================================
     // Generic fallback method

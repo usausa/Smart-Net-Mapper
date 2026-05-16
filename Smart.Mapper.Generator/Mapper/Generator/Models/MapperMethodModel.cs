@@ -67,6 +67,18 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public bool AutoMap { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether strict mode is enabled. When true,
+    /// destination properties without any mapping configuration result in compile-time warnings.
+    /// </summary>
+    public bool Strict { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name comparison rule for automatic property matching.
+    /// Stored as the underlying integer value of <see cref="System.StringComparison"/>.
+    /// </summary>
+    public int NameComparison { get; set; }
+
+    /// <summary>
     /// Gets or sets the custom parameters (additional parameters beyond source and destination).
     /// </summary>
     public List<CustomParameterModel> CustomParameters { get; set; } = [];
@@ -155,6 +167,11 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     /// </summary>
     public string? CollectionConverterTypeName { get; set; }
 
+    /// <summary>
+    /// Gets or sets the diagnostic warnings to report after a successful parse.
+    /// </summary>
+    public List<(DiagnosticDescriptor Descriptor, string Arg)> Warnings { get; set; } = [];
+
     public bool Equals(MapperMethodModel? other)
     {
         if (other is null)
@@ -184,7 +201,10 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                BeforeMapMethod == other.BeforeMapMethod &&
                BeforeMapAcceptsCustomParameters == other.BeforeMapAcceptsCustomParameters &&
                AfterMapMethod == other.AfterMapMethod &&
-               AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters;
+               AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters &&
+               AutoMap == other.AutoMap &&
+               Strict == other.Strict &&
+               NameComparison == other.NameComparison;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapperMethodModel);

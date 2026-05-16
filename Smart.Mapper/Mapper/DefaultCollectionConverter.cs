@@ -1,7 +1,9 @@
 namespace Smart.Mapper;
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -104,5 +106,183 @@ public static class DefaultCollectionConverter
             mapper(x, dest);
             return dest;
         }).ToList();
+    }
+
+    // ============================================================
+    // Immutable / Frozen / HashSet collections (Func mapper)
+    // ============================================================
+
+    /// <summary>Converts a collection to an ImmutableArray using the specified mapper function.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return ImmutableArray<TDest>.Empty;
+        }
+
+        return source.Select(mapper).ToImmutableArray();
+    }
+
+    /// <summary>Converts a collection to an ImmutableList using the specified mapper function.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(mapper).ToImmutableList();
+    }
+
+    /// <summary>Converts a collection to a HashSet using the specified mapper function.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static HashSet<TDest>? ToHashSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(mapper).ToHashSet();
+    }
+
+    /// <summary>Converts a collection to an ImmutableHashSet using the specified mapper function.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(mapper).ToImmutableHashSet();
+    }
+
+    /// <summary>Converts a collection to a FrozenSet using the specified mapper function.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(mapper).ToFrozenSet();
+    }
+
+    // ============================================================
+    // Immutable / Frozen / HashSet collections (Action mapper)
+    // ============================================================
+
+    /// <summary>Converts a collection to an ImmutableArray using the specified void mapper action.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Action<TSource, TDest> mapper)
+        where TDest : new()
+    {
+        if (source is null)
+        {
+            return ImmutableArray<TDest>.Empty;
+        }
+
+        return source.Select(x =>
+        {
+            var dest = new TDest();
+            mapper(x, dest);
+            return dest;
+        }).ToImmutableArray();
+    }
+
+    /// <summary>Converts a collection to an ImmutableList using the specified void mapper action.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Action<TSource, TDest> mapper)
+        where TDest : new()
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var dest = new TDest();
+            mapper(x, dest);
+            return dest;
+        }).ToImmutableList();
+    }
+
+    /// <summary>Converts a collection to a HashSet using the specified void mapper action.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static HashSet<TDest>? ToHashSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Action<TSource, TDest> mapper)
+        where TDest : new()
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var dest = new TDest();
+            mapper(x, dest);
+            return dest;
+        }).ToHashSet();
+    }
+
+    /// <summary>Converts a collection to an ImmutableHashSet using the specified void mapper action.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Action<TSource, TDest> mapper)
+        where TDest : new()
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var dest = new TDest();
+            mapper(x, dest);
+            return dest;
+        }).ToImmutableHashSet();
+    }
+
+    /// <summary>Converts a collection to a FrozenSet using the specified void mapper action.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Action<TSource, TDest> mapper)
+        where TDest : new()
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var dest = new TDest();
+            mapper(x, dest);
+            return dest;
+        }).ToFrozenSet();
     }
 }

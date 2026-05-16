@@ -1,0 +1,182 @@
+namespace Smart.Mapper;
+
+using System.Collections.Immutable;
+
+public class CollectionSourceChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+#pragma warning disable CA1819
+public class CollectionSource
+{
+    public CollectionSourceChild[]? Children { get; set; }
+    public List<CollectionSourceChild>? Items { get; set; }
+    public int DirectValue { get; set; }
+}
+#pragma warning restore CA1819
+
+public class CollectionDestinationChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+#pragma warning disable CA1819
+public class CollectionDestination
+{
+    public List<CollectionDestinationChild>? Children { get; set; }
+    public CollectionDestinationChild[]? Items { get; set; }
+    public int DirectValue { get; set; }
+}
+#pragma warning restore CA1819
+
+public class CustomCollectionConverterSourceChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+#pragma warning disable CA1819
+public class CustomCollectionConverterSource
+{
+    public List<CustomCollectionConverterSourceChild>? Children { get; set; }
+}
+#pragma warning restore CA1819
+
+public class CustomCollectionConverterDestChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class CustomCollectionConverterDestination
+{
+    public IReadOnlyList<CustomCollectionConverterDestChild>? Children { get; set; }
+}
+
+public static class TestCollectionConverter
+{
+    public static TDest[] ToArray<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        return DefaultCollectionConverter.ToArray(source, mapper)!;
+    }
+
+    public static List<TDest> ToList<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        return DefaultCollectionConverter.ToList(source, mapper)!;
+    }
+
+    public static IReadOnlyList<TDest> ToReadOnlyList<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return [];
+        }
+        return source.Select(mapper).ToList().AsReadOnly();
+    }
+}
+
+public class VoidMapperSourceChild
+{
+    public int Id { get; set; }
+}
+
+public class VoidMapperSource
+{
+    public VoidMapperSourceChild[]? Children { get; set; }
+}
+
+public class VoidMapperDestinationChild
+{
+    public int Id { get; set; }
+    public string Extra { get; set; } = string.Empty;
+}
+
+public class VoidMapperDestination
+{
+    public List<VoidMapperDestinationChild>? Children { get; set; }
+}
+
+#pragma warning disable CA1819
+public class CustomCollectionSource
+{
+    public CollectionSourceChild[]? Numbers { get; set; }
+}
+#pragma warning restore CA1819
+
+public class CustomCollectionDestination
+{
+    public List<CollectionDestinationChild>? Numbers { get; set; }
+}
+
+public static class TestCustomCollectionConverter
+{
+    public static TDest[]? ToArray<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var mapped = mapper(x);
+            if (mapped is CollectionDestinationChild child)
+            {
+                child.Id *= 2;
+            }
+            return mapped;
+        }).ToArray();
+    }
+
+    public static List<TDest>? ToList<TSource, TDest>(
+        IEnumerable<TSource>? source,
+        Func<TSource, TDest> mapper)
+    {
+        if (source is null)
+        {
+            return default;
+        }
+
+        return source.Select(x =>
+        {
+            var mapped = mapper(x);
+            if (mapped is CollectionDestinationChild child)
+            {
+                child.Id *= 2;
+            }
+            return mapped;
+        }).ToList();
+    }
+}
+
+// C3: ImmutableArray / ImmutableList / HashSet collection targets
+public class ImmutableCollectionSourceChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class ImmutableCollectionDestinationChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class ImmutableCollectionSource
+{
+    public List<ImmutableCollectionSourceChild>? Items { get; set; }
+    public List<ImmutableCollectionSourceChild>? ListItems { get; set; }
+    public List<ImmutableCollectionSourceChild>? SetItems { get; set; }
+}
+
+public class ImmutableCollectionDestination
+{
+    public ImmutableArray<ImmutableCollectionDestinationChild> Items { get; set; }
+    public ImmutableList<ImmutableCollectionDestinationChild>? ListItems { get; set; }
+    public HashSet<ImmutableCollectionDestinationChild>? SetItems { get; set; }
+}

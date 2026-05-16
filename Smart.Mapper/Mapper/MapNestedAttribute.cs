@@ -7,7 +7,7 @@ public sealed class MapNestedAttribute : Attribute
 
     public string? Source { get; }
 
-    public string Mapper { get; set; } = default!;
+    public string? Mapper { get; set; }
 
     public int Order { get; set; }
 

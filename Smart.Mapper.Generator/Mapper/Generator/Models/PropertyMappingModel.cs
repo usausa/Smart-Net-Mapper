@@ -102,7 +102,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether null coalescing is required for the assignment.
     /// This is true when source is nullable but target is not (terminal element).
     /// </summary>
-    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable && NullBehavior == NullBehaviorType.Default;
+    public bool RequiresNullCoalescing => IsSourceNullable && !IsTargetNullable && NullBehavior == NullBehaviorType.Default && !HasNullSubstitute;
 
     /// <summary>
     /// Gets or sets the converter method name for custom type conversion.
@@ -156,6 +156,17 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;
 
     /// <summary>
+    /// Gets or sets the literal code expression to substitute when the source value is null.
+    /// When set, generated code emits <c>source ?? &lt;NullSubstitute&gt;</c> for the assignment.
+    /// </summary>
+    public string? NullSubstitute { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a null-substitute value is configured.
+    /// </summary>
+    public bool HasNullSubstitute => !string.IsNullOrEmpty(NullSubstitute);
+
+    /// <summary>
     /// Gets or sets the specialized converter method name (e.g., "ConvertToInt32" for string -> int).
     /// If set, this method will be used instead of the generic Convert method.
     /// </summary>
@@ -207,6 +218,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                ConditionMethod == other.ConditionMethod &&
                ConditionAcceptsCustomParameters == other.ConditionAcceptsCustomParameters &&
                SpecializedConverterMethod == other.SpecializedConverterMethod &&
+               NullSubstitute == other.NullSubstitute &&
                TargetPathSegments.SequenceEqual(other.TargetPathSegments) &&
                SourcePathSegments.SequenceEqual(other.SourcePathSegments);
     }
@@ -233,6 +245,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + (ConditionMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + ConditionAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (SpecializedConverterMethod?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NullSubstitute?.GetHashCode() ?? 0);
             return hash;
         }
     }

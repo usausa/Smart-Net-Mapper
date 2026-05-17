@@ -180,6 +180,18 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public string? CollectionConverterTypeName { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the destination type requires constructor-based mapping
+    /// (i.e., it is a record or has a primary constructor with parameters, so properties are init-only).
+    /// </summary>
+    public bool UseConstructorMapping { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ordered list of constructor parameter names and their resolved source expressions
+    /// for constructor-based mapping. Each entry is (paramName, sourceExpression).
+    /// </summary>
+    public List<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the diagnostic warnings to report after a successful parse.
     /// </summary>
     public List<(DiagnosticDescriptor Descriptor, string Arg)> Warnings { get; set; } = [];
@@ -216,7 +228,9 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters &&
                AutoMap == other.AutoMap &&
                Strict == other.Strict &&
-               NameComparison == other.NameComparison;
+               NameComparison == other.NameComparison &&
+               UseConstructorMapping == other.UseConstructorMapping &&
+               ConstructorParameters.SequenceEqual(other.ConstructorParameters);
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapperMethodModel);
@@ -240,6 +254,7 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
             hash = (hash * 31) + BeforeMapAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (AfterMapMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + AfterMapAcceptsCustomParameters.GetHashCode();
+            hash = (hash * 31) + UseConstructorMapping.GetHashCode();
             return hash;
         }
     }

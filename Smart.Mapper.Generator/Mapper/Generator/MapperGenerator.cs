@@ -237,6 +237,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
             CollectStrictModeWarnings(model, destinationType);
         }
 
+        // D3/D1: Detect and apply constructor-based mapping for destinations with primary constructors / records
+        var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
+        if (constructorError is not null)
+        {
+            return Results.Error<MapperMethodModel>(constructorError);
+        }
+
         // D2: required member check – always enforced regardless of Strict flag
         var requiredMemberError = ValidateRequiredMembers(model, destinationType, syntax);
         if (requiredMemberError is not null)
@@ -1760,6 +1767,115 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    /// <summary>
+    /// Detects whether the destination type has a primary constructor (record or class with primary ctor),
+    /// selects the constructor with the most parameters, resolves constructor argument source expressions
+    /// using NameComparison and [MapProperty] overrides, and stores the result in the model.
+    /// For void mappers targeting such a destination, reports ML0019.
+    /// </summary>
+    private static DiagnosticInfo? BuildConstructorParameterMappings(
+        MapperMethodModel model,
+        ITypeSymbol destinationType,
+        ITypeSymbol sourceType,
+        MethodDeclarationSyntax syntax)
+    {
+        if (destinationType is not INamedTypeSymbol namedDest)
+        {
+            return null;
+        }
+
+        // Find the constructor with the most parameters (excluding the implicit default one for records)
+        var bestCtor = namedDest.InstanceConstructors
+            .Where(c => !c.IsImplicitlyDeclared && c.Parameters.Length > 0)
+            .OrderByDescending(c => c.Parameters.Length)
+            .FirstOrDefault();
+
+        if (bestCtor is null)
+        {
+            return null;
+        }
+
+        // Determine whether constructor-based mapping is needed:
+        // - Record types always go through the primary constructor
+        // - For plain classes, activate only when at least one constructor parameter
+        //   has no corresponding settable (non-init-only) property – meaning the value
+        //   can only be supplied via the constructor.
+        var allDestProps = GetAllProperties(destinationType);
+        var isRecord = namedDest.IsRecord;
+
+        var hasConstructorOnlyParams = bestCtor.Parameters.Any(p =>
+        {
+            var nc = (StringComparison)model.NameComparison;
+            var matchingProp = allDestProps.FirstOrDefault(prop => string.Equals(prop.Name, p.Name, nc));
+            return matchingProp is null || matchingProp.SetMethod is null || matchingProp.SetMethod.IsInitOnly;
+        });
+
+        if (!isRecord && !hasConstructorOnlyParams)
+        {
+            return null;
+        }
+
+        // void mappers cannot create a new destination – emit ML0019
+        if (!model.ReturnsDestination)
+        {
+            return new DiagnosticInfo(
+                Diagnostics.InitOnlyDestinationRequiresReturnMapper,
+                syntax.GetLocation(),
+                namedDest.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+        }
+
+        model.UseConstructorMapping = true;
+
+        // Build [MapProperty] lookup: destName -> sourceName
+        var customMappings = model.PropertyMappings
+            .Where(pm => !pm.TargetPath.Contains('.'))
+            .ToDictionary(pm => pm.TargetPath, pm => pm.SourcePath, StringComparer.Ordinal);
+
+        var nameComparison = (StringComparison)model.NameComparison;
+        var sourceProperties = GetAllProperties(sourceType);
+
+        foreach (var param in bestCtor.Parameters)
+        {
+            string sourceExpression;
+
+            // [MapProperty] takes priority – check both exact param name and PascalCase equivalent
+            var pascalParamName = char.ToUpperInvariant(param.Name[0]) + param.Name.Substring(1);
+            if (customMappings.TryGetValue(param.Name, out var customSource) ||
+                customMappings.TryGetValue(pascalParamName, out customSource))
+            {
+                sourceExpression = $"source.{customSource}";
+            }
+            else
+            {
+                // Match by NameComparison first, then fall back to OrdinalIgnoreCase
+                // (handles camelCase constructor params matching PascalCase source properties)
+                var srcProp = sourceProperties.FirstOrDefault(p => string.Equals(p.Name, param.Name, nameComparison))
+                           ?? sourceProperties.FirstOrDefault(p => string.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
+                sourceExpression = srcProp is not null
+                    ? $"source.{srcProp.Name}"
+                    : $"default({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
+            }
+
+            model.ConstructorParameters.Add((param.Name, sourceExpression));
+        }
+
+        // Remove from PropertyMappings the entries that are already handled as constructor arguments
+        // so they are NOT emitted again as regular property assignments.
+        // Init-only properties that are NOT constructor params will still be in PropertyMappings
+        // and will be emitted via object initializer.
+        var ctorParamNames = new HashSet<string>(
+            bestCtor.Parameters.Select(p => p.Name),
+            StringComparer.Ordinal);
+
+        // Also remove properties that correspond to constructor params (case-insensitive match with NameComparison)
+        model.PropertyMappings = model.PropertyMappings
+            .Where(pm => !bestCtor.Parameters.Any(p =>
+                string.Equals(p.Name, pm.TargetPath, nameComparison)))
+            .ToList();
+
+        return null;
+    }
+
     private static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
     {
         var sourceProperties = GetAllProperties(sourceType);
@@ -1805,7 +1921,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // Skip read-only properties
+            // Skip truly read-only properties (no setter at all, not even init-only)
             if (destProp.SetMethod is null)
             {
                 continue;
@@ -1892,7 +2008,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     NullBehavior = nullBehavior,
                     NullSubstitute = nullSubstitute,
                     Order = order,
-                    DefinitionOrder = definitionOrder
+                    DefinitionOrder = definitionOrder,
+                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true
                 };
 
                 // Detect enum conversion kind
@@ -2373,7 +2490,44 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Create destination if returning
         if (method.ReturnsDestination)
         {
-            builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("();").NewLine();
+            if (method.UseConstructorMapping)
+            {
+                // Constructor-based creation with object initializer for remaining init-only properties
+                // Only init-only properties go in the initializer; regular settable properties are assigned below
+                var initOnlyMappings = method.PropertyMappings
+                    .Where(pm => pm.IsTargetInitOnly)
+                    .ToList();
+
+                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("(");
+                for (var i = 0; i < method.ConstructorParameters.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        builder.Append(", ");
+                    }
+                    builder.Append(method.ConstructorParameters[i].SourceExpression);
+                }
+                builder.Append(")");
+
+                if (initOnlyMappings.Count > 0)
+                {
+                    builder.NewLine();
+                    builder.Indent().Append("{").NewLine();
+                    builder.IndentLevel++;
+                    foreach (var pm in initOnlyMappings)
+                    {
+                        builder.Indent().Append(pm.TargetPath).Append(" = ").Append(pm.SourcePath.Contains('.') ? pm.SourcePath : $"{method.SourceParameterName}.{pm.SourcePath}").Append(",").NewLine();
+                    }
+                    builder.IndentLevel--;
+                    builder.Indent().Append("}");
+                }
+
+                builder.Append(";").NewLine();
+            }
+            else
+            {
+                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("();").NewLine();
+            }
         }
 
         // Call BeforeMap if specified
@@ -2417,7 +2571,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Group mappings by whether they require null check (sorted by Order, then DefinitionOrder)
-        var sortedMappings = method.PropertyMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
+        // When UseConstructorMapping is true, init-only properties are already handled via object initializer
+        var effectiveMappings = method.UseConstructorMapping
+            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly).ToList()
+            : method.PropertyMappings;
+        var sortedMappings = effectiveMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
         var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck).ToList();
         var mappingsWithNullCheck = sortedMappings.Where(m => m.RequiresNullCheck).ToList();
 

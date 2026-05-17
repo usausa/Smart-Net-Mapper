@@ -405,6 +405,32 @@ internal static partial class TestMappers
     public static partial void MapPartialEnum(PartialEnumSource source, PartialEnumDestination destination);
 }
 
+// D1/D3: Primary constructor and record mapping
+internal static partial class PrimaryConstructorMappers
+{
+    // D1: record → record
+    [Mapper]
+    public static partial RecordDestination MapRecord(RecordSource source);
+
+    // D1: record → record (partial params)
+    [Mapper]
+    public static partial RecordDestinationPartial MapRecordPartial(RecordSource source);
+
+    // D3: class with primary constructor
+    [Mapper]
+    public static partial PrimaryCtorDestination MapPrimaryCtorClass(PrimaryCtorSource source);
+
+    // D1: record with extra settable property
+    [Mapper]
+    public static partial RecordWithExtra MapRecordWithExtra(RecordWithExtraSource source);
+
+    // D1: [MapProperty] overrides constructor argument
+    [Mapper]
+    [MapProperty(nameof(MapPropertyOverrideDestination.Id), nameof(MapPropertyOverrideSource.Identifier))]
+    [MapProperty(nameof(MapPropertyOverrideDestination.Name), nameof(MapPropertyOverrideSource.FullName))]
+    public static partial MapPropertyOverrideDestination MapWithPropertyOverride(MapPropertyOverrideSource source);
+}
+
 // E3: MapperProfile – class-level defaults applied to all methods
 [MapperProfile(Strict = true, NameComparison = StringComparison.OrdinalIgnoreCase)]
 internal static partial class ProfileMappers

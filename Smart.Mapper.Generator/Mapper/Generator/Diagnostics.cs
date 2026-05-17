@@ -147,4 +147,12 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor InitOnlyDestinationRequiresReturnMapper { get; } = new(
+        id: "ML0019",
+        title: "Init-only destination requires return mapper",
+        messageFormat: "Destination type '{0}' has init-only or constructor-only properties and cannot be used with a void mapper. Use a return-type mapper instead.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

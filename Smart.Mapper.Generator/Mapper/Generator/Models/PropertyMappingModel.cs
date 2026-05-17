@@ -165,6 +165,12 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public bool HasExplicitMapping { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the destination property is init-only.
+    /// Init-only properties must be set via object initializer syntax, not regular assignment.
+    /// </summary>
+    public bool IsTargetInitOnly { get; set; }
+
+    /// <summary>
     /// Gets or sets the order of this mapping.
     /// </summary>
     public int Order { get; set; }

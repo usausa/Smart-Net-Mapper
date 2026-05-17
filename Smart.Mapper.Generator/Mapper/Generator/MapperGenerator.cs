@@ -29,7 +29,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private const string MapFromAttributeName = "Smart.Mapper.MapFromAttribute";
     private const string MapCollectionAttributeName = "Smart.Mapper.MapCollectionAttribute";
     private const string MapNestedAttributeName = "Smart.Mapper.MapNestedAttribute";
-    private const string MapConverterAttributeName = "Smart.Mapper.MapConverterAttribute";
+    private const string ValueConverterAttributeName = "Smart.Mapper.ValueConverterAttribute";
     private const string CollectionConverterAttributeName = "Smart.Mapper.CollectionConverterAttribute";
     private const string MapperProfileAttributeName = "Smart.Mapper.MapperProfileAttribute";
 
@@ -948,7 +948,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == MapConverterAttributeName)
+            if (attributeName == ValueConverterAttributeName)
             {
                 if (attribute.ConstructorArguments.Length >= 1 &&
                     attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType)
@@ -981,7 +981,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == MapConverterAttributeName && model.MapConverterTypeName is null)
+            if (attributeName == ValueConverterAttributeName && model.MapConverterTypeName is null)
             {
                 if (attribute.ConstructorArguments.Length >= 1 &&
                     attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType)

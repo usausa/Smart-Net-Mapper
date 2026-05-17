@@ -300,7 +300,7 @@ internal static partial class TestMappers
 
     // Custom type converter test
     [Mapper]
-    [MapConverter(typeof(TestCustomConverter))]
+    [ValueConverter(typeof(TestCustomConverter))]
     public static partial void MapWithCustomConverter(CustomConverterSource source, CustomConverterDestination destination);
 
     // Custom collection converter test
@@ -341,7 +341,7 @@ internal static partial class TestMappers
 
     // Specialized converter test
     [Mapper]
-    [MapConverter(typeof(SpecializedConverter))]
+    [ValueConverter(typeof(SpecializedConverter))]
     public static partial void MapWithSpecializedConverter(SpecializedConverterSource source, SpecializedConverterDestination destination);
 
     // A1: NullSubstitute – string and int with fallback values when source is null

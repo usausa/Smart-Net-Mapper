@@ -1,13 +1,13 @@
 namespace Smart.Mapper;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method)]
-public sealed class MapConverterAttribute : Attribute
+public sealed class ValueConverterAttribute : Attribute
 {
     public Type ConverterType { get; }
 
     public string Method { get; set; } = "Convert";
 
-    public MapConverterAttribute(Type converterType)
+    public ValueConverterAttribute(Type converterType)
     {
         ConverterType = converterType;
     }

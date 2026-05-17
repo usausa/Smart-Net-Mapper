@@ -171,4 +171,12 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor TypeConverterFallbackNotAllowed { get; } = new(
+        id: "ML0022",
+        title: "TypeConverter fallback requires AllowTypeConverter",
+        messageFormat: "Property '{0}' has no specialized converter and would fall back to Convert<TSource,TDest> which is not AOT-safe. Add [Mapper(AllowTypeConverter = true)] to opt in, or provide a specialized conversion.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

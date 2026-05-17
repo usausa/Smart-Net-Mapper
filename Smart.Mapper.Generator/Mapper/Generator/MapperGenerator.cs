@@ -260,6 +260,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return Results.Error<MapperMethodModel>(cultureFormatError);
         }
 
+        // Validate that no property mapping falls through to the unsafe Convert<T,U> cast fallback.
+        var typeConverterError = ValidateNoTypeConverterFallback(model, syntax);
+        if (typeConverterError is not null)
+        {
+            return Results.Error<MapperMethodModel>(typeConverterError);
+        }
+
         return Results.Success(model);
     }
 
@@ -591,6 +598,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     {
                         model.NumberFormat = numFmt;
                     }
+
                 }
             }
             else if (attributeName == MapPropertyAttributeName ||
@@ -1877,6 +1885,83 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    private static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        // Reject property mappings that would emit Convert<TSource,TDest>() for a type pair that is
+        // NOT covered by the explicit branches inside DefaultValueConverter.Convert<T,U>.
+        // Numeric ↔ numeric, string ↔ numeric/bool/DateTime/Guid, bool/DateTime/Guid → string
+        // are all handled via static if-branches inside Convert<T,U> and are therefore safe.
+        // Unknown custom-type pairs would fall through to "(TDestination)(object)source!" at runtime
+        // causing InvalidCastException — those are always rejected at compile time.
+        foreach (var mapping in model.PropertyMappings)
+        {
+            // Skip properties that have a custom converter method.
+            if (mapping.HasConverter)
+            {
+                continue;
+            }
+
+            // Skip mappings handled by enum-specific code paths.
+            if (mapping.IsEnumMapping)
+            {
+                continue;
+            }
+
+            // Skip mappings that have a specialized converter method.
+            if (mapping.HasSpecializedConverter)
+            {
+                continue;
+            }
+
+            var effectiveSource = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+            var effectiveDest = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+
+            // Skip identical effective types (plain assignment or nullable-unwrap).
+            if (effectiveSource == effectiveDest)
+            {
+                continue;
+            }
+
+            // Skip type pairs that DefaultValueConverter.Convert<T,U> handles with explicit static
+            // branches (numeric ↔ numeric, string ↔ primitive, primitive → string).
+            if (IsKnownConverterTypePair(effectiveSource, effectiveDest))
+            {
+                continue;
+            }
+
+            return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), mapping.TargetPath);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns true when DefaultValueConverter.Convert&lt;TSource,TDest&gt; handles the pair
+    /// via explicit static branches that are safe under NativeAOT / trimming.
+    /// </summary>
+    private static bool IsKnownConverterTypePair(string source, string dest)
+    {
+        // Primitive / well-known value types handled by Convert<T,U> explicit branches.
+        static bool IsKnownPrimitive(string t) =>
+            t is "int" or "global::System.Int32" or
+                 "long" or "global::System.Int64" or
+                 "short" or "global::System.Int16" or
+                 "byte" or "global::System.Byte" or
+                 "sbyte" or "global::System.SByte" or
+                 "uint" or "global::System.UInt32" or
+                 "ulong" or "global::System.UInt64" or
+                 "ushort" or "global::System.UInt16" or
+                 "float" or "global::System.Single" or
+                 "double" or "global::System.Double" or
+                 "decimal" or "global::System.Decimal" or
+                 "bool" or "global::System.Boolean" or
+                 "string" or "global::System.String" or
+                 "global::System.DateTime" or
+                 "global::System.Guid";
+
+        return IsKnownPrimitive(source) && IsKnownPrimitive(dest);
+    }
+
     private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
     {
         // Build the set of all destination property names that have some mapping configuration (same as CollectStrictModeWarnings)
@@ -2178,6 +2263,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     propEffectiveNumberFormat = model.NumberFormat;
                 }
 
+                // If the underlying types are directly assignable (same type, inheritance, interface),
+                // no conversion is needed even when the string-based names differ.
+                var requiresConversion = RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName, isSourceNullable, isTargetNullable)
+                    && !IsAssignableTo(sourceUnderlyingType, targetUnderlyingType);
+
                 var mapping = new PropertyMappingModel
                 {
                     SourcePath = sourcePropPath,
@@ -2186,7 +2276,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     TargetType = destTypeName,
                     SourceUnderlyingType = sourceUnderlyingTypeName,
                     TargetUnderlyingType = targetUnderlyingTypeName,
-                    RequiresConversion = RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName, isSourceNullable, isTargetNullable),
+                    RequiresConversion = requiresConversion,
                     IsSourceNullable = isSourceNullable,
                     IsTargetNullable = isTargetNullable,
                     ConverterMethod = converterMethod,
@@ -2432,12 +2522,35 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Use underlying types for comparison (without nullable wrapper)
         if (!string.IsNullOrEmpty(mapping.SourceUnderlyingType) && !string.IsNullOrEmpty(mapping.TargetUnderlyingType))
         {
-            mapping.RequiresConversion = RequiresTypeConversion(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType, mapping.IsSourceNullable, mapping.IsTargetNullable);
+            // Re-resolve underlying type symbols for assignability check
+            var srcParts = mapping.SourcePath.Split('.');
+            var dstParts = mapping.TargetPath.Split('.');
+            var srcFinalProp = ResolvePropertySymbol(sourceType, srcParts);
+            var dstFinalProp = ResolvePropertySymbol(destinationType, dstParts);
+            var srcUnderlying = srcFinalProp is not null ? GetUnderlyingType(srcFinalProp.Type) : null;
+            var dstUnderlying = dstFinalProp is not null ? GetUnderlyingType(dstFinalProp.Type) : null;
+            var assignable = srcUnderlying is not null && dstUnderlying is not null && IsAssignableTo(srcUnderlying, dstUnderlying);
+            mapping.RequiresConversion = !assignable &&
+                RequiresTypeConversion(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType, mapping.IsSourceNullable, mapping.IsTargetNullable);
         }
         else if (!string.IsNullOrEmpty(mapping.SourceType) && !string.IsNullOrEmpty(mapping.TargetType))
         {
             mapping.RequiresConversion = RequiresTypeConversion(mapping.SourceType, mapping.TargetType, mapping.IsSourceNullable, mapping.IsTargetNullable);
         }
+    }
+
+    // Resolve the IPropertySymbol at the end of a dotted path (e.g. "A.B.C") rooted at rootType.
+    private static IPropertySymbol? ResolvePropertySymbol(ITypeSymbol rootType, string[] parts)
+    {
+        var current = rootType;
+        IPropertySymbol? prop = null;
+        foreach (var part in parts)
+        {
+            prop = GetAllProperties(current).FirstOrDefault(p => p.Name == part);
+            if (prop is null) return null;
+            current = prop.Type;
+        }
+        return prop;
     }
 
     private static bool RequiresTypeConversion(string sourceType, string targetType, bool isSourceNullable, bool isTargetNullable)

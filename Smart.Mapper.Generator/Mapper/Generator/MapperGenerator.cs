@@ -188,6 +188,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Detect specialized converter methods for property mappings
         DetectSpecializedConverterMethods(model, symbol);
 
+        // Detect IParsable<T> / ISpanParsable<T> parse methods (B3)
+        DetectParsableMethods(model, symbol);
+
         // Validate Converter methods if specified
         var converterError = ValidateConverterMethods(symbol, model, syntax);
         if (converterError is not null)
@@ -1913,6 +1916,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 continue;
             }
 
+            // Skip mappings handled by IParsable<T> / ISpanParsable<T> (B3).
+            if (mapping.HasParsableMethod)
+            {
+                continue;
+            }
+
             var effectiveSource = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
             var effectiveDest = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
 
@@ -2294,6 +2303,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 // Detect enum conversion kind
                 DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
 
+                // Detect IParsable<T> / ISpanParsable<T> parse method (B3)
+                // This runs before DetectSpecializedConverterMethods so HasSpecializedConverter may not be set yet.
+                // We use the ITypeSymbol directly here to avoid re-resolving by name.
+                if (mapping.RequiresConversion && !mapping.IsEnumMapping && !mapping.HasConverter)
+                {
+                    var srcUnderlying = sourceUnderlyingType.SpecialType == SpecialType.System_String
+                        ? sourceUnderlyingType
+                        : null;
+                    if (srcUnderlying is not null && mapping.EffectiveDateTimeFormat is null && mapping.EffectiveNumberFormat is null)
+                    {
+                        DetectParsableMethodFromSymbol(mapping, targetUnderlyingType);
+                    }
+                }
+
                 mappings.Add(mapping);
             }
         }
@@ -2363,6 +2386,41 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             mapping.EnumMappingKind = EnumMappingKind.StringToEnum;
             mapping.RequiresConversion = true;
+        }
+    }
+
+    private static void DetectParsableMethodFromSymbol(PropertyMappingModel mapping, ITypeSymbol targetType)
+    {
+        // Use MetadataName to identify IParsable<T> / ISpanParsable<T> without needing a Compilation reference.
+        // MetadataName for generic interfaces is "IParsable`1" / "ISpanParsable`1".
+        const string spanParsableMetadataName = "ISpanParsable`1";
+        const string parsableMetadataName = "IParsable`1";
+
+        var hasSpanParsable = false;
+        var hasParsable = false;
+
+        foreach (var iface in targetType.AllInterfaces)
+        {
+            var meta = iface.OriginalDefinition.MetadataName;
+            if (meta == spanParsableMetadataName)
+            {
+                hasSpanParsable = true;
+                break; // ISpanParsable wins; no need to keep checking
+            }
+
+            if (meta == parsableMetadataName)
+            {
+                hasParsable = true;
+            }
+        }
+
+        if (hasSpanParsable)
+        {
+            mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+        }
+        else if (hasParsable)
+        {
+            mapping.ParseMethod = ParseMethodKind.IParsable;
         }
     }
 
@@ -3811,6 +3869,26 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(".Value)");
             }
         }
+        else if (mapping.HasParsableMethod)
+        {
+            // B3: IParsable<T> / ISpanParsable<T> direct Parse call with .Value access
+            var targetTypeForParse = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            var cultureArg = mapping.HasCulture
+                ? GetCultureFieldName(mapping.EffectiveCulture!)
+                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
+            {
+                builder.Append(targetTypeForParse).Append(".Parse(")
+                       .Append(sourceAccessor).Append(".Value.AsSpan(), ")
+                       .Append(cultureArg).Append(")");
+            }
+            else
+            {
+                builder.Append(targetTypeForParse).Append(".Parse(")
+                       .Append(sourceAccessor).Append(".Value, ")
+                       .Append(cultureArg).Append(")");
+            }
+        }
         else
         {
             // Use generic converter with underlying types and .Value access
@@ -3922,6 +4000,26 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(")");
             }
         }
+        else if (mapping.HasParsableMethod)
+        {
+            // B3: IParsable<T> / ISpanParsable<T> direct Parse call
+            var targetTypeForParse = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            var cultureArg = mapping.HasCulture
+                ? GetCultureFieldName(mapping.EffectiveCulture!)
+                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
+            {
+                builder.Append(targetTypeForParse).Append(".Parse(")
+                       .Append(sourceExpr).Append(".AsSpan(), ")
+                       .Append(cultureArg).Append(")");
+            }
+            else
+            {
+                builder.Append(targetTypeForParse).Append(".Parse(")
+                       .Append(sourceExpr).Append(", ")
+                       .Append(cultureArg).Append(")");
+            }
+        }
         else
         {
             // Use generic converter for type conversion
@@ -4000,6 +4098,128 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    private static void DetectParsableMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
+    {
+        // If a custom converter type is specified, B3 parse methods should not be applied
+        // because the custom converter's Convert<T,U> should handle all conversions.
+        // Reset any ParseMethod that was set in BuildPropertyMappings.
+        if (model.MapConverterTypeName is not null)
+        {
+            foreach (var mapping in model.PropertyMappings)
+            {
+                mapping.ParseMethod = ParseMethodKind.None;
+            }
+            return;
+        }
+
+        // Resolve IParsable<T> and ISpanParsable<T> from referenced assemblies
+        INamedTypeSymbol? parsableSymbol = null;
+        INamedTypeSymbol? spanParsableSymbol = null;
+
+        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+        {
+            parsableSymbol ??= reference.GetTypeByMetadataName("System.IParsable`1");
+            spanParsableSymbol ??= reference.GetTypeByMetadataName("System.ISpanParsable`1");
+            if (parsableSymbol is not null && spanParsableSymbol is not null)
+            {
+                break;
+            }
+        }
+
+        // IParsable is .NET 7+; if not found, nothing to do
+        if (parsableSymbol is null)
+        {
+            return;
+        }
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Only applies to string → T conversions without a specialized converter or enum mapping
+            if (mapping.IsEnumMapping || mapping.HasSpecializedConverter || mapping.HasConverter)
+            {
+                continue;
+            }
+
+            // Format 指定がある場合は B3 非適用
+            if (mapping.EffectiveDateTimeFormat is not null || mapping.EffectiveNumberFormat is not null)
+            {
+                continue;
+            }
+
+            // Source underlying type must be string
+            var sourceType = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+            if (sourceType != "global::System.String")
+            {
+                continue;
+            }
+
+            // Resolve destination ITypeSymbol — try user's assembly first, then references
+            var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+            var targetTypeSymbol = ResolveTypeSymbol(mapperMethod, targetTypeName);
+            if (targetTypeSymbol is null)
+            {
+                continue;
+            }
+
+            // ISpanParsable<T> takes priority over IParsable<T>
+            if (spanParsableSymbol is not null && ImplementsGenericInterface(targetTypeSymbol, spanParsableSymbol))
+            {
+                mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+            }
+            else if (spanParsableSymbol is null && ImplementsInterfaceByName(targetTypeSymbol, "System.ISpanParsable`1"))
+            {
+                mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+            }
+            else if (parsableSymbol is not null && ImplementsGenericInterface(targetTypeSymbol, parsableSymbol))
+            {
+                mapping.ParseMethod = ParseMethodKind.IParsable;
+            }
+            else if (ImplementsInterfaceByName(targetTypeSymbol, "System.IParsable`1"))
+            {
+                mapping.ParseMethod = ParseMethodKind.IParsable;
+            }
+        }
+    }
+
+    private static bool ImplementsGenericInterface(ITypeSymbol typeSymbol, INamedTypeSymbol genericInterfaceDefinition) =>
+        typeSymbol.AllInterfaces.Any(i =>
+            SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericInterfaceDefinition));
+
+    private static bool ImplementsInterfaceByName(ITypeSymbol typeSymbol, string metadataName) =>
+        typeSymbol.AllInterfaces.Any(i =>
+            i.OriginalDefinition.ToDisplayString() == metadataName ||
+            i.OriginalDefinition.MetadataName == metadataName.Split('.').Last());
+
+    private static ITypeSymbol? ResolveTypeSymbol(IMethodSymbol mapperMethod, string fullyQualifiedName)
+    {
+        // Strip "global::" prefix
+        var typeName = fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal)
+            ? fullyQualifiedName.Substring("global::".Length)
+            : fullyQualifiedName;
+
+        var type = mapperMethod.ContainingAssembly.GetTypeByMetadataName(typeName);
+        if (type is not null)
+        {
+            return type;
+        }
+
+        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+        {
+            type = reference.GetTypeByMetadataName(typeName);
+            if (type is not null)
+            {
+                return type;
+            }
+        }
+
+        return null;
+    }
+
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
         // Get the converter type to check for specialized methods
@@ -4053,6 +4273,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             if (specializedMethod is not null)
             {
                 mapping.SpecializedConverterMethod = specializedMethodName;
+                // If B3 parse method was set, clear it because specialized converter takes priority.
+                mapping.ParseMethod = ParseMethodKind.None;
             }
         }
     }

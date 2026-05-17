@@ -29,6 +29,21 @@ internal enum EnumMappingKind
 }
 
 /// <summary>
+/// Represents the kind of IParsable / ISpanParsable parse method to use.
+/// </summary>
+internal enum ParseMethodKind
+{
+    /// <summary>No parsable conversion.</summary>
+    None = 0,
+
+    /// <summary>T.Parse(ReadOnlySpan&lt;char&gt;, IFormatProvider?) via ISpanParsable&lt;T&gt;.</summary>
+    ISpanParsable = 1,
+
+    /// <summary>T.Parse(string, IFormatProvider?) via IParsable&lt;T&gt;.</summary>
+    IParsable = 2,
+}
+
+/// <summary>
 /// Represents the null behavior for property mapping.
 /// </summary>
 internal enum NullBehaviorType
@@ -206,6 +221,16 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether a specialized converter method is available.
     /// </summary>
     public bool HasSpecializedConverter => !string.IsNullOrEmpty(SpecializedConverterMethod);
+
+    /// <summary>
+    /// Gets or sets the kind of parsable parse method to use (B3: IParsable / ISpanParsable).
+    /// </summary>
+    public ParseMethodKind ParseMethod { get; set; } = ParseMethodKind.None;
+
+    /// <summary>
+    /// Gets a value indicating whether a parsable parse method should be used.
+    /// </summary>
+    public bool HasParsableMethod => ParseMethod != ParseMethodKind.None;
 
     /// <summary>
     /// Gets or sets the effective culture name resolved from MapProperty > Mapper > MapperProfile precedence.

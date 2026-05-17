@@ -536,3 +536,27 @@ internal static partial class ProfileMappers
     [Mapper(Strict = false)]
     public static partial void MapNoStrict(ProfileSource source, ProfileDestination destination);
 }
+
+// B3: IParsable<T> / ISpanParsable<T> mappings
+internal static partial class TestMappers
+{
+    // T1: string → TestParsableId (IParsable only)
+    [Mapper]
+    public static partial void Map(ParsableSource source, ParsableDestination destination);
+
+    // T2: string → TestSpanParsableId (ISpanParsable)
+    [Mapper]
+    public static partial void Map(SpanParsableSource source, SpanParsableDestination destination);
+
+    // T3: Culture あり + IParsable
+    [Mapper(Culture = "en-US")]
+    public static partial void MapCulture(ParsableCultureSource source, ParsableCultureDestination destination);
+
+    // T4: Culture あり + ISpanParsable
+    [Mapper(Culture = "en-US")]
+    public static partial void MapCulture(SpanParsableCultureSource source, SpanParsableCultureDestination destination);
+
+    // T7: string? → TestSpanParsableId (nullable source)
+    [Mapper]
+    public static partial void Map(NullableSpanParsableSource source, NullableSpanParsableDestination destination);
+}

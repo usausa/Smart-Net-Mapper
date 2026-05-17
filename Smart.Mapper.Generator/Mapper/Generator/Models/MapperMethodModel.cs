@@ -112,6 +112,12 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public string? NumberFormat { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the source type is a readonly struct.
+    /// When true, the generated method parameter uses the <c>in</c> modifier to avoid defensive copies.
+    /// </summary>
+    public bool IsSourceReadOnlyStruct { get; set; }
+
+    /// <summary>
     /// Gets or sets the custom parameters (additional parameters beyond source and destination).
     /// </summary>
     public List<CustomParameterModel> CustomParameters { get; set; } = [];
@@ -251,7 +257,8 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                Strict == other.Strict &&
                NameComparison == other.NameComparison &&
                UseConstructorMapping == other.UseConstructorMapping &&
-               ConstructorParameters.SequenceEqual(other.ConstructorParameters);
+               ConstructorParameters.SequenceEqual(other.ConstructorParameters) &&
+               IsSourceReadOnlyStruct == other.IsSourceReadOnlyStruct;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapperMethodModel);

@@ -444,6 +444,85 @@ internal static partial class PrimaryConstructorMappers
     public static partial MapPropertyOverrideDestination MapWithPropertyOverride(MapPropertyOverrideSource source);
 }
 
+// C2: InPlace, D4: readonly struct
+internal static partial class TestMappers
+{
+    // C2: InPlace collection update – child mapper
+    [Mapper]
+    public static partial InPlaceDestinationChild MapInPlaceChild(InPlaceSourceChild source);
+
+    // C2: InPlace collection update
+    [Mapper]
+    [MapCollection(nameof(InPlaceDestination.Items), nameof(InPlaceSource.Items), Mapper = nameof(MapInPlaceChild), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapInPlace(InPlaceSource source, InPlaceDestination destination);
+
+    // D4: readonly struct
+    [Mapper]
+    public static partial ReadOnlyStructDestination MapReadOnlyStruct(in ReadOnlyStructSource source);
+}
+
+// C4-β/γ: Collection matrix tests
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial MatrixDstItem MapMatrixItem(MatrixSrcItem source);
+
+    private static void MapMatrixItemVoid(MatrixSrcItem source, MatrixDstItem destination)
+    {
+        destination.Value = source.Value;
+    }
+
+    // Array → List (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapArrayToList(MatrixArraySource source, MatrixToListDst destination);
+
+    // Array → Array (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToArrayDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapArrayToArray(MatrixArraySource source, MatrixToArrayDst destination);
+
+    // Array → ImmutableArray (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToImmutableArrayDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapArrayToImmutableArray(MatrixArraySource source, MatrixToImmutableArrayDst destination);
+
+    // Array → HashSet (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToHashSetDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapArrayToHashSet(MatrixArraySource source, MatrixToHashSetDst destination);
+
+    // List → List (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapListToList(MatrixListSource source, MatrixToListDst destination);
+
+    // List → Array (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToArrayDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapListToArray(MatrixListSource source, MatrixToArrayDst destination);
+
+    // List → ImmutableArray (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToImmutableArrayDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapListToImmutableArray(MatrixListSource source, MatrixToImmutableArrayDst destination);
+
+    // List → HashSet (Func)
+    [Mapper]
+    [MapCollection(nameof(MatrixToHashSetDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapListToHashSet(MatrixListSource source, MatrixToHashSetDst destination);
+
+    // Array → List (Action/void mapper)
+    [Mapper]
+    [MapCollection(nameof(MatrixVoidDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItemVoid))]
+    public static partial void MapArrayToListVoid(MatrixArraySource source, MatrixVoidDst destination);
+
+    // List → List (Action/void mapper)
+    [Mapper]
+    [MapCollection(nameof(MatrixVoidDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItemVoid))]
+    public static partial void MapListToListVoid(MatrixListSource source, MatrixVoidDst destination);
+}
+
 
 // E3: MapperProfile – class-level defaults applied to all methods
 [MapperProfile(Strict = true, NameComparison = StringComparison.OrdinalIgnoreCase)]

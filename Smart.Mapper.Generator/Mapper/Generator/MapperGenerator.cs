@@ -101,6 +101,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var sourceParam = symbol.Parameters[0];
         model.SourceTypeName = sourceParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         model.SourceParameterName = sourceParam.Name;
+        model.IsSourceReadOnlyStruct = sourceParam.Type.IsValueType &&
+                                       sourceParam.Type is INamedTypeSymbol { IsReadOnly: true };
 
         ITypeSymbol destinationType;
         int customParamStartIndex;
@@ -831,6 +833,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var mapper = string.Empty;
                     string? converter = null;
                     var order = 0;
+                    var inPlace = false;
 
                     if (attribute.ConstructorArguments.Length >= 2)
                     {
@@ -855,6 +858,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         {
                             order = ord;
                         }
+                        else if (namedArg.Key == "Strategy" && namedArg.Value.Value is int strat)
+                        {
+                            inPlace = strat == 1; // CollectionStrategy.InPlace
+                        }
                     }
 
                     model.MapCollectionMappings.Add(new MapCollectionModel
@@ -864,7 +871,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         Mapper = mapper,
                         Converter = converter,
                         Order = order,
-                        DefinitionOrder = definitionOrder++
+                        DefinitionOrder = definitionOrder++,
+                        InPlace = inPlace
                     });
 
                     model.IgnoredProperties.Add(targetName);
@@ -1505,6 +1513,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapCollection.IsSourceNullable = IsNullableSymbol(sourceProp.Type);
             mapCollection.TargetIsArray = destProp.Type is IArrayTypeSymbol;
             mapCollection.TargetCollectionMethod = DetermineCollectionMethod(destProp.Type);
+            mapCollection.SourceShape = DetermineSourceShape(sourceProp.Type);
+            mapCollection.TargetShape = DetermineTargetShape(destProp.Type);
+            mapCollection.UseHelperPath = model.CollectionConverterTypeName is not null || mapCollection.HasCustomConverter;
+
+            // For InPlace mode, determine fallback type name when destination collection is null
+            if (mapCollection.InPlace)
+            {
+                mapCollection.InPlaceFallbackTypeName = DetermineInPlaceFallbackTypeName(destProp.Type, targetElementType);
+            }
 
             // Find mapper method
             var mapperMethodResult = FindMapperMethod(containingType, mapCollection.Mapper, sourceElementType, targetElementType);
@@ -1662,6 +1679,90 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         return "ToList";
+    }
+
+    private static string DetermineInPlaceFallbackTypeName(ITypeSymbol targetType, ITypeSymbol elementType)
+    {
+        var elementTypeName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (targetType is INamedTypeSymbol named)
+        {
+            var fullName = named.ConstructedFrom.ToDisplayString();
+            return fullName switch
+            {
+                "System.Collections.Generic.ICollection<T>" or
+                "System.Collections.Generic.IList<T>" or
+                "System.Collections.Generic.List<T>" => $"global::System.Collections.Generic.List<{elementTypeName}>",
+                "System.Collections.Generic.HashSet<T>" or
+                "System.Collections.Generic.ISet<T>" => $"global::System.Collections.Generic.HashSet<{elementTypeName}>",
+                _ => $"global::System.Collections.Generic.List<{elementTypeName}>"
+            };
+        }
+
+        return $"global::System.Collections.Generic.List<{elementTypeName}>";
+    }
+
+    private static CollectionSourceShape DetermineSourceShape(ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol)
+        {
+            return CollectionSourceShape.Array;
+        }
+
+        if (type is INamedTypeSymbol named && named.IsGenericType)
+        {
+            var fullName = named.ConstructedFrom.ToDisplayString();
+            switch (fullName)
+            {
+                case "System.Collections.Generic.List<T>":
+                    return CollectionSourceShape.List;
+                case "System.Collections.Immutable.ImmutableArray<T>":
+                    return CollectionSourceShape.ImmutableArray;
+                case "System.ReadOnlyMemory<T>":
+                    return CollectionSourceShape.ReadOnlyMemory;
+                case "System.Memory<T>":
+                    return CollectionSourceShape.Memory;
+            }
+
+            foreach (var iface in named.AllInterfaces)
+            {
+                var ifaceName = iface.ConstructedFrom.ToDisplayString();
+                if (ifaceName is "System.Collections.Generic.IReadOnlyCollection<T>"
+                              or "System.Collections.Generic.ICollection<T>")
+                {
+                    return CollectionSourceShape.ReadOnlyCollection;
+                }
+            }
+        }
+
+        return CollectionSourceShape.Enumerable;
+    }
+
+    private static CollectionTargetShape DetermineTargetShape(ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol)
+        {
+            return CollectionTargetShape.Array;
+        }
+
+        if (type is INamedTypeSymbol named && named.IsGenericType)
+        {
+            var fullName = named.ConstructedFrom.ToDisplayString();
+            return fullName switch
+            {
+                "System.Collections.Immutable.ImmutableArray<T>" => CollectionTargetShape.ImmutableArray,
+                "System.Collections.Immutable.ImmutableList<T>" or
+                "System.Collections.Immutable.IImmutableList<T>" => CollectionTargetShape.ImmutableList,
+                "System.Collections.Generic.HashSet<T>" or
+                "System.Collections.Generic.ISet<T>" or
+                "System.Collections.Generic.IReadOnlySet<T>" => CollectionTargetShape.HashSet,
+                "System.Collections.Immutable.ImmutableHashSet<T>" or
+                "System.Collections.Immutable.IImmutableSet<T>" => CollectionTargetShape.ImmutableHashSet,
+                "System.Collections.Frozen.FrozenSet<T>" => CollectionTargetShape.FrozenSet,
+                _ => CollectionTargetShape.List
+            };
+        }
+
+        return CollectionTargetShape.List;
     }
 
     private static ITypeSymbol? GetCollectionElementType(ITypeSymbol collectionType)
@@ -2578,6 +2679,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Destination Map(Source source, ...customParams)
             builder.Append(method.DestinationTypeName).Append(" ");
             builder.Append(method.MethodName).Append("(");
+            if (method.IsSourceReadOnlyStruct)
+            {
+                builder.Append("in ");
+            }
             builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName);
 
             // Add custom parameters
@@ -2593,6 +2698,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // void Map(Source source, Destination destination, ...customParams)
             builder.Append("void ");
             builder.Append(method.MethodName).Append("(");
+            if (method.IsSourceReadOnlyStruct)
+            {
+                builder.Append("in ");
+            }
             builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName).Append(", ");
             builder.Append(method.DestinationTypeName).Append(" ").Append(method.DestinationParameterName!);
 
@@ -2845,40 +2954,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var collectionConverterTypeName = method.CollectionConverterTypeName ?? DefaultCollectionConverterTypeName;
         foreach (var mapCollection in method.MapCollectionMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
-            var sourceAccess = $"{method.SourceParameterName}.{mapCollection.SourceName}";
-
-            builder.Indent();
-            builder.Append(destVarName).Append(".").Append(mapCollection.TargetName).Append(" = ");
-
-            // Use collection converter
-            builder.Append(collectionConverterTypeName).Append(".");
-
-            // Choose converter method: custom Converter, or method based on target type
-            if (mapCollection.HasCustomConverter)
-            {
-                builder.Append(mapCollection.Converter!);
-            }
-            else
-            {
-                builder.Append(mapCollection.TargetCollectionMethod);
-            }
-
-            // Add type parameters
-            builder.Append("<")
-                   .Append(mapCollection.SourceElementType)
-                   .Append(", ")
-                   .Append(mapCollection.TargetElementType)
-                   .Append(">(");
-
-            // Source collection
-            builder.Append(sourceAccess).Append(", ");
-
-            // Mapper method reference
-            builder.Append(mapCollection.Mapper);
-
-            builder.Append(")!");  // null-forgiving for null handling
-
-            builder.Append(";").NewLine();
+            EmitCollectionMapping(builder, mapCollection, method, destVarName, collectionConverterTypeName);
         }
 
         // Call AfterMap if specified
@@ -2903,6 +2979,498 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
 
         builder.EndScope();
+    }
+
+    private static void EmitCollectionMapping(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        MapperMethodModel method,
+        string destVarName,
+        string collectionConverterTypeName)
+    {
+        if (mapCollection.InPlace)
+        {
+            EmitInPlaceCollectionMapping(builder, mapCollection, method, destVarName);
+            return;
+        }
+
+        if (mapCollection.UseHelperPath)
+        {
+            EmitHelperCollectionMapping(builder, mapCollection, method, destVarName, collectionConverterTypeName);
+            return;
+        }
+
+        EmitInlineCollectionMapping(builder, mapCollection, method, destVarName);
+    }
+
+    private static void EmitInPlaceCollectionMapping(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        MapperMethodModel method,
+        string destVarName)
+    {
+        var sourceAccess = $"{method.SourceParameterName}.{mapCollection.SourceName}";
+        var destAccess = $"{destVarName}.{mapCollection.TargetName}";
+        var fallbackType = mapCollection.InPlaceFallbackTypeName ?? $"global::System.Collections.Generic.List<{mapCollection.TargetElementType}>";
+
+        if (mapCollection.IsSourceNullable)
+        {
+            builder.Indent().Append("if (").Append(sourceAccess).Append(" is not null)").NewLine();
+            builder.BeginScope();
+        }
+
+        // Ensure destination collection exists
+        builder.Indent().Append("if (").Append(destAccess).Append(" is null)").NewLine();
+        builder.BeginScope();
+        builder.Indent().Append(destAccess).Append(" = new ").Append(fallbackType).Append("();").NewLine();
+        builder.EndScope();
+
+        // Cast to ICollection<T> to call Clear/Add
+        var iCollectionType = $"global::System.Collections.Generic.ICollection<{mapCollection.TargetElementType}>";
+        builder.Indent().Append("((").Append(iCollectionType).Append(")").Append(destAccess).Append(").Clear();").NewLine();
+
+        // Source iteration - optimized by source shape
+        EmitInPlaceSourceIteration(builder, mapCollection, method, destVarName, sourceAccess, iCollectionType);
+
+        if (mapCollection.IsSourceNullable)
+        {
+            builder.EndScope(); // if source not null
+        }
+    }
+
+    private static void EmitInPlaceSourceIteration(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        MapperMethodModel method,
+        string destVarName,
+        string sourceAccess,
+        string iCollectionType)
+    {
+        var destAccess = $"{destVarName}.{mapCollection.TargetName}";
+        var srcNullBang = mapCollection.IsSourceNullable ? "!" : string.Empty;
+
+        switch (mapCollection.SourceShape)
+        {
+            case CollectionSourceShape.Array:
+            {
+                // for loop with index over T[]
+                builder.Indent().Append("var __srcArr = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
+                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("for (var __i = 0; __i < __srcArr.Length; __i++)").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__srcArr[__i]", "__dstColl");
+                builder.EndScope();
+                break;
+            }
+            case CollectionSourceShape.List:
+            {
+                // CollectionsMarshal.AsSpan for List<T>
+                builder.Indent().Append("var __srcSpan = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(").Append(sourceAccess).Append(srcNullBang).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
+                builder.EndScope();
+                break;
+            }
+            case CollectionSourceShape.ImmutableArray:
+            {
+                // ImmutableArray.AsSpan()
+                builder.Indent().Append("var __srcSpan = ").Append(sourceAccess).Append(".AsSpan();").NewLine();
+                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
+                builder.EndScope();
+                break;
+            }
+            case CollectionSourceShape.ReadOnlyMemory:
+            case CollectionSourceShape.Memory:
+            {
+                builder.Indent().Append("var __srcSpan = ").Append(sourceAccess).Append(srcNullBang).Append(".Span;").NewLine();
+                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
+                builder.EndScope();
+                break;
+            }
+            default:
+            {
+                // foreach fallback
+                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(sourceAccess).Append(srcNullBang).Append(")").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__item", "__dstColl");
+                builder.EndScope();
+                break;
+            }
+        }
+    }
+
+    private static void EmitInPlaceAddItem(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string itemExpr,
+        string dstCollExpr)
+    {
+        if (mapCollection.MapperReturnsValue)
+        {
+            builder.Indent().Append(dstCollExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(").Append(itemExpr).Append("));").NewLine();
+        }
+        else
+        {
+            builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
+            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(itemExpr).Append(", __dest);").NewLine();
+            builder.Indent().Append(dstCollExpr).Append(".Add(__dest);").NewLine();
+        }
+    }
+
+    private static void EmitHelperCollectionMapping(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        MapperMethodModel method,
+        string destVarName,
+        string collectionConverterTypeName)
+    {
+        var sourceAccess = $"{method.SourceParameterName}.{mapCollection.SourceName}";
+        builder.Indent();
+        builder.Append(destVarName).Append(".").Append(mapCollection.TargetName).Append(" = ");
+        builder.Append(collectionConverterTypeName).Append(".");
+
+        if (mapCollection.HasCustomConverter)
+        {
+            builder.Append(mapCollection.Converter!);
+        }
+        else
+        {
+            builder.Append(mapCollection.TargetCollectionMethod);
+        }
+
+        builder.Append("<")
+               .Append(mapCollection.SourceElementType)
+               .Append(", ")
+               .Append(mapCollection.TargetElementType)
+               .Append(">(");
+        builder.Append(sourceAccess).Append(", ");
+        builder.Append(mapCollection.Mapper);
+        builder.Append(")!");
+        builder.Append(";").NewLine();
+    }
+
+    private static void EmitInlineCollectionMapping(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        MapperMethodModel method,
+        string destVarName)
+    {
+        var sourceAccess = $"{method.SourceParameterName}.{mapCollection.SourceName}";
+        var destProp = $"{destVarName}.{mapCollection.TargetName}";
+        var dstElem = mapCollection.TargetElementType;
+        var srcNullBang = mapCollection.IsSourceNullable ? "!" : string.Empty;
+
+        // Null guard
+        if (mapCollection.IsSourceNullable)
+        {
+            if (mapCollection.SourceShape == CollectionSourceShape.ImmutableArray)
+            {
+                // ImmutableArray is a value type; use IsDefaultOrEmpty
+                builder.Indent().Append("if (").Append(sourceAccess).Append(".IsDefaultOrEmpty)").NewLine();
+                builder.BeginScope();
+                builder.Indent().Append(destProp).Append(" = default!;").NewLine();
+                builder.EndScope();
+                builder.Indent().Append("else").NewLine();
+                builder.BeginScope();
+            }
+            else
+            {
+                builder.Indent().Append("if (").Append(sourceAccess).Append(" is null)").NewLine();
+                builder.BeginScope();
+                builder.Indent().Append(destProp).Append(" = default!;").NewLine();
+                builder.EndScope();
+                builder.Indent().Append("else").NewLine();
+                builder.BeginScope();
+            }
+        }
+
+        // Emit source span / length access based on source shape
+        switch (mapCollection.SourceShape)
+        {
+            case CollectionSourceShape.Array:
+                builder.Indent().Append("var __src = ").Append(sourceAccess).Append(srcNullBang).Append(".AsSpan();").NewLine();
+                EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
+                break;
+            case CollectionSourceShape.List:
+                builder.Indent().Append("var __src = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(").Append(sourceAccess).Append(srcNullBang).Append(");").NewLine();
+                EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
+                break;
+            case CollectionSourceShape.ImmutableArray:
+                builder.Indent().Append("var __src = ").Append(sourceAccess).Append(".AsSpan();").NewLine();
+                EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
+                break;
+            case CollectionSourceShape.ReadOnlyMemory:
+            case CollectionSourceShape.Memory:
+                builder.Indent().Append("var __src = ").Append(sourceAccess).Append(srcNullBang).Append(".Span;").NewLine();
+                EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
+                break;
+            case CollectionSourceShape.ReadOnlyCollection:
+                builder.Indent().Append("var __srcColl = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
+                EmitInlineTargetBuildFromCollection(builder, mapCollection, dstElem, destProp, "__srcColl", "__srcColl.Count");
+                break;
+            default:
+                // IEnumerable fallback
+                EmitInlineTargetBuildFromEnumerable(builder, mapCollection, dstElem, destProp, sourceAccess + srcNullBang);
+                break;
+        }
+
+        if (mapCollection.IsSourceNullable)
+        {
+            builder.EndScope(); // else
+        }
+    }
+
+    private static void EmitInlineTargetBuild(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string dstElem,
+        string destProp,
+        string srcSpanExpr,
+        string lengthExpr)
+    {
+        switch (mapCollection.TargetShape)
+        {
+            case CollectionTargetShape.Array:
+                builder.Indent().Append("var __arr = new ").Append(dstElem).Append("[").Append(lengthExpr).Append("];").NewLine();
+                EmitSpanLoop(builder, mapCollection, srcSpanExpr, "__arr");
+                builder.Indent().Append(destProp).Append(" = __arr;").NewLine();
+                break;
+            case CollectionTargetShape.List:
+                builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
+                builder.Indent().Append("global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(__list, ").Append(lengthExpr).Append(");").NewLine();
+                builder.Indent().Append("var __dst = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(__list);").NewLine();
+                EmitSpanLoop(builder, mapCollection, srcSpanExpr, "__dst");
+                builder.Indent().Append(destProp).Append(" = __list;").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableArray:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableArray.CreateBuilder<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
+                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                builder.Indent().Append(destProp).Append(" = __ib.MoveToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableList:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableList.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
+                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.HashSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
+                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__set");
+                builder.Indent().Append(destProp).Append(" = __set;").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableHashSet:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableHashSet.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
+                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.FrozenSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
+                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__set");
+                builder.Indent().Append(destProp).Append(" = __set.ToFrozenSet();").NewLine();
+                break;
+        }
+    }
+
+    private static void EmitInlineTargetBuildFromCollection(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string dstElem,
+        string destProp,
+        string srcExpr,
+        string countExpr)
+    {
+        switch (mapCollection.TargetShape)
+        {
+            case CollectionTargetShape.Array:
+                builder.Indent().Append("var __arr = new ").Append(dstElem).Append("[").Append(countExpr).Append("];").NewLine();
+                builder.Indent().Append("var __idx = 0;").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAssignToArray(builder, mapCollection, "__arr", "__idx");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __arr;").NewLine();
+                break;
+            case CollectionTargetShape.List:
+                builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">(").Append(countExpr).Append(");").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddToList(builder, mapCollection, "__list");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __list;").NewLine();
+                break;
+            default:
+                EmitInlineTargetBuildFromEnumerable(builder, mapCollection, dstElem, destProp, srcExpr);
+                break;
+        }
+    }
+
+    private static void EmitInlineTargetBuildFromEnumerable(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string dstElem,
+        string destProp,
+        string srcExpr)
+    {
+        switch (mapCollection.TargetShape)
+        {
+            case CollectionTargetShape.Array:
+                builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddToList(builder, mapCollection, "__list");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __list.ToArray();").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableArray:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableArray.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddBuilder(builder, mapCollection, "__ib");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableList:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableList.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddBuilder(builder, mapCollection, "__ib");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.HashSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddSet(builder, mapCollection, "__set");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __set;").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableHashSet:
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableHashSet.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddBuilder(builder, mapCollection, "__ib");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.FrozenSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddSet(builder, mapCollection, "__set");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __set.ToFrozenSet();").NewLine();
+                break;
+            default: // List
+                builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">();").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddToList(builder, mapCollection, "__list");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __list;").NewLine();
+                break;
+        }
+    }
+
+    private static void EmitSpanLoop(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string srcSpanExpr,
+        string dstSpanExpr)
+    {
+        builder.Indent().Append("for (var __i = 0; __i < ").Append(srcSpanExpr).Append(".Length; __i++)").NewLine();
+        builder.BeginScope();
+        if (mapCollection.MapperReturnsValue)
+        {
+            builder.Indent().Append(dstSpanExpr).Append("[__i] = ").Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i]);").NewLine();
+        }
+        else
+        {
+            builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
+            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(dstSpanExpr).Append("[__i] = __dest;").NewLine();
+        }
+        builder.EndScope();
+    }
+
+    private static void EmitSpanLoopAdd(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string srcSpanExpr,
+        string containerExpr)
+    {
+        builder.Indent().Append("for (var __i = 0; __i < ").Append(srcSpanExpr).Append(".Length; __i++)").NewLine();
+        builder.BeginScope();
+        if (mapCollection.MapperReturnsValue)
+        {
+            builder.Indent().Append(containerExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i]));").NewLine();
+        }
+        else
+        {
+            builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
+            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(containerExpr).Append(".Add(__dest);").NewLine();
+        }
+        builder.EndScope();
+    }
+
+    private static void EmitForEachAssignToArray(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string arrExpr,
+        string idxExpr)
+    {
+        if (mapCollection.MapperReturnsValue)
+        {
+            builder.Indent().Append(arrExpr).Append("[").Append(idxExpr).Append("++] = ").Append(mapCollection.Mapper).Append("(__item);").NewLine();
+        }
+        else
+        {
+            builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
+            builder.Indent().Append(mapCollection.Mapper).Append("(__item, __dest);").NewLine();
+            builder.Indent().Append(arrExpr).Append("[").Append(idxExpr).Append("++] = __dest;").NewLine();
+        }
+    }
+
+    private static void EmitForEachAddToList(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string listExpr)
+    {
+        if (mapCollection.MapperReturnsValue)
+        {
+            builder.Indent().Append(listExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(__item));").NewLine();
+        }
+        else
+        {
+            builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
+            builder.Indent().Append(mapCollection.Mapper).Append("(__item, __dest);").NewLine();
+            builder.Indent().Append(listExpr).Append(".Add(__dest);").NewLine();
+        }
+    }
+
+    private static void EmitForEachAddBuilder(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string builderExpr)
+    {
+        EmitForEachAddToList(builder, mapCollection, builderExpr);
+    }
+
+    private static void EmitForEachAddSet(
+        SourceBuilder builder,
+        MapCollectionModel mapCollection,
+        string setExpr)
+    {
+        EmitForEachAddToList(builder, mapCollection, setExpr);
     }
 
     private static void BuildPropertyAssignment(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked = false)

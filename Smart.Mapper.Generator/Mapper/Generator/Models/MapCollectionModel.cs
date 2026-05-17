@@ -3,6 +3,34 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 
 /// <summary>
+/// Classifies the source collection type for optimized emit strategy selection.
+/// </summary>
+internal enum CollectionSourceShape
+{
+    Enumerable = 0,
+    ReadOnlyCollection,
+    Array,
+    List,
+    ImmutableArray,
+    ReadOnlyMemory,
+    Memory
+}
+
+/// <summary>
+/// Classifies the target collection type for optimized emit strategy selection.
+/// </summary>
+internal enum CollectionTargetShape
+{
+    List = 0,
+    Array,
+    ImmutableArray,
+    ImmutableList,
+    HashSet,
+    ImmutableHashSet,
+    FrozenSet
+}
+
+/// <summary>
 /// Represents a MapCollection mapping (collection property mapped using a mapper method).
 /// </summary>
 internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
@@ -85,6 +113,34 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     /// </summary>
     public bool HasCustomConverter => !string.IsNullOrEmpty(Converter);
 
+    /// <summary>
+    /// Gets or sets a value indicating whether in-place update strategy is used.
+    /// When true, the existing destination collection is cleared and re-populated instead of replaced.
+    /// </summary>
+    public bool InPlace { get; set; }
+
+    /// <summary>
+    /// Gets or sets the concrete collection type name used when the destination is null in InPlace mode
+    /// (e.g., "List&lt;ElementType&gt;" to create a new instance).
+    /// </summary>
+    public string? InPlaceFallbackTypeName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the source collection shape used to select the optimal emit strategy.
+    /// </summary>
+    public CollectionSourceShape SourceShape { get; set; } = CollectionSourceShape.Enumerable;
+
+    /// <summary>
+    /// Gets or sets the target collection shape used to select the optimal emit strategy.
+    /// </summary>
+    public CollectionTargetShape TargetShape { get; set; } = CollectionTargetShape.List;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the helper path (DefaultCollectionConverter) should be used
+    /// instead of inline code generation. True when a custom converter type or custom converter method is specified.
+    /// </summary>
+    public bool UseHelperPath { get; set; }
+
     public bool Equals(MapCollectionModel? other)
     {
         if (other is null)
@@ -109,7 +165,8 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
                IsSourceNullable == other.IsSourceNullable &&
                Order == other.Order &&
                DefinitionOrder == other.DefinitionOrder &&
-               Converter == other.Converter;
+               Converter == other.Converter &&
+               InPlace == other.InPlace;
     }
 
     public override bool Equals(object? obj) => Equals(obj as MapCollectionModel);

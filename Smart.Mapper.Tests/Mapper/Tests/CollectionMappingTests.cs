@@ -203,3 +203,78 @@ public class ImmutableCollectionMappingTests
         Assert.Single(destination.SetItems!);
     }
 }
+
+public class InPlaceCollectionMappingTests
+{
+    [Fact]
+    public void MapInPlace_NullDestination_CreatesNewList()
+    {
+        var source = new InPlaceSource
+        {
+            Items = [new InPlaceSourceChild { Id = 1, Name = "A" }, new InPlaceSourceChild { Id = 2, Name = "B" }]
+        };
+        var destination = new InPlaceDestination();
+
+        TestMappers.MapInPlace(source, destination);
+
+        Assert.NotNull(destination.Items);
+        Assert.Equal(2, destination.Items!.Count);
+        Assert.Equal(1, destination.Items[0].Id);
+        Assert.Equal("A", destination.Items[0].Name);
+        Assert.Equal(2, destination.Items[1].Id);
+    }
+
+    [Fact]
+    public void MapInPlace_ExistingList_ClearsAndRefills()
+    {
+        var source = new InPlaceSource
+        {
+            Items = [new InPlaceSourceChild { Id = 10, Name = "New" }]
+        };
+        var existingList = new List<InPlaceDestinationChild>
+        {
+            new() { Id = 99, Name = "Old1" },
+            new() { Id = 98, Name = "Old2" }
+        };
+        var destination = new InPlaceDestination { Items = existingList };
+        var originalReference = destination.Items;
+
+        TestMappers.MapInPlace(source, destination);
+
+        // Reference must be preserved
+        Assert.Same(originalReference, destination.Items);
+        Assert.Single(destination.Items!);
+        Assert.Equal(10, destination.Items![0].Id);
+        Assert.Equal("New", destination.Items[0].Name);
+    }
+
+    [Fact]
+    public void MapInPlace_NullSource_LeavesDestinationUnchanged()
+    {
+        var source = new InPlaceSource { Items = null };
+        var existingList = new List<InPlaceDestinationChild>
+        {
+            new() { Id = 1, Name = "Existing" }
+        };
+        var destination = new InPlaceDestination { Items = existingList };
+
+        TestMappers.MapInPlace(source, destination);
+
+        Assert.Same(existingList, destination.Items);
+        Assert.Single(destination.Items!);
+    }
+}
+
+public class ReadOnlyStructMappingTests
+{
+    [Fact]
+    public void MapReadOnlyStruct_MapsAllProperties()
+    {
+        var source = new ReadOnlyStructSource { Id = 42, Name = "Test" };
+
+        var destination = TestMappers.MapReadOnlyStruct(source);
+
+        Assert.Equal(42, destination.Id);
+        Assert.Equal("Test", destination.Name);
+    }
+}

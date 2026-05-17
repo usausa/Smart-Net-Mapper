@@ -180,3 +180,89 @@ public class ImmutableCollectionDestination
     public ImmutableList<ImmutableCollectionDestinationChild>? ListItems { get; set; }
     public HashSet<ImmutableCollectionDestinationChild>? SetItems { get; set; }
 }
+
+// C2: InPlace collection update
+public class InPlaceSourceChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class InPlaceDestinationChild
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class InPlaceSource
+{
+    public List<InPlaceSourceChild>? Items { get; set; }
+}
+
+public class InPlaceDestination
+{
+    public List<InPlaceDestinationChild>? Items { get; set; }
+}
+
+// D4: readonly struct
+public readonly struct ReadOnlyStructSource
+{
+    public int Id { get; init; }
+    public string Name { get; init; }
+}
+
+public class ReadOnlyStructDestination
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+// C4-β/γ: Collection matrix test models
+public class MatrixSrcItem
+{
+    public int Value { get; set; }
+}
+
+public class MatrixDstItem
+{
+    public int Value { get; set; }
+}
+
+#pragma warning disable CA1819
+public class MatrixArraySource
+{
+    public MatrixSrcItem[]? Items { get; set; }
+}
+
+public class MatrixListSource
+{
+    public List<MatrixSrcItem>? Items { get; set; }
+}
+#pragma warning restore CA1819
+
+public class MatrixToListDst
+{
+    public List<MatrixDstItem>? Items { get; set; }
+}
+
+#pragma warning disable CA1819
+public class MatrixToArrayDst
+{
+    public MatrixDstItem[]? Items { get; set; }
+}
+#pragma warning restore CA1819
+
+public class MatrixToImmutableArrayDst
+{
+    public System.Collections.Immutable.ImmutableArray<MatrixDstItem> Items { get; set; }
+}
+
+public class MatrixToHashSetDst
+{
+    public System.Collections.Generic.HashSet<MatrixDstItem>? Items { get; set; }
+}
+
+public class MatrixVoidDst
+{
+    public List<MatrixDstItem>? Items { get; set; }
+}

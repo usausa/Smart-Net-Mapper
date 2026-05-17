@@ -11,6 +11,8 @@ public sealed class MapCollectionAttribute : Attribute
 
     public string? Converter { get; set; }
 
+    public CollectionStrategy Strategy { get; set; }
+
     public int Order { get; set; }
 
     public MapCollectionAttribute(string target)

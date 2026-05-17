@@ -15,6 +15,15 @@ public sealed class MapPropertyAttribute : Attribute
 
     public object? NullSubstitute { get; set; }
 
+    /// <summary>Culture name override for this property's string conversion (e.g. "en-US").</summary>
+    public string? Culture { get; set; }
+
+    /// <summary>DateTime format string override for this property. Requires <see cref="Culture"/>.</summary>
+    public string? DateTimeFormat { get; set; }
+
+    /// <summary>Numeric format string override for this property. Requires <see cref="Culture"/>.</summary>
+    public string? NumberFormat { get; set; }
+
     public MapPropertyAttribute(string target)
     {
         Target = target;
@@ -41,6 +50,15 @@ public sealed class MapPropertyAttribute<T> : Attribute
     public int Order { get; set; }
 
     public T NullSubstitute { get; set; } = default!;
+
+    /// <summary>Culture name override for this property's string conversion (e.g. "en-US").</summary>
+    public string? Culture { get; set; }
+
+    /// <summary>DateTime format string override for this property. Requires <see cref="Culture"/>.</summary>
+    public string? DateTimeFormat { get; set; }
+
+    /// <summary>Numeric format string override for this property. Requires <see cref="Culture"/>.</summary>
+    public string? NumberFormat { get; set; }
 
     public MapPropertyAttribute(string target)
     {

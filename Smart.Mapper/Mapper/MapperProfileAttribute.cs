@@ -17,4 +17,22 @@ public sealed class MapperProfileAttribute : Attribute
     /// Name comparison strategy used for automatic property matching. Defaults to Ordinal.
     /// </summary>
     public StringComparison NameComparison { get; set; } = StringComparison.Ordinal;
+
+    /// <summary>
+    /// Default culture name (e.g. "ja-JP") for all mapper methods in the class.
+    /// Method-level or property-level settings take precedence.
+    /// </summary>
+    public string? Culture { get; set; }
+
+    /// <summary>
+    /// Default DateTime format string for all mapper methods in the class.
+    /// Requires <see cref="Culture"/> to be set.
+    /// </summary>
+    public string? DateTimeFormat { get; set; }
+
+    /// <summary>
+    /// Default numeric format string for all mapper methods in the class.
+    /// Requires <see cref="Culture"/> to be set.
+    /// </summary>
+    public string? NumberFormat { get; set; }
 }

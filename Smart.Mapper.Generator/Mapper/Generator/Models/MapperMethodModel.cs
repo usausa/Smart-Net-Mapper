@@ -91,6 +91,27 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public bool NameComparisonExplicitlySet { get; set; }
 
     /// <summary>
+    /// Gets or sets the culture name (e.g. "en-US") used for culture-aware string conversions.
+    /// Null means no culture override; conversions use InvariantCulture.
+    /// </summary>
+    public string? Culture { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether <see cref="Culture"/> was explicitly set on the method-level attribute.
+    /// </summary>
+    public bool CultureExplicitlySet { get; set; }
+
+    /// <summary>
+    /// Gets or sets the DateTime format string used together with <see cref="Culture"/>.
+    /// </summary>
+    public string? DateTimeFormat { get; set; }
+
+    /// <summary>
+    /// Gets or sets the numeric format string used together with <see cref="Culture"/>.
+    /// </summary>
+    public string? NumberFormat { get; set; }
+
+    /// <summary>
     /// Gets or sets the custom parameters (additional parameters beyond source and destination).
     /// </summary>
     public List<CustomParameterModel> CustomParameters { get; set; } = [];

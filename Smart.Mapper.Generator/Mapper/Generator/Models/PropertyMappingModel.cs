@@ -208,6 +208,27 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public bool HasSpecializedConverter => !string.IsNullOrEmpty(SpecializedConverterMethod);
 
     /// <summary>
+    /// Gets or sets the effective culture name resolved from MapProperty > Mapper > MapperProfile precedence.
+    /// Null means InvariantCulture (no override).
+    /// </summary>
+    public string? EffectiveCulture { get; set; }
+
+    /// <summary>
+    /// Gets or sets the effective DateTime format string (only meaningful when EffectiveCulture is set).
+    /// </summary>
+    public string? EffectiveDateTimeFormat { get; set; }
+
+    /// <summary>
+    /// Gets or sets the effective numeric format string (only meaningful when EffectiveCulture is set).
+    /// </summary>
+    public string? EffectiveNumberFormat { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether this mapping uses culture-aware conversion.
+    /// </summary>
+    public bool HasCulture => !string.IsNullOrEmpty(EffectiveCulture);
+
+    /// <summary>
     /// Gets or sets the kind of enum conversion to apply.
     /// </summary>
     public EnumMappingKind EnumMappingKind { get; set; } = EnumMappingKind.None;

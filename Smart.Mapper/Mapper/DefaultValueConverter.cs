@@ -20,45 +20,89 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ConvertToInt32(string source) => int.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to Int32 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ConvertToInt32(string source, IFormatProvider culture, string? format) => int.Parse(source, culture);
+
     /// <summary>Converts string to Int64.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static long ConvertToInt64(string source) => long.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to Int64 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long ConvertToInt64(string source, IFormatProvider culture, string? format) => long.Parse(source, culture);
 
     /// <summary>Converts string to Int16.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static short ConvertToInt16(string source) => short.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to Int16 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static short ConvertToInt16(string source, IFormatProvider culture, string? format) => short.Parse(source, culture);
+
     /// <summary>Converts string to Byte.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static byte ConvertToByte(string source) => byte.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to Byte using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static byte ConvertToByte(string source, IFormatProvider culture, string? format) => byte.Parse(source, culture);
 
     /// <summary>Converts string to SByte.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static sbyte ConvertToSByte(string source) => sbyte.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to SByte using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static sbyte ConvertToSByte(string source, IFormatProvider culture, string? format) => sbyte.Parse(source, culture);
+
     /// <summary>Converts string to UInt32.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint ConvertToUInt32(string source) => uint.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to UInt32 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint ConvertToUInt32(string source, IFormatProvider culture, string? format) => uint.Parse(source, culture);
 
     /// <summary>Converts string to UInt64.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong ConvertToUInt64(string source) => ulong.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to UInt64 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong ConvertToUInt64(string source, IFormatProvider culture, string? format) => ulong.Parse(source, culture);
+
     /// <summary>Converts string to UInt16.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ushort ConvertToUInt16(string source) => ushort.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to UInt16 using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ushort ConvertToUInt16(string source, IFormatProvider culture, string? format) => ushort.Parse(source, culture);
 
     /// <summary>Converts string to Single.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float ConvertToSingle(string source) => float.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to Single using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float ConvertToSingle(string source, IFormatProvider culture, string? format) => float.Parse(source, culture);
+
     /// <summary>Converts string to Double.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ConvertToDouble(string source) => double.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to Double using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ConvertToDouble(string source, IFormatProvider culture, string? format) => double.Parse(source, culture);
+
     /// <summary>Converts string to Decimal.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static decimal ConvertToDecimal(string source) => decimal.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to Decimal using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static decimal ConvertToDecimal(string source, IFormatProvider culture, string? format) => decimal.Parse(source, culture);
 
     /// <summary>Converts string to Boolean.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -67,6 +111,11 @@ public static class DefaultValueConverter
     /// <summary>Converts string to DateTime.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to DateTime using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DateTime ConvertToDateTime(string source, IFormatProvider culture, string? format) =>
+        format is null ? DateTime.Parse(source, culture) : DateTime.ParseExact(source, format, culture);
 
     /// <summary>Converts string to Guid.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -80,45 +129,100 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(int source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts Int32 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(int source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts Int64 to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(long source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts Int64 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(long source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts Int16 to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(short source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts Int16 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(short source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts Byte to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(byte source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts Byte to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(byte source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts SByte to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(sbyte source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts SByte to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(sbyte source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts UInt32 to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(uint source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts UInt32 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(uint source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts UInt64 to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(ulong source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts UInt64 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(ulong source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts UInt16 to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(ushort source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts UInt16 to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(ushort source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts Single to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(float source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts Single to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(float source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts Double to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(double source) => source.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts Double to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(double source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts Decimal to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(decimal source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts Decimal to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(decimal source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts Boolean to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -128,6 +232,11 @@ public static class DefaultValueConverter
     /// <summary>Converts DateTime to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateTime source) => source.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Converts DateTime to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(DateTime source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts Guid to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -141,33 +250,73 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateOnly ConvertToDateOnly(string source) => DateOnly.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to DateOnly using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DateOnly ConvertToDateOnly(string source, IFormatProvider culture, string? format) =>
+        format is null ? DateOnly.Parse(source, culture) : DateOnly.ParseExact(source, format, culture);
+
     /// <summary>Converts string to TimeOnly.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TimeOnly ConvertToTimeOnly(string source) => TimeOnly.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to TimeOnly using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TimeOnly ConvertToTimeOnly(string source, IFormatProvider culture, string? format) =>
+        format is null ? TimeOnly.Parse(source, culture) : TimeOnly.ParseExact(source, format, culture);
 
     /// <summary>Converts string to DateTimeOffset.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTimeOffset ConvertToDateTimeOffset(string source) => DateTimeOffset.Parse(source, CultureInfo.InvariantCulture);
 
+    /// <summary>Converts string to DateTimeOffset using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DateTimeOffset ConvertToDateTimeOffset(string source, IFormatProvider culture, string? format) =>
+        format is null ? DateTimeOffset.Parse(source, culture) : DateTimeOffset.ParseExact(source, format, culture);
+
     /// <summary>Converts string to TimeSpan.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TimeSpan ConvertToTimeSpan(string source) => TimeSpan.Parse(source, CultureInfo.InvariantCulture);
+
+    /// <summary>Converts string to TimeSpan using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TimeSpan ConvertToTimeSpan(string source, IFormatProvider culture, string? format) =>
+        format is null ? TimeSpan.Parse(source, culture) : TimeSpan.ParseExact(source, format, culture);
 
     /// <summary>Converts DateOnly to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateOnly source) => source.ToString("O", CultureInfo.InvariantCulture);
 
+    /// <summary>Converts DateOnly to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(DateOnly source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts TimeOnly to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(TimeOnly source) => source.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>Converts TimeOnly to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(TimeOnly source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     /// <summary>Converts DateTimeOffset to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateTimeOffset source) => source.ToString("O", CultureInfo.InvariantCulture);
 
+    /// <summary>Converts DateTimeOffset to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(DateTimeOffset source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     /// <summary>Converts TimeSpan to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(TimeSpan source) => source.ToString("c", CultureInfo.InvariantCulture);
+
+    /// <summary>Converts TimeSpan to string using specified culture and optional format.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(TimeSpan source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(null, culture) : source.ToString(format, culture);
 
     // ============================================================
     // Specialized methods: string <-> .NET 7+ numeric types

@@ -403,6 +403,19 @@ internal static partial class TestMappers
     // A2: 部分一致 (Pending → default)
     [Mapper]
     public static partial void MapPartialEnum(PartialEnumSource source, PartialEnumDestination destination);
+
+    // B4: Method-level Culture + NumberFormat (double -> string)
+    [Mapper(Culture = "fr-FR", NumberFormat = "N2")]
+    public static partial CultureFormatDestination MapWithCultureFormat(CultureFormatSource source);
+
+    // B4: Method-level Culture for parsing (string -> double, string -> DateTime)
+    [Mapper(Culture = "fr-FR")]
+    public static partial CultureParseDestination MapWithCultureParse(CultureParseSource source);
+
+    // B4: Property-level Culture overrides method-level
+    [Mapper(Culture = "en-US")]
+    [MapProperty(nameof(CultureOverrideDestination.ValueB), Culture = "de-DE")]
+    public static partial CultureOverrideDestination MapWithPropertyCultureOverride(CultureOverrideSource source);
 }
 
 // D1/D3: Primary constructor and record mapping
@@ -430,6 +443,7 @@ internal static partial class PrimaryConstructorMappers
     [MapProperty(nameof(MapPropertyOverrideDestination.Name), nameof(MapPropertyOverrideSource.FullName))]
     public static partial MapPropertyOverrideDestination MapWithPropertyOverride(MapPropertyOverrideSource source);
 }
+
 
 // E3: MapperProfile – class-level defaults applied to all methods
 [MapperProfile(Strict = true, NameComparison = StringComparison.OrdinalIgnoreCase)]

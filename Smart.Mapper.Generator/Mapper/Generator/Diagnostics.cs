@@ -155,4 +155,20 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor FormatWithoutCulture { get; } = new(
+        id: "ML0020",
+        title: "Format specified without Culture",
+        messageFormat: "DateTimeFormat or NumberFormat is specified but Culture is not set. Format requires a Culture to be meaningful. [{0}]",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor CultureAwareConverterNotFound { get; } = new(
+        id: "ML0021",
+        title: "Culture-aware converter overload not found",
+        messageFormat: "Culture is specified but no culture-aware converter overload (IFormatProvider, string?) was found for property '{0}'. Add an overload or remove the Culture setting.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

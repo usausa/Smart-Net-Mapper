@@ -251,6 +251,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return Results.Error<MapperMethodModel>(requiredMemberError);
         }
 
+        // B4: validate Culture / Format consistency
+        var cultureFormatError = ValidateCultureAndFormat(model, syntax);
+        if (cultureFormatError is not null)
+        {
+            return Results.Error<MapperMethodModel>(cultureFormatError);
+        }
+
         return Results.Success(model);
     }
 
@@ -569,6 +576,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         model.NameComparison = nc;
                         model.NameComparisonExplicitlySet = true;
                     }
+                    else if (namedArg.Key == "Culture" && namedArg.Value.Value is string culture)
+                    {
+                        model.Culture = culture;
+                        model.CultureExplicitlySet = true;
+                    }
+                    else if (namedArg.Key == "DateTimeFormat" && namedArg.Value.Value is string dtFmt)
+                    {
+                        model.DateTimeFormat = dtFmt;
+                    }
+                    else if (namedArg.Key == "NumberFormat" && namedArg.Value.Value is string numFmt)
+                    {
+                        model.NumberFormat = numFmt;
+                    }
                 }
             }
             else if (attributeName == MapPropertyAttributeName ||
@@ -584,6 +604,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var nullBehavior = NullBehaviorType.Default;
                     var order = 0;
                     string? nullSubstitute = null;
+                    string? propCulture = null;
+                    string? propDateTimeFormat = null;
+                    string? propNumberFormat = null;
 
                     // Second constructor argument is source (optional)
                     if (attribute.ConstructorArguments.Length >= 2)
@@ -614,6 +637,18 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         {
                             nullSubstitute = FormatConstantValue(namedArg.Value.Value);
                         }
+                        else if (namedArg.Key == "Culture" && namedArg.Value.Value is string pc)
+                        {
+                            propCulture = pc;
+                        }
+                        else if (namedArg.Key == "DateTimeFormat" && namedArg.Value.Value is string pdf)
+                        {
+                            propDateTimeFormat = pdf;
+                        }
+                        else if (namedArg.Key == "NumberFormat" && namedArg.Value.Value is string pnf)
+                        {
+                            propNumberFormat = pnf;
+                        }
                     }
 
                     var mapping = new PropertyMappingModel
@@ -625,7 +660,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         Order = order,
                         DefinitionOrder = definitionOrder++,
                         HasExplicitMapping = true,
-                        NullSubstitute = nullSubstitute
+                        NullSubstitute = nullSubstitute,
+                        EffectiveCulture = propCulture,
+                        EffectiveDateTimeFormat = propDateTimeFormat,
+                        EffectiveNumberFormat = propNumberFormat
                     };
 
                     model.PropertyMappings.Add(mapping);
@@ -963,6 +1001,18 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     else if (namedArg.Key == "NameComparison" && namedArg.Value.Value is int nc && !model.NameComparisonExplicitlySet)
                     {
                         model.NameComparison = nc;
+                    }
+                    else if (namedArg.Key == "Culture" && namedArg.Value.Value is string profileCulture && !model.CultureExplicitlySet)
+                    {
+                        model.Culture = profileCulture;
+                    }
+                    else if (namedArg.Key == "DateTimeFormat" && namedArg.Value.Value is string profileDtFmt && !model.CultureExplicitlySet)
+                    {
+                        model.DateTimeFormat = profileDtFmt;
+                    }
+                    else if (namedArg.Key == "NumberFormat" && namedArg.Value.Value is string profileNumFmt && !model.CultureExplicitlySet)
+                    {
+                        model.NumberFormat = profileNumFmt;
                     }
                 }
             }
@@ -1705,6 +1755,27 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    private static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        // B4 b案: Format without Culture is invalid at method level
+        if (string.IsNullOrEmpty(model.Culture) && (!string.IsNullOrEmpty(model.DateTimeFormat) || !string.IsNullOrEmpty(model.NumberFormat)))
+        {
+            return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), model.MethodName);
+        }
+
+        // B4 b案: Format without Culture is invalid at per-property level
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (string.IsNullOrEmpty(mapping.EffectiveCulture) &&
+                (!string.IsNullOrEmpty(mapping.EffectiveDateTimeFormat) || !string.IsNullOrEmpty(mapping.EffectiveNumberFormat)))
+            {
+                return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), $"{model.MethodName}.{mapping.TargetPath}");
+            }
+        }
+
+        return null;
+    }
+
     private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
     {
         // Build the set of all destination property names that have some mapping configuration (same as CollectStrictModeWarnings)
@@ -1979,17 +2050,31 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var targetUnderlyingTypeName = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                // Get Order, DefinitionOrder, NullBehavior, and NullSubstitute from original mapping if exists
+                // Get Order, DefinitionOrder, NullBehavior, NullSubstitute, and Culture from original mapping if exists
                 var order = 0;
                 var definitionOrder = 0;
                 var nullBehavior = NullBehaviorType.Default;
                 string? nullSubstitute = null;
+                string? propEffectiveCulture = null;
+                string? propEffectiveDateTimeFormat = null;
+                string? propEffectiveNumberFormat = null;
                 if (originalMappings.TryGetValue(destProp.Name, out var origMapping))
                 {
                     order = origMapping.Order;
                     definitionOrder = origMapping.DefinitionOrder;
                     nullBehavior = origMapping.NullBehavior;
                     nullSubstitute = origMapping.NullSubstitute;
+                    // Property-level Culture overrides method-level
+                    propEffectiveCulture = origMapping.EffectiveCulture ?? model.Culture;
+                    propEffectiveDateTimeFormat = origMapping.EffectiveDateTimeFormat ?? model.DateTimeFormat;
+                    propEffectiveNumberFormat = origMapping.EffectiveNumberFormat ?? model.NumberFormat;
+                }
+                else
+                {
+                    // No explicit MapProperty: inherit from method-level
+                    propEffectiveCulture = model.Culture;
+                    propEffectiveDateTimeFormat = model.DateTimeFormat;
+                    propEffectiveNumberFormat = model.NumberFormat;
                 }
 
                 var mapping = new PropertyMappingModel
@@ -2009,7 +2094,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     NullSubstitute = nullSubstitute,
                     Order = order,
                     DefinitionOrder = definitionOrder,
-                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true
+                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
+                    EffectiveCulture = propEffectiveCulture,
+                    EffectiveDateTimeFormat = propEffectiveDateTimeFormat,
+                    EffectiveNumberFormat = propEffectiveNumberFormat
                 };
 
                 // Detect enum conversion kind
@@ -2428,6 +2516,36 @@ public sealed class MapperGenerator : IIncrementalGenerator
             .NewLine();
         builder.BeginScope();
 
+        // B4: collect all distinct culture names used across all methods in this class
+        var usedCultures = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var method in methods)
+        {
+            foreach (var mapping in method.PropertyMappings)
+            {
+                if (!string.IsNullOrEmpty(mapping.EffectiveCulture))
+                {
+                    usedCultures.Add(mapping.EffectiveCulture!);
+                }
+            }
+        }
+
+        // B4: emit private static readonly CultureInfo fields for each used culture
+        if (usedCultures.Count > 0)
+        {
+            foreach (var culture in usedCultures.OrderBy(static c => c, StringComparer.Ordinal))
+            {
+                var fieldName = GetCultureFieldName(culture);
+                builder.Indent()
+                       .Append("private static readonly global::System.Globalization.CultureInfo ")
+                       .Append(fieldName)
+                       .Append(" = global::System.Globalization.CultureInfo.GetCultureInfo(\"")
+                       .Append(culture)
+                       .Append("\");")
+                       .NewLine();
+            }
+            builder.NewLine();
+        }
+
         var first = true;
         foreach (var method in methods)
         {
@@ -2445,6 +2563,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         builder.EndScope();
     }
+
+    /// <summary>Returns the static field name for a CultureInfo instance (e.g. "fr-FR" → "__culture_fr_FR").</summary>
+    private static string GetCultureFieldName(string cultureName) =>
+        "__culture_" + cultureName.Replace('-', '_').Replace('.', '_');
 
     private static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
@@ -2983,13 +3105,30 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         if (mapping.HasSpecializedConverter)
         {
-            // Use specialized converter method with .Value access
-            builder.Append(converterTypeName)
-                   .Append(".")
-                   .Append(mapping.SpecializedConverterMethod!)
-                   .Append("(")
-                   .Append(sourceAccessor)
-                   .Append(".Value)");
+            if (mapping.HasCulture)
+            {
+                // Culture-aware overload with .Value access
+                var formatArg = DetermineFormatArg(mapping);
+                builder.Append(converterTypeName)
+                       .Append(".")
+                       .Append(mapping.SpecializedConverterMethod!)
+                       .Append("(")
+                       .Append(sourceAccessor)
+                       .Append(".Value, ")
+                       .Append(GetCultureFieldName(mapping.EffectiveCulture!))
+                       .Append(formatArg)
+                       .Append(")");
+            }
+            else
+            {
+                // Use specialized converter method with .Value access
+                builder.Append(converterTypeName)
+                       .Append(".")
+                       .Append(mapping.SpecializedConverterMethod!)
+                       .Append("(")
+                       .Append(sourceAccessor)
+                       .Append(".Value)");
+            }
         }
         else
         {
@@ -3077,13 +3216,30 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Check if specialized converter method should be used
         if (mapping.HasSpecializedConverter)
         {
-            // Use specialized converter method: Converter.ConvertToInt32(source.Value)
-            builder.Append(converterTypeName)
-                   .Append(".")
-                   .Append(mapping.SpecializedConverterMethod!)
-                   .Append("(")
-                   .Append(sourceExpr)
-                   .Append(")");
+            if (mapping.HasCulture)
+            {
+                // Culture-aware overload: Converter.ConvertToInt32(source.Value, culture, format)
+                var formatArg = DetermineFormatArg(mapping);
+                builder.Append(converterTypeName)
+                       .Append(".")
+                       .Append(mapping.SpecializedConverterMethod!)
+                       .Append("(")
+                       .Append(sourceExpr)
+                       .Append(", ")
+                       .Append(GetCultureFieldName(mapping.EffectiveCulture!))
+                       .Append(formatArg)
+                       .Append(")");
+            }
+            else
+            {
+                // Invariant-culture overload
+                builder.Append(converterTypeName)
+                       .Append(".")
+                       .Append(mapping.SpecializedConverterMethod!)
+                       .Append("(")
+                       .Append(sourceExpr)
+                       .Append(")");
+            }
         }
         else
         {
@@ -3104,6 +3260,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
                    .Append(")");
         }
     }
+
+    private static string DetermineFormatArg(PropertyMappingModel mapping)
+    {
+        // Pick the appropriate format string based on which types are involved
+        // DateTime-family types use DateTimeFormat, numeric types use NumberFormat
+        var isDateTimeFamily = IsDateTimeType(mapping.SourceUnderlyingType) || IsDateTimeType(mapping.TargetUnderlyingType);
+        var format = isDateTimeFamily ? mapping.EffectiveDateTimeFormat : mapping.EffectiveNumberFormat;
+        return format is null ? ", null" : $", \"{format}\"";
+    }
+
+    private static bool IsDateTimeType(string typeName) =>
+        typeName is "global::System.DateTime" or "global::System.DateOnly" or
+                    "global::System.TimeOnly" or "global::System.DateTimeOffset" or
+                    "global::System.TimeSpan";
 
     private static void BuildEnumConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceExpr)
     {

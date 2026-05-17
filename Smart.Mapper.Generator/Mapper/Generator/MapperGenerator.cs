@@ -31,6 +31,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private const string MapNestedAttributeName = "Smart.Mapper.MapNestedAttribute";
     private const string MapConverterAttributeName = "Smart.Mapper.MapConverterAttribute";
     private const string CollectionConverterAttributeName = "Smart.Mapper.CollectionConverterAttribute";
+    private const string MapperProfileAttributeName = "Smart.Mapper.MapperProfileAttribute";
 
     private const string DefaultValueConverterTypeName = "global::Smart.Mapper.DefaultValueConverter";
     private const string DefaultCollectionConverterTypeName = "global::Smart.Mapper.DefaultCollectionConverter";
@@ -234,6 +235,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         if (model.Strict)
         {
             CollectStrictModeWarnings(model, destinationType);
+        }
+
+        // D2: required member check – always enforced regardless of Strict flag
+        var requiredMemberError = ValidateRequiredMembers(model, destinationType, syntax);
+        if (requiredMemberError is not null)
+        {
+            return Results.Error<MapperMethodModel>(requiredMemberError);
         }
 
         return Results.Success(model);
@@ -547,10 +555,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     else if (namedArg.Key == "Strict" && namedArg.Value.Value is bool strict)
                     {
                         model.Strict = strict;
+                        model.StrictExplicitlySet = true;
                     }
                     else if (namedArg.Key == "NameComparison" && namedArg.Value.Value is int nc)
                     {
                         model.NameComparison = nc;
+                        model.NameComparisonExplicitlySet = true;
                     }
                 }
             }
@@ -932,6 +942,21 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType)
                 {
                     model.CollectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                }
+            }
+            else if (attributeName == MapperProfileAttributeName)
+            {
+                // E3: Apply class-level defaults only when not explicitly set at method level
+                foreach (var namedArg in attribute.NamedArguments)
+                {
+                    if (namedArg.Key == "Strict" && namedArg.Value.Value is bool strict && !model.StrictExplicitlySet)
+                    {
+                        model.Strict = strict;
+                    }
+                    else if (namedArg.Key == "NameComparison" && namedArg.Value.Value is int nc && !model.NameComparisonExplicitlySet)
+                    {
+                        model.NameComparison = nc;
+                    }
                 }
             }
         }
@@ -1615,7 +1640,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static void CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
     {
-        // Build the set of all destination property names that have some mapping configuration
+
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var pm in model.PropertyMappings)
@@ -1671,6 +1696,68 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 model.Warnings.Add((Diagnostics.UnmappedDestinationProperty, destProp.Name));
             }
         }
+    }
+
+    private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
+    {
+        // Build the set of all destination property names that have some mapping configuration (same as CollectStrictModeWarnings)
+        var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var pm in model.PropertyMappings)
+        {
+            mappedTargets.Add(pm.TargetPath);
+        }
+
+        foreach (var name in model.IgnoredProperties)
+        {
+            mappedTargets.Add(name);
+        }
+
+        foreach (var cm in model.ConstantMappings)
+        {
+            mappedTargets.Add(cm.TargetName);
+        }
+
+        foreach (var em in model.ExpressionMappings)
+        {
+            mappedTargets.Add(em.TargetName);
+        }
+
+        foreach (var mu in model.MapUsingMappings)
+        {
+            mappedTargets.Add(mu.TargetName);
+        }
+
+        foreach (var mf in model.MapFromMappings)
+        {
+            mappedTargets.Add(mf.TargetName);
+        }
+
+        foreach (var mc in model.MapCollectionMappings)
+        {
+            mappedTargets.Add(mc.TargetName);
+        }
+
+        foreach (var mn in model.MapNestedMappings)
+        {
+            mappedTargets.Add(mn.TargetName);
+        }
+
+        // Error for every required destination property that has no mapping
+        foreach (var destProp in GetAllProperties(destinationType))
+        {
+            if (!destProp.IsRequired)
+            {
+                continue;
+            }
+
+            if (!mappedTargets.Contains(destProp.Name))
+            {
+                return new DiagnosticInfo(Diagnostics.UnmappedRequiredProperty, syntax.GetLocation(), destProp.Name);
+            }
+        }
+
+        return null;
     }
 
     private static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)

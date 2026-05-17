@@ -139,4 +139,12 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnmappedRequiredProperty { get; } = new(
+        id: "ML0018",
+        title: "Unmapped required property",
+        messageFormat: "Required destination property '{0}' has no mapping. Add [MapProperty], [MapConstant], [MapExpression], [MapUsing], [MapFrom], [MapCollection], [MapNested], or [MapIgnore].",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

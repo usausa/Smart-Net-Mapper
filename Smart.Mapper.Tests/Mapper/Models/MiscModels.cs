@@ -82,3 +82,30 @@ public class MapUsingContext
 {
     public string Suffix { get; set; } = string.Empty;
 }
+
+// D2: required member models
+public class RequiredMemberSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class RequiredMemberDestination
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+}
+
+// E3: MapperProfile models
+public class ProfileSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class ProfileDestination
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}

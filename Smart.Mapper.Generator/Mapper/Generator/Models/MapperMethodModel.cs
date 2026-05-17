@@ -73,10 +73,22 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     public bool Strict { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether <see cref="Strict"/> was explicitly set on the method-level [Mapper] attribute.
+    /// When false, the value may be inherited from [MapperProfile].
+    /// </summary>
+    public bool StrictExplicitlySet { get; set; }
+
+    /// <summary>
     /// Gets or sets the name comparison rule for automatic property matching.
     /// Stored as the underlying integer value of <see cref="System.StringComparison"/>.
     /// </summary>
     public int NameComparison { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether <see cref="NameComparison"/> was explicitly set on the method-level [Mapper] attribute.
+    /// When false, the value may be inherited from [MapperProfile].
+    /// </summary>
+    public bool NameComparisonExplicitlySet { get; set; }
 
     /// <summary>
     /// Gets or sets the custom parameters (additional parameters beyond source and destination).

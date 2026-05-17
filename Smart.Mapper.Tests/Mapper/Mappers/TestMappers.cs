@@ -371,4 +371,21 @@ internal static partial class TestMappers
     // E2: Case-insensitive name comparison
     [Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]
     public static partial void MapCaseInsensitive(CaseInsensitiveSource source, CaseInsensitiveDestination destination);
+
+    // D2: required member – all required properties are mapped
+    [Mapper]
+    public static partial void MapRequiredMembers(RequiredMemberSource source, RequiredMemberDestination destination);
+}
+
+// E3: MapperProfile – class-level defaults applied to all methods
+[MapperProfile(Strict = true, NameComparison = StringComparison.OrdinalIgnoreCase)]
+internal static partial class ProfileMappers
+{
+    // Inherits Strict=true and NameComparison=OrdinalIgnoreCase from MapperProfile
+    [Mapper]
+    public static partial void Map(ProfileSource source, ProfileDestination destination);
+
+    // Method-level attribute overrides profile: Strict=false
+    [Mapper(Strict = false)]
+    public static partial void MapNoStrict(ProfileSource source, ProfileDestination destination);
 }

@@ -5,6 +5,30 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
+/// Represents the kind of enum conversion to perform.
+/// </summary>
+internal enum EnumMappingKind
+{
+    /// <summary>No enum conversion.</summary>
+    None = 0,
+
+    /// <summary>enum → enum by name (switch expression).</summary>
+    EnumToEnum = 1,
+
+    /// <summary>enum → int/long/short/byte (numeric cast).</summary>
+    EnumToNumeric = 2,
+
+    /// <summary>int/long/short/byte → enum (numeric cast).</summary>
+    NumericToEnum = 3,
+
+    /// <summary>enum → string (.ToString()).</summary>
+    EnumToString = 4,
+
+    /// <summary>string → enum (Enum.Parse).</summary>
+    StringToEnum = 5
+}
+
+/// <summary>
 /// Represents the null behavior for property mapping.
 /// </summary>
 internal enum NullBehaviorType
@@ -177,6 +201,26 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// </summary>
     public bool HasSpecializedConverter => !string.IsNullOrEmpty(SpecializedConverterMethod);
 
+    /// <summary>
+    /// Gets or sets the kind of enum conversion to apply.
+    /// </summary>
+    public EnumMappingKind EnumMappingKind { get; set; } = EnumMappingKind.None;
+
+    /// <summary>
+    /// Gets or sets the source enum member names (used for enum-to-enum switch generation).
+    /// </summary>
+    public List<string> SourceEnumMembers { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the destination enum member names (used for enum-to-enum switch generation).
+    /// </summary>
+    public List<string> DestEnumMembers { get; set; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether this mapping uses enum conversion.
+    /// </summary>
+    public bool IsEnumMapping => EnumMappingKind != EnumMappingKind.None;
+
     // Legacy property names for compatibility
     public string SourceName
     {
@@ -219,6 +263,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                ConditionAcceptsCustomParameters == other.ConditionAcceptsCustomParameters &&
                SpecializedConverterMethod == other.SpecializedConverterMethod &&
                NullSubstitute == other.NullSubstitute &&
+               EnumMappingKind == other.EnumMappingKind &&
                TargetPathSegments.SequenceEqual(other.TargetPathSegments) &&
                SourcePathSegments.SequenceEqual(other.SourcePathSegments);
     }
@@ -246,6 +291,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + ConditionAcceptsCustomParameters.GetHashCode();
             hash = (hash * 31) + (SpecializedConverterMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + (NullSubstitute?.GetHashCode() ?? 0);
+            hash = (hash * 31) + EnumMappingKind.GetHashCode();
             return hash;
         }
     }

@@ -1895,6 +1895,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     DefinitionOrder = definitionOrder
                 };
 
+                // Detect enum conversion kind
+                DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
+
                 mappings.Add(mapping);
             }
         }
@@ -1912,6 +1915,72 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 mapping.ConditionMethod = conditionMethod;
             }
         }
+    }
+
+    private static void DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
+    {
+        var sourceIsEnum = sourceUnderlying.TypeKind == TypeKind.Enum;
+        var targetIsEnum = targetUnderlying.TypeKind == TypeKind.Enum;
+        var sourceIsString = sourceUnderlying.SpecialType == SpecialType.System_String;
+        var targetIsString = targetUnderlying.SpecialType == SpecialType.System_String;
+        var sourceIsNumeric = IsNumericType(sourceUnderlying);
+        var targetIsNumeric = IsNumericType(targetUnderlying);
+
+        if (!sourceIsEnum && !targetIsEnum)
+        {
+            return;
+        }
+
+        if (sourceIsEnum && targetIsEnum)
+        {
+            mapping.EnumMappingKind = EnumMappingKind.EnumToEnum;
+            mapping.RequiresConversion = true;
+
+            // Collect source enum members
+            foreach (var member in sourceUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst))
+            {
+                mapping.SourceEnumMembers.Add(member.Name);
+            }
+
+            // Collect dest enum members
+            foreach (var member in targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst))
+            {
+                mapping.DestEnumMembers.Add(member.Name);
+            }
+        }
+        else if (sourceIsEnum && targetIsNumeric)
+        {
+            mapping.EnumMappingKind = EnumMappingKind.EnumToNumeric;
+            mapping.RequiresConversion = true;
+        }
+        else if (sourceIsNumeric && targetIsEnum)
+        {
+            mapping.EnumMappingKind = EnumMappingKind.NumericToEnum;
+            mapping.RequiresConversion = true;
+        }
+        else if (sourceIsEnum && targetIsString)
+        {
+            mapping.EnumMappingKind = EnumMappingKind.EnumToString;
+            mapping.RequiresConversion = true;
+        }
+        else if (sourceIsString && targetIsEnum)
+        {
+            mapping.EnumMappingKind = EnumMappingKind.StringToEnum;
+            mapping.RequiresConversion = true;
+        }
+    }
+
+    private static bool IsNumericType(ITypeSymbol type)
+    {
+        return type.SpecialType is
+            SpecialType.System_Byte or
+            SpecialType.System_SByte or
+            SpecialType.System_Int16 or
+            SpecialType.System_UInt16 or
+            SpecialType.System_Int32 or
+            SpecialType.System_UInt32 or
+            SpecialType.System_Int64 or
+            SpecialType.System_UInt64;
     }
 
     private static ITypeSymbol GetUnderlyingType(ITypeSymbol type)
@@ -2706,7 +2775,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
                 }
 
-                builder.Append(" : default;").NewLine();
+                builder.Append(" : null;").NewLine();
             }
             else
             {
@@ -2734,6 +2803,24 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static void BuildTypeConversionWithValueAccess(SourceBuilder builder, PropertyMappingModel mapping, string sourceAccessor, MapperMethodModel method)
     {
+        // For enum mappings, use .Value to unwrap the nullable
+        if (mapping.IsEnumMapping)
+        {
+            var valueAccessor = sourceAccessor + ".Value";
+            var enumMapping = new PropertyMappingModel
+            {
+                EnumMappingKind = mapping.EnumMappingKind,
+                SourceUnderlyingType = mapping.SourceUnderlyingType,
+                TargetUnderlyingType = mapping.TargetUnderlyingType,
+                SourceType = mapping.SourceType,
+                TargetType = mapping.TargetType,
+                SourceEnumMembers = mapping.SourceEnumMembers,
+                DestEnumMembers = mapping.DestEnumMembers
+            };
+            BuildEnumConversion(builder, enumMapping, valueAccessor);
+            return;
+        }
+
         var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
 
         if (mapping.HasSpecializedConverter)
@@ -2819,6 +2906,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void BuildTypeConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, bool nullChecked, MapperMethodModel method)
     {
         var sourceExpr = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+
+        // Enum mapping takes priority over specialized converters
+        if (mapping.IsEnumMapping)
+        {
+            BuildEnumConversion(builder, mapping, sourceExpr);
+            return;
+        }
+
         var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
 
         // Check if specialized converter method should be used
@@ -2852,6 +2947,50 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    private static void BuildEnumConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceExpr)
+    {
+        var targetType = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+
+        switch (mapping.EnumMappingKind)
+        {
+            case EnumMappingKind.EnumToEnum:
+                // Generate switch expression: source switch { Src.A => Dest.A, ... _ => default }
+                builder.Append(sourceExpr).Append(" switch").NewLine();
+                builder.Indent().Append("{").NewLine();
+                foreach (var memberName in mapping.SourceEnumMembers)
+                {
+                    var sourceType = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+                    if (mapping.DestEnumMembers.Contains(memberName, StringComparer.Ordinal))
+                    {
+                        builder.Indent().Append("    ")
+                               .Append(sourceType).Append(".").Append(memberName)
+                               .Append(" => ")
+                               .Append(targetType).Append(".").Append(memberName)
+                               .Append(",").NewLine();
+                    }
+                }
+                builder.Indent().Append("    _ => default").NewLine();
+                builder.Indent().Append("}");
+                break;
+
+            case EnumMappingKind.EnumToNumeric:
+                builder.Append("(").Append(targetType).Append(")").Append(sourceExpr);
+                break;
+
+            case EnumMappingKind.NumericToEnum:
+                builder.Append("(").Append(targetType).Append(")").Append(sourceExpr);
+                break;
+
+            case EnumMappingKind.EnumToString:
+                builder.Append(sourceExpr).Append(".ToString()");
+                break;
+
+            case EnumMappingKind.StringToEnum:
+                builder.Append("global::System.Enum.Parse<").Append(targetType).Append(">(").Append(sourceExpr).Append(")");
+                break;
+        }
+    }
+
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
         // Get the converter type to check for specialized methods
@@ -2878,6 +3017,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         foreach (var mapping in model.PropertyMappings)
         {
             if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Skip enum mappings - they are handled by BuildEnumConversion
+            if (mapping.IsEnumMapping)
             {
                 continue;
             }

@@ -375,6 +375,34 @@ internal static partial class TestMappers
     // D2: required member – all required properties are mapped
     [Mapper]
     public static partial void MapRequiredMembers(RequiredMemberSource source, RequiredMemberDestination destination);
+
+    // A2: Enum ↔ Enum (by name)
+    [Mapper]
+    public static partial void MapEnumToEnum(EnumToEnumSource source, EnumToEnumDestination destination);
+
+    // A2: Nullable Enum ↔ Nullable Enum
+    [Mapper]
+    public static partial void MapNullableEnum(NullableEnumSource source, NullableEnumDestination destination);
+
+    // A2: Enum → int
+    [Mapper]
+    public static partial void MapEnumToInt(EnumToIntSource source, EnumToIntDestination destination);
+
+    // A2: int → Enum
+    [Mapper]
+    public static partial void MapIntToEnum(IntToEnumSource source, IntToEnumDestination destination);
+
+    // A2: Enum → string
+    [Mapper]
+    public static partial void MapEnumToString(EnumToStringSource source, EnumToStringDestination destination);
+
+    // A2: string → Enum
+    [Mapper]
+    public static partial void MapStringToEnum(StringToEnumSource source, StringToEnumDestination destination);
+
+    // A2: 部分一致 (Pending → default)
+    [Mapper]
+    public static partial void MapPartialEnum(PartialEnumSource source, PartialEnumDestination destination);
 }
 
 // E3: MapperProfile – class-level defaults applied to all methods

@@ -6,6 +6,8 @@ using System.Linq;
 
 using Microsoft.CodeAnalysis;
 
+using SourceGenerateHelper;
+
 /// <summary>
 /// Represents a mapper method model.
 /// </summary>
@@ -120,52 +122,52 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     /// <summary>
     /// Gets or sets the custom parameters (additional parameters beyond source and destination).
     /// </summary>
-    public List<CustomParameterModel> CustomParameters { get; set; } = [];
+    public EquatableArray<CustomParameterModel> CustomParameters { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the property mappings.
     /// </summary>
-    public List<PropertyMappingModel> PropertyMappings { get; set; } = [];
+    public EquatableArray<PropertyMappingModel> PropertyMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the ignored property names.
     /// </summary>
-    public HashSet<string> IgnoredProperties { get; set; } = [];
+    public EquatableArray<string> IgnoredProperties { get; set; } = new([]);
 
     /// <summary>
-    /// Gets or sets the property condition mappings (target property -> condition method name).
+    /// Gets or sets the property condition mappings.
     /// </summary>
-    public Dictionary<string, string?> PropertyConditions { get; set; } = new(StringComparer.Ordinal);
+    public EquatableArray<PropertyConditionModel> PropertyConditions { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the constant mappings.
     /// </summary>
-    public List<ConstantMappingModel> ConstantMappings { get; set; } = [];
+    public EquatableArray<ConstantMappingModel> ConstantMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the expression mappings (dynamic values like DateTime.Now).
     /// </summary>
-    public List<ExpressionMappingModel> ExpressionMappings { get; set; } = [];
+    public EquatableArray<ExpressionMappingModel> ExpressionMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the MapUsing mappings (computed from source via a method in containing class).
     /// </summary>
-    public List<MapUsingModel> MapUsingMappings { get; set; } = [];
+    public EquatableArray<MapUsingModel> MapUsingMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the MapFrom mappings (source expression - method call or property path).
     /// </summary>
-    public List<MapFromModel> MapFromMappings { get; set; } = [];
+    public EquatableArray<MapFromModel> MapFromMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the MapCollection mappings (collection properties using a mapper method).
     /// </summary>
-    public List<MapCollectionModel> MapCollectionMappings { get; set; } = [];
+    public EquatableArray<MapCollectionModel> MapCollectionMappings { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the MapNested mappings (nested object properties using a mapper method).
     /// </summary>
-    public List<MapNestedModel> MapNestedMappings { get; set; } = [];
+    public EquatableArray<MapNestedModel> MapNestedMappings { get; set; } = new([]);
 
 
     /// <summary>
@@ -216,7 +218,7 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
     /// Gets or sets the ordered list of constructor parameter names and their resolved source expressions
     /// for constructor-based mapping. Each entry is (paramName, sourceExpression).
     /// </summary>
-    public List<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = [];
+    public EquatableArray<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = new([]);
 
     /// <summary>
     /// Gets or sets the diagnostic warnings to report after a successful parse.
@@ -245,10 +247,11 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                DestinationTypeName == other.DestinationTypeName &&
                DestinationParameterName == other.DestinationParameterName &&
                ReturnsDestination == other.ReturnsDestination &&
-               CustomParameters.SequenceEqual(other.CustomParameters) &&
-               PropertyMappings.SequenceEqual(other.PropertyMappings) &&
-               IgnoredProperties.SetEquals(other.IgnoredProperties) &&
-               ConstantMappings.SequenceEqual(other.ConstantMappings) &&
+               CustomParameters == other.CustomParameters &&
+               PropertyMappings == other.PropertyMappings &&
+               IgnoredProperties == other.IgnoredProperties &&
+               PropertyConditions == other.PropertyConditions &&
+               ConstantMappings == other.ConstantMappings &&
                BeforeMapMethod == other.BeforeMapMethod &&
                BeforeMapAcceptsCustomParameters == other.BeforeMapAcceptsCustomParameters &&
                AfterMapMethod == other.AfterMapMethod &&
@@ -257,7 +260,7 @@ internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
                Strict == other.Strict &&
                NameComparison == other.NameComparison &&
                UseConstructorMapping == other.UseConstructorMapping &&
-               ConstructorParameters.SequenceEqual(other.ConstructorParameters) &&
+               ConstructorParameters == other.ConstructorParameters &&
                IsSourceReadOnlyStruct == other.IsSourceReadOnlyStruct;
     }
 

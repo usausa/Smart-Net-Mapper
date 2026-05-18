@@ -109,11 +109,6 @@ internal sealed class MapCollectionModel : IEquatable<MapCollectionModel>
     public string? Converter { get; set; }
 
     /// <summary>
-    /// Gets a value indicating whether a custom converter is specified.
-    /// </summary>
-    public bool HasCustomConverter => !string.IsNullOrEmpty(Converter);
-
-    /// <summary>
     /// Gets or sets a value indicating whether in-place update strategy is used.
     /// When true, the existing destination collection is cleared and re-populated instead of replaced.
     /// </summary>

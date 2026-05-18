@@ -158,7 +158,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 $"{duplicateType.Key}, {symbol.Name}"));
         }
 
-        model.CustomParameters = customParameters;
+        model.CustomParameters = new EquatableArray<CustomParameterModel>([.. customParameters]);
 
         // Parse attributes for MapProperty, MapIgnore, MapConstant, BeforeMap, AfterMap, MapCondition
         ParseMappingAttributes(symbol, model);
@@ -198,11 +198,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
         DetectFormattableMethod(model, symbol, sourceType);
 
         // Set RequiresExplicitNumericCast (#4b) for numeric narrowing/sign-change pairs
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
-            if (mapping.RequiresConversion && !mapping.IsEnumMapping && !mapping.HasConverter &&
-                !mapping.HasSpecializedConverter && !mapping.HasParsableMethod &&
-                !mapping.HasUserDefinedExplicit && !mapping.UseFormattable)
+            if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter() &&
+                !mapping.HasSpecializedConverter() && !mapping.HasParsableMethod() &&
+                !mapping.HasUserDefinedExplicit() && !mapping.UseFormattable)
             {
                 var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
                 var effectiveDest = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
@@ -299,7 +299,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var containingType = mapperMethod.ContainingType;
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (string.IsNullOrEmpty(mapping.ConditionMethod))
             {
@@ -331,19 +331,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
         var sourceType = mapping.SourceType;
+        var customParams = model.CustomParameters.ToArray();
 
         foreach (var method in candidates)
         {
             // Check for match with custom parameters: (SourceType, customParams...)
-            if (model.CustomParameters.Count > 0 &&
-                method.Parameters.Length == 1 + model.CustomParameters.Count)
+            if (customParams.Length > 0 &&
+                method.Parameters.Length == 1 + customParams.Length)
             {
                 var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
 
                 var customParamsMatch = true;
-                for (var i = 0; i < model.CustomParameters.Count; i++)
+                for (var i = 0; i < customParams.Length; i++)
                 {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != model.CustomParameters[i].TypeName)
+                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
                     {
                         customParamsMatch = false;
                         break;
@@ -386,7 +387,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var containingType = mapperMethod.ContainingType;
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (string.IsNullOrEmpty(mapping.ConverterMethod))
             {
@@ -443,6 +444,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var hasReturnTypeMismatch = false;
         var sourceType = mapping.SourceType;
         var targetType = mapping.TargetType;
+        var customParams = model.CustomParameters.ToArray();
 
         foreach (var method in candidates)
         {
@@ -450,15 +452,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var returnTypeMatches = returnType == targetType;
 
             // Check for match with custom parameters: (SourceType, customParams...)
-            if (model.CustomParameters.Count > 0 &&
-                method.Parameters.Length == 1 + model.CustomParameters.Count)
+            if (customParams.Length > 0 &&
+                method.Parameters.Length == 1 + customParams.Length)
             {
                 var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
 
                 var customParamsMatch = true;
-                for (var i = 0; i < model.CustomParameters.Count; i++)
+                for (var i = 0; i < customParams.Length; i++)
                 {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != model.CustomParameters[i].TypeName)
+                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
                     {
                         customParamsMatch = false;
                         break;
@@ -567,20 +569,21 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
+        var customParams = model.CustomParameters.ToArray();
 
         foreach (var method in candidates)
         {
             // Check for match with custom parameters: (Source, Destination, customParams...)
-            if (model.CustomParameters.Count > 0 &&
-                method.Parameters.Length == 2 + model.CustomParameters.Count)
+            if (customParams.Length > 0 &&
+                method.Parameters.Length == 2 + customParams.Length)
             {
                 var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.SourceTypeName;
                 var destMatch = method.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.DestinationTypeName;
 
                 var customParamsMatch = true;
-                for (var i = 0; i < model.CustomParameters.Count; i++)
+                for (var i = 0; i < customParams.Length; i++)
                 {
-                    if (method.Parameters[i + 2].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != model.CustomParameters[i].TypeName)
+                    if (method.Parameters[i + 2].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
                     {
                         customParamsMatch = false;
                         break;
@@ -624,6 +627,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
         var definitionOrder = 0;
+        var propertyMappings = new List<PropertyMappingModel>();
+        var ignoredProperties = new List<string>();
+        var propertyConditions = new List<PropertyConditionModel>();
+        var constantMappings = new List<ConstantMappingModel>();
+        var expressionMappings = new List<ExpressionMappingModel>();
+        var mapUsingMappings = new List<MapUsingModel>();
+        var mapFromMappings = new List<MapFromModel>();
+        var mapCollectionMappings = new List<MapCollectionModel>();
+        var mapNestedMappings = new List<MapNestedModel>();
 
         foreach (var attribute in symbol.GetAttributes())
         {
@@ -726,8 +738,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                     var mapping = new PropertyMappingModel
                     {
-                        TargetName = targetName,
-                        SourceName = sourceName ?? targetName,
+                        TargetPath = targetName,
+                        SourcePath = sourceName ?? targetName,
                         ConverterMethod = converter,
                         NullBehavior = nullBehavior,
                         Order = order,
@@ -739,7 +751,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         EffectiveNumberFormat = propNumberFormat
                     };
 
-                    model.PropertyMappings.Add(mapping);
+                    propertyMappings.Add(mapping);
                 }
             }
             else if (attributeName == MapIgnoreAttributeName)
@@ -748,7 +760,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
                     var targetName = attribute.ConstructorArguments[0].Value?.ToString() ?? string.Empty;
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == MapConstantAttributeName ||
@@ -777,8 +789,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         DefinitionOrder = definitionOrder++
                     };
 
-                    model.ConstantMappings.Add(constantMapping);
-                    model.IgnoredProperties.Add(targetName);
+                    constantMappings.Add(constantMapping);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == MapExpressionAttributeName)
@@ -798,7 +810,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         }
                     }
 
-                    model.ExpressionMappings.Add(new ExpressionMappingModel
+                    expressionMappings.Add(new ExpressionMappingModel
                     {
                         TargetName = targetName,
                         Expression = expression,
@@ -806,7 +818,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         DefinitionOrder = definitionOrder++
                     });
 
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == BeforeMapAttributeName)
@@ -834,7 +846,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var conditionName = attribute.ConstructorArguments[1].Value?.ToString();
                     if (!string.IsNullOrEmpty(targetName) && conditionName is not null)
                     {
-                        model.PropertyConditions[targetName] = conditionName;
+                        propertyConditions.Add(new PropertyConditionModel { TargetName = targetName, ConditionMethod = conditionName });
                     }
                 }
             }
@@ -855,7 +867,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         }
                     }
 
-                    model.MapUsingMappings.Add(new MapUsingModel
+                    mapUsingMappings.Add(new MapUsingModel
                     {
                         TargetName = targetName,
                         Method = methodName,
@@ -863,7 +875,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         DefinitionOrder = definitionOrder++
                     });
 
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == MapFromAttributeName)
@@ -883,7 +895,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         }
                     }
 
-                    model.MapFromMappings.Add(new MapFromModel
+                    mapFromMappings.Add(new MapFromModel
                     {
                         TargetName = targetName,
                         Member = member,
@@ -891,7 +903,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         DefinitionOrder = definitionOrder++
                     });
 
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == MapCollectionAttributeName)
@@ -935,7 +947,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         }
                     }
 
-                    model.MapCollectionMappings.Add(new MapCollectionModel
+                    mapCollectionMappings.Add(new MapCollectionModel
                     {
                         TargetName = targetName,
                         SourceName = sourceName ?? targetName,
@@ -946,7 +958,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         InPlace = inPlace
                     });
 
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
             else if (attributeName == MapNestedAttributeName)
@@ -980,7 +992,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         }
                     }
 
-                    model.MapNestedMappings.Add(new MapNestedModel
+                    mapNestedMappings.Add(new MapNestedModel
                     {
                         TargetName = targetName,
                         SourceName = sourceName ?? targetName,
@@ -989,19 +1001,30 @@ public sealed class MapperGenerator : IIncrementalGenerator
                         DefinitionOrder = definitionOrder++
                     });
 
-                    model.IgnoredProperties.Add(targetName);
+                    ignoredProperties.Add(targetName);
                 }
             }
         }
 
         // Associate property conditions with mappings from MapProperty attributes
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in propertyMappings)
         {
-            if (model.PropertyConditions.TryGetValue(mapping.TargetPath, out var conditionMethod))
+            var condition = propertyConditions.FirstOrDefault(c => string.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            if (condition is not null)
             {
-                mapping.ConditionMethod = conditionMethod;
+                mapping.ConditionMethod = condition.ConditionMethod;
             }
         }
+
+        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. propertyMappings]);
+        model.IgnoredProperties = new EquatableArray<string>([.. ignoredProperties]);
+        model.PropertyConditions = new EquatableArray<PropertyConditionModel>([.. propertyConditions]);
+        model.ConstantMappings = new EquatableArray<ConstantMappingModel>([.. constantMappings]);
+        model.ExpressionMappings = new EquatableArray<ExpressionMappingModel>([.. expressionMappings]);
+        model.MapUsingMappings = new EquatableArray<MapUsingModel>([.. mapUsingMappings]);
+        model.MapFromMappings = new EquatableArray<MapFromModel>([.. mapFromMappings]);
+        model.MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. mapCollectionMappings]);
+        model.MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings]);
     }
 
     private static void ParseConverterAttributes(IMethodSymbol symbol, MapperMethodModel model)
@@ -1125,7 +1148,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var destinationProperties = GetAllProperties(destinationType);
 
 
-        foreach (var constantMapping in model.ConstantMappings)
+        foreach (var constantMapping in model.ConstantMappings.ToArray())
         {
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == constantMapping.TargetName);
             if (destProp is not null)
@@ -1151,43 +1174,43 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Collect from PropertyMappings (only those explicitly specified via MapProperty)
-        foreach (var mapping in model.PropertyMappings.Where(m => m.HasExplicitMapping))
+        foreach (var mapping in model.PropertyMappings.ToArray().Where(m => m.HasExplicitMapping))
         {
             AddTarget(mapping.TargetPath, "MapProperty");
         }
 
         // Collect from ConstantMappings
-        foreach (var mapping in model.ConstantMappings)
+        foreach (var mapping in model.ConstantMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapConstant");
         }
 
         // Collect from ExpressionMappings
-        foreach (var mapping in model.ExpressionMappings)
+        foreach (var mapping in model.ExpressionMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapExpression");
         }
 
         // Collect from MapUsingMappings
-        foreach (var mapping in model.MapUsingMappings)
+        foreach (var mapping in model.MapUsingMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapUsing");
         }
 
         // Collect from MapFromMappings
-        foreach (var mapping in model.MapFromMappings)
+        foreach (var mapping in model.MapFromMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapFrom");
         }
 
         // Collect from MapCollectionMappings
-        foreach (var mapping in model.MapCollectionMappings)
+        foreach (var mapping in model.MapCollectionMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapCollection");
         }
 
         // Collect from MapNestedMappings
-        foreach (var mapping in model.MapNestedMappings)
+        foreach (var mapping in model.MapNestedMappings.ToArray())
         {
             AddTarget(mapping.TargetName, "MapNested");
         }
@@ -1206,7 +1229,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         // Check for redundant mappings with MapIgnore (warning - reported via context, not blocking)
         // This will be handled separately as a warning, not an error
-        foreach (var ignoredProp in model.IgnoredProperties)
+        foreach (var ignoredProp in model.IgnoredProperties.ToArray())
         {
             if (targetMappings.ContainsKey(ignoredProp))
             {
@@ -1228,7 +1251,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var containingType = mapperMethod.ContainingType;
         var destinationProperties = GetAllProperties(destinationType);
 
-        foreach (var mapUsing in model.MapUsingMappings)
+        foreach (var mapUsing in model.MapUsingMappings.ToArray())
         {
             // Find target property type
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapUsing.TargetName);
@@ -1297,19 +1320,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         var sourceTypeName = sourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var targetTypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var customParams = model.CustomParameters.ToArray();
 
         foreach (var method in candidates)
         {
             // Check for match with custom parameters: (Source, customParams...)
-            if (model.CustomParameters.Count > 0 &&
-                method.Parameters.Length == 1 + model.CustomParameters.Count)
+            if (customParams.Length > 0 &&
+                method.Parameters.Length == 1 + customParams.Length)
             {
                 var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceTypeName;
 
                 var customParamsMatch = true;
-                for (var i = 0; i < model.CustomParameters.Count; i++)
+                for (var i = 0; i < customParams.Length; i++)
                 {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != model.CustomParameters[i].TypeName)
+                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
                     {
                         customParamsMatch = false;
                         break;
@@ -1424,7 +1448,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var destinationProperties = GetAllProperties(destinationType);
 
-        foreach (var mapFrom in model.MapFromMappings)
+        foreach (var mapFrom in model.MapFromMappings.ToArray())
         {
             // Find target property type
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapFrom.TargetName);
@@ -1552,7 +1576,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var sourceProperties = GetAllProperties(sourceType);
         var destinationProperties = GetAllProperties(destinationType);
 
-        foreach (var mapCollection in model.MapCollectionMappings)
+        foreach (var mapCollection in model.MapCollectionMappings.ToArray())
         {
             // Find source property
             var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapCollection.SourceName);
@@ -1586,7 +1610,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapCollection.TargetCollectionMethod = DetermineCollectionMethod(destProp.Type);
             mapCollection.SourceShape = DetermineSourceShape(sourceProp.Type);
             mapCollection.TargetShape = DetermineTargetShape(destProp.Type);
-            mapCollection.UseHelperPath = model.CollectionConverterTypeName is not null || mapCollection.HasCustomConverter;
+            mapCollection.UseHelperPath = model.CollectionConverterTypeName is not null || mapCollection.HasCustomConverter();
 
             // For InPlace mode, determine fallback type name when destination collection is null
             if (mapCollection.InPlace)
@@ -1621,7 +1645,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var sourceProperties = GetAllProperties(sourceType);
         var destinationProperties = GetAllProperties(destinationType);
 
-        foreach (var mapNested in model.MapNestedMappings)
+        foreach (var mapNested in model.MapNestedMappings.ToArray())
         {
             // Find source property
             var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapNested.SourceName);
@@ -1872,42 +1896,42 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var pm in model.PropertyMappings)
+        foreach (var pm in model.PropertyMappings.ToArray())
         {
             mappedTargets.Add(pm.TargetPath);
         }
 
-        foreach (var name in model.IgnoredProperties)
+        foreach (var name in model.IgnoredProperties.ToArray())
         {
             mappedTargets.Add(name);
         }
 
-        foreach (var cm in model.ConstantMappings)
+        foreach (var cm in model.ConstantMappings.ToArray())
         {
             mappedTargets.Add(cm.TargetName);
         }
 
-        foreach (var em in model.ExpressionMappings)
+        foreach (var em in model.ExpressionMappings.ToArray())
         {
             mappedTargets.Add(em.TargetName);
         }
 
-        foreach (var mu in model.MapUsingMappings)
+        foreach (var mu in model.MapUsingMappings.ToArray())
         {
             mappedTargets.Add(mu.TargetName);
         }
 
-        foreach (var mf in model.MapFromMappings)
+        foreach (var mf in model.MapFromMappings.ToArray())
         {
             mappedTargets.Add(mf.TargetName);
         }
 
-        foreach (var mc in model.MapCollectionMappings)
+        foreach (var mc in model.MapCollectionMappings.ToArray())
         {
             mappedTargets.Add(mc.TargetName);
         }
 
-        foreach (var mn in model.MapNestedMappings)
+        foreach (var mn in model.MapNestedMappings.ToArray())
         {
             mappedTargets.Add(mn.TargetName);
         }
@@ -1936,7 +1960,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // B4 b案: Format without Culture is invalid at per-property level
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (string.IsNullOrEmpty(mapping.EffectiveCulture) &&
                 (!string.IsNullOrEmpty(mapping.EffectiveDateTimeFormat) || !string.IsNullOrEmpty(mapping.EffectiveNumberFormat)))
@@ -1957,10 +1981,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return null;
         }
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             // Skip properties that have a custom converter method.
-            if (mapping.HasConverter)
+            if (mapping.HasConverter())
             {
                 continue;
             }
@@ -1972,19 +1996,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Skip mappings handled by enum-specific code paths (#6).
-            if (mapping.IsEnumMapping)
+            if (mapping.IsEnumMapping())
             {
                 continue;
             }
 
             // Skip mappings handled by a specialized converter method (#8).
-            if (mapping.HasSpecializedConverter)
+            if (mapping.HasSpecializedConverter())
             {
                 continue;
             }
 
             // Skip mappings handled by IParsable<T> / ISpanParsable<T> (#9).
-            if (mapping.HasParsableMethod)
+            if (mapping.HasParsableMethod())
             {
                 continue;
             }
@@ -2002,7 +2026,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Skip mappings handled by user-defined op_Explicit (#7).
-            if (mapping.HasUserDefinedExplicit)
+            if (mapping.HasUserDefinedExplicit())
             {
                 continue;
             }
@@ -2050,42 +2074,42 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Build the set of all destination property names that have some mapping configuration (same as CollectStrictModeWarnings)
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var pm in model.PropertyMappings)
+        foreach (var pm in model.PropertyMappings.ToArray())
         {
             mappedTargets.Add(pm.TargetPath);
         }
 
-        foreach (var name in model.IgnoredProperties)
+        foreach (var name in model.IgnoredProperties.ToArray())
         {
             mappedTargets.Add(name);
         }
 
-        foreach (var cm in model.ConstantMappings)
+        foreach (var cm in model.ConstantMappings.ToArray())
         {
             mappedTargets.Add(cm.TargetName);
         }
 
-        foreach (var em in model.ExpressionMappings)
+        foreach (var em in model.ExpressionMappings.ToArray())
         {
             mappedTargets.Add(em.TargetName);
         }
 
-        foreach (var mu in model.MapUsingMappings)
+        foreach (var mu in model.MapUsingMappings.ToArray())
         {
             mappedTargets.Add(mu.TargetName);
         }
 
-        foreach (var mf in model.MapFromMappings)
+        foreach (var mf in model.MapFromMappings.ToArray())
         {
             mappedTargets.Add(mf.TargetName);
         }
 
-        foreach (var mc in model.MapCollectionMappings)
+        foreach (var mc in model.MapCollectionMappings.ToArray())
         {
             mappedTargets.Add(mc.TargetName);
         }
 
-        foreach (var mn in model.MapNestedMappings)
+        foreach (var mn in model.MapNestedMappings.ToArray())
         {
             mappedTargets.Add(mn.TargetName);
         }
@@ -2167,12 +2191,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         model.UseConstructorMapping = true;
 
         // Build [MapProperty] lookup: destName -> sourceName
-        var customMappings = model.PropertyMappings
+        var customMappings = model.PropertyMappings.ToArray()
             .Where(pm => !pm.TargetPath.Contains('.'))
             .ToDictionary(pm => pm.TargetPath, pm => pm.SourcePath, StringComparer.Ordinal);
 
         var nameComparison = (StringComparison)model.NameComparison;
         var sourceProperties = GetAllProperties(sourceType);
+        var ctorParams = new List<(string ParamName, string SourceExpression)>();
 
         foreach (var param in bestCtor.Parameters)
         {
@@ -2196,8 +2221,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     : $"default({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
             }
 
-            model.ConstructorParameters.Add((param.Name, sourceExpression));
+            ctorParams.Add((param.Name, sourceExpression));
         }
+
+        model.ConstructorParameters = new EquatableArray<(string ParamName, string SourceExpression)>([.. ctorParams]);
 
         // Remove from PropertyMappings the entries that are already handled as constructor arguments
         // so they are NOT emitted again as regular property assignments.
@@ -2208,10 +2235,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
             StringComparer.Ordinal);
 
         // Also remove properties that correspond to constructor params (case-insensitive match with NameComparison)
-        model.PropertyMappings = model.PropertyMappings
+        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings.ToArray()
             .Where(pm => !bestCtor.Parameters.Any(p =>
-                string.Equals(p.Name, pm.TargetPath, nameComparison)))
-            .ToList();
+                string.Equals(p.Name, pm.TargetPath, nameComparison)))]);
 
         return null;
     }
@@ -2225,7 +2251,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var customMappings = new Dictionary<string, string>(StringComparer.Ordinal);
         var nestedMappings = new List<PropertyMappingModel>();
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             // Check if this is a nested mapping (contains dots)
             if (mapping.TargetPath.Contains('.') || mapping.SourcePath.Contains('.'))
@@ -2241,7 +2267,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Preserve original mappings with Converter info
-        var originalMappings = model.PropertyMappings.ToDictionary(m => m.TargetPath, m => m);
+        var originalMappings = model.PropertyMappings.ToArray().ToDictionary(m => m.TargetPath, m => m);
 
         // Clear and rebuild property mappings
         var mappings = new List<PropertyMappingModel>();
@@ -2250,7 +2276,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         foreach (var destProp in destinationProperties)
         {
             // Skip ignored properties
-            if (model.IgnoredProperties.Contains(destProp.Name))
+            if (model.IgnoredProperties.ToArray().Contains(destProp.Name))
             {
                 continue;
             }
@@ -2380,7 +2406,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 // Detect IParsable<T> / ISpanParsable<T> parse method (B3)
                 // This runs before DetectSpecializedConverterMethods so HasSpecializedConverter may not be set yet.
                 // We use the ITypeSymbol directly here to avoid re-resolving by name.
-                if (mapping.RequiresConversion && !mapping.IsEnumMapping && !mapping.HasConverter)
+                if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter())
                 {
                     var srcUnderlying = sourceUnderlyingType.SpecialType == SpecialType.System_String
                         ? sourceUnderlyingType
@@ -2398,14 +2424,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Add nested mappings
         mappings.AddRange(nestedMappings);
 
-        model.PropertyMappings = mappings;
+        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. mappings]);
 
         // Apply property conditions from MapPropertyCondition attributes
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
-            if (model.PropertyConditions.TryGetValue(mapping.TargetPath, out var conditionMethod))
+            var condition = model.PropertyConditions.ToArray().FirstOrDefault(c => string.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            if (condition is not null)
             {
-                mapping.ConditionMethod = conditionMethod;
+                mapping.ConditionMethod = condition.ConditionMethod;
             }
         }
     }
@@ -2429,17 +2456,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapping.EnumMappingKind = EnumMappingKind.EnumToEnum;
             mapping.RequiresConversion = true;
 
-            // Collect source enum members
-            foreach (var member in sourceUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst))
-            {
-                mapping.SourceEnumMembers.Add(member.Name);
-            }
-
-            // Collect dest enum members
-            foreach (var member in targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst))
-            {
-                mapping.DestEnumMembers.Add(member.Name);
-            }
+            mapping.SourceEnumMembers = new EquatableArray<string>(
+                [.. sourceUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)]);
+            mapping.DestEnumMembers = new EquatableArray<string>(
+                [.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)]);
         }
         else if (sourceIsEnum && targetIsNumeric)
         {
@@ -2560,6 +2580,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var pathBuilder = new List<string>();
 
             // Process all but the last segment
+            var sourceSegments = new System.Collections.Generic.List<NestedPathSegment>();
             for (var i = 0; i < sourceParts.Length - 1; i++)
             {
                 var part = sourceParts[i];
@@ -2569,7 +2590,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 if (prop is not null)
                 {
                     var isNullable = IsNullableSymbol(prop.Type);
-                    mapping.SourcePathSegments.Add(new NestedPathSegment
+                    sourceSegments.Add(new NestedPathSegment
                     {
                         Path = string.Join(".", pathBuilder),
                         TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -2578,6 +2599,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     currentType = prop.Type;
                 }
             }
+            mapping.SourcePathSegments = new EquatableArray<NestedPathSegment>([.. sourceSegments]);
 
             // Get the final property type
             var finalSourceProp = GetAllProperties(currentType).FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
@@ -2610,6 +2632,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var pathBuilder = new List<string>();
 
             // Process all but the last segment (which is the actual property to set)
+            var targetSegments = new System.Collections.Generic.List<NestedPathSegment>();
             for (var i = 0; i < targetParts.Length - 1; i++)
             {
                 var part = targetParts[i];
@@ -2618,7 +2641,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var prop = GetAllProperties(currentTargetType).FirstOrDefault(p => p.Name == part);
                 if (prop is not null)
                 {
-                    mapping.TargetPathSegments.Add(new NestedPathSegment
+                    targetSegments.Add(new NestedPathSegment
                     {
                         Path = string.Join(".", pathBuilder),
                         TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
@@ -2626,6 +2649,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     currentTargetType = prop.Type;
                 }
             }
+            mapping.TargetPathSegments = new EquatableArray<NestedPathSegment>([.. targetSegments]);
 
             // Get the final property type
             var finalProp = GetAllProperties(currentTargetType).FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
@@ -2866,7 +2890,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var usedCultures = new HashSet<string>(StringComparer.Ordinal);
         foreach (var method in methods)
         {
-            foreach (var mapping in method.PropertyMappings)
+            foreach (var mapping in method.PropertyMappings.ToArray())
             {
                 if (!string.IsNullOrEmpty(mapping.EffectiveCulture))
                 {
@@ -2931,7 +2955,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName);
 
             // Add custom parameters
-            foreach (var customParam in method.CustomParameters)
+            foreach (var customParam in method.CustomParameters.ToArray())
             {
                 builder.Append(", ").Append(customParam.TypeName).Append(" ").Append(customParam.Name);
             }
@@ -2951,7 +2975,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(method.DestinationTypeName).Append(" ").Append(method.DestinationParameterName!);
 
             // Add custom parameters
-            foreach (var customParam in method.CustomParameters)
+            foreach (var customParam in method.CustomParameters.ToArray())
             {
                 builder.Append(", ").Append(customParam.TypeName).Append(" ").Append(customParam.Name);
             }
@@ -2970,18 +2994,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 // Constructor-based creation with object initializer for remaining init-only properties
                 // Only init-only properties go in the initializer; regular settable properties are assigned below
-                var initOnlyMappings = method.PropertyMappings
+                var initOnlyMappings = method.PropertyMappings.ToArray()
                     .Where(pm => pm.IsTargetInitOnly)
                     .ToList();
 
+                var ctorParameters = method.ConstructorParameters.ToArray();
                 builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("(");
-                for (var i = 0; i < method.ConstructorParameters.Count; i++)
+                for (var i = 0; i < ctorParameters.Length; i++)
                 {
                     if (i > 0)
                     {
                         builder.Append(", ");
                     }
-                    builder.Append(method.ConstructorParameters[i].SourceExpression);
+                    builder.Append(ctorParameters[i].SourceExpression);
                 }
                 builder.Append(")");
 
@@ -3012,7 +3037,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Indent().Append(method.BeforeMapMethod!).Append("(").Append(method.SourceParameterName).Append(", ").Append(destVarName);
             if (method.BeforeMapAcceptsCustomParameters)
             {
-                foreach (var customParam in method.CustomParameters)
+                foreach (var customParam in method.CustomParameters.ToArray())
                 {
                     builder.Append(", ").Append(customParam.Name);
                 }
@@ -3022,15 +3047,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         // Collect all nested paths that need auto-instantiation (excluding those with nullable source paths)
         var nestedPathsToInstantiate = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var mapping in method.PropertyMappings)
+        foreach (var mapping in method.PropertyMappings.ToArray())
         {
             // Skip auto-instantiation if source has nullable path segments
-            if (mapping.SourcePathSegments.Any(s => s.IsNullable))
+            if (mapping.SourcePathSegments.ToArray().Any(s => s.IsNullable))
             {
                 continue;
             }
 
-            foreach (var segment in mapping.TargetPathSegments)
+            foreach (var segment in mapping.TargetPathSegments.ToArray())
             {
                 if (!nestedPathsToInstantiate.ContainsKey(segment.Path))
                 {
@@ -3049,11 +3074,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Group mappings by whether they require null check (sorted by Order, then DefinitionOrder)
         // When UseConstructorMapping is true, init-only properties are already handled via object initializer
         var effectiveMappings = method.UseConstructorMapping
-            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly).ToList()
-            : method.PropertyMappings;
+            ? method.PropertyMappings.ToArray().Where(m => !m.IsTargetInitOnly).ToList()
+            : method.PropertyMappings.ToArray().ToList();
         var sortedMappings = effectiveMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
-        var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck).ToList();
-        var mappingsWithNullCheck = sortedMappings.Where(m => m.RequiresNullCheck).ToList();
+        var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck()).ToList();
+        var mappingsWithNullCheck = sortedMappings.Where(m => m.RequiresNullCheck()).ToList();
 
         // Generate property mappings without null check
         foreach (var mapping in mappingsWithoutNullCheck)
@@ -3075,7 +3100,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var groupNestedPaths = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var mapping in group)
             {
-                foreach (var segment in mapping.TargetPathSegments)
+                foreach (var segment in mapping.TargetPathSegments.ToArray())
                 {
                     if (!groupNestedPaths.ContainsKey(segment.Path))
                     {
@@ -3099,7 +3124,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Generate constant mappings (sorted by Order, then DefinitionOrder)
-        foreach (var constant in method.ConstantMappings.OrderBy(c => c.Order).ThenBy(c => c.DefinitionOrder))
+        foreach (var constant in method.ConstantMappings.ToArray().OrderBy(c => c.Order).ThenBy(c => c.DefinitionOrder))
         {
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(constant.TargetName).Append(" = ");
@@ -3108,7 +3133,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Generate expression mappings (sorted by Order, then DefinitionOrder)
-        foreach (var expression in method.ExpressionMappings.OrderBy(e => e.Order).ThenBy(e => e.DefinitionOrder))
+        foreach (var expression in method.ExpressionMappings.ToArray().OrderBy(e => e.Order).ThenBy(e => e.DefinitionOrder))
         {
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(expression.TargetName).Append(" = ");
@@ -3117,14 +3142,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Generate MapUsing mappings (call method in containing class, sorted by Order, then DefinitionOrder)
-        foreach (var mapUsing in method.MapUsingMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
+        foreach (var mapUsing in method.MapUsingMappings.ToArray().OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(mapUsing.TargetName).Append(" = ");
             builder.Append(mapUsing.Method).Append("(").Append(method.SourceParameterName);
             if (mapUsing.AcceptsCustomParameters)
             {
-                foreach (var customParam in method.CustomParameters)
+                foreach (var customParam in method.CustomParameters.ToArray())
                 {
                     builder.Append(", ").Append(customParam.Name);
                 }
@@ -3133,7 +3158,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Generate MapFrom mappings (method call or property path on source, sorted by Order, then DefinitionOrder)
-        foreach (var mapFrom in method.MapFromMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
+        foreach (var mapFrom in method.MapFromMappings.ToArray().OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(mapFrom.TargetName).Append(" = ");
@@ -3150,7 +3175,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Generate MapNested mappings (call mapper method for nested objects, sorted by Order, then DefinitionOrder)
-        foreach (var mapNested in method.MapNestedMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
+        foreach (var mapNested in method.MapNestedMappings.ToArray().OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
             var sourceAccess = $"{method.SourceParameterName}.{mapNested.SourceName}";
 
@@ -3197,7 +3222,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         // Generate MapCollection mappings using collection converter (sorted by Order, then DefinitionOrder)
         var collectionConverterTypeName = method.CollectionConverterTypeName ?? DefaultCollectionConverterTypeName;
-        foreach (var mapCollection in method.MapCollectionMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
+        foreach (var mapCollection in method.MapCollectionMappings.ToArray().OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
             EmitCollectionMapping(builder, mapCollection, method, destVarName, collectionConverterTypeName);
         }
@@ -3208,7 +3233,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Indent().Append(method.AfterMapMethod!).Append("(").Append(method.SourceParameterName).Append(", ").Append(destVarName);
             if (method.AfterMapAcceptsCustomParameters)
             {
-                foreach (var customParam in method.CustomParameters)
+                foreach (var customParam in method.CustomParameters.ToArray())
                 {
                     builder.Append(", ").Append(customParam.Name);
                 }
@@ -3383,7 +3408,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.Append(destVarName).Append(".").Append(mapCollection.TargetName).Append(" = ");
         builder.Append(collectionConverterTypeName).Append(".");
 
-        if (mapCollection.HasCustomConverter)
+        if (mapCollection.HasCustomConverter())
         {
             builder.Append(mapCollection.Converter!);
         }
@@ -3721,13 +3746,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void BuildPropertyAssignment(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked = false)
     {
         // Property-level condition check
-        if (mapping.HasCondition)
+        if (mapping.HasCondition())
         {
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
             builder.Indent().Append("if (").Append(mapping.ConditionMethod!).Append("(").Append(sourceAccessor);
             if (mapping.ConditionAcceptsCustomParameters)
             {
-                foreach (var customParam in method.CustomParameters)
+                foreach (var customParam in method.CustomParameters.ToArray())
                 {
                     builder.Append(", ").Append(customParam.Name);
                 }
@@ -3739,7 +3764,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Handle nullable source with type conversion
         // When source is nullable (e.g., int?) and conversion is needed (e.g., int? -> string),
         // we need to check for null first, then convert the underlying value
-        if (mapping.IsSourceNullable && mapping.RequiresConversion && !mapping.HasConverter)
+        if (mapping.IsSourceNullable && mapping.RequiresConversion && !mapping.HasConverter())
         {
             BuildNullableSourceConversion(builder, mapping, sourceParamName, destVarName, method, nullChecked);
         }
@@ -3750,7 +3775,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Close property-level condition scope if present
-        if (mapping.HasCondition)
+        if (mapping.HasCondition())
         {
             builder.EndScope();
         }
@@ -3762,7 +3787,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
 
         // Use custom converter if specified
-        if (mapping.HasConverter)
+        if (mapping.HasConverter())
         {
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
             builder.Append(mapping.ConverterMethod!).Append("(").Append(sourceAccessor);
@@ -3770,7 +3795,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Add custom parameters if converter accepts them
             if (mapping.ConverterAcceptsCustomParameters)
             {
-                foreach (var customParam in method.CustomParameters)
+                foreach (var customParam in method.CustomParameters.ToArray())
                 {
                     builder.Append(", ").Append(customParam.Name);
                 }
@@ -3788,11 +3813,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(sourceAccessor);
 
             // NullSubstitute takes precedence over null-forgiving
-            if (mapping.HasNullSubstitute && mapping.IsSourceNullable)
+            if (mapping.HasNullSubstitute() && mapping.IsSourceNullable)
             {
                 builder.Append(" ?? ").Append(mapping.NullSubstitute!);
             }
-            else if (mapping.RequiresNullCoalescing)
+            else if (mapping.RequiresNullCoalescing())
             {
                 // For nullable to non-nullable terminal element, add null-forgiving operator
                 builder.Append("!");
@@ -3831,7 +3856,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             builder.Append(";").NewLine();
             builder.EndScope();
         }
-        else if (mapping.HasNullSubstitute)
+        else if (mapping.HasNullSubstitute())
         {
             // NullSubstitute: convert if not null, otherwise use the substitute value
             builder.Indent();
@@ -3897,7 +3922,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void BuildTypeConversionWithValueAccess(SourceBuilder builder, PropertyMappingModel mapping, string sourceAccessor, MapperMethodModel method)
     {
         // For enum mappings, use .Value to unwrap the nullable
-        if (mapping.IsEnumMapping)
+        if (mapping.IsEnumMapping())
         {
             var valueAccessor = sourceAccessor + ".Value";
             var enumMapping = new PropertyMappingModel
@@ -3916,9 +3941,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
 
-        if (mapping.HasSpecializedConverter)
+        if (mapping.HasSpecializedConverter())
         {
-            if (mapping.HasCulture)
+            if (mapping.HasCulture())
             {
                 // Culture-aware overload with .Value access
                 var formatArg = DetermineFormatArg(mapping);
@@ -3943,11 +3968,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(".Value)");
             }
         }
-        else if (mapping.HasParsableMethod)
+        else if (mapping.HasParsableMethod())
         {
             // B3: IParsable<T> / ISpanParsable<T> direct Parse call with .Value access
             var targetTypeForParse = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            var cultureArg = mapping.HasCulture
+            var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
@@ -3974,7 +3999,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // #6: user-defined op_Implicit from nullable source — unwrap via .Value; C# applies the operator automatically.
             builder.Append(sourceAccessor).Append(".Value");
         }
-        else if (mapping.HasUserDefinedExplicit)
+        else if (mapping.HasUserDefinedExplicit())
         {
             // #7: user-defined op_Explicit with .Value access
             var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
@@ -3984,7 +4009,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             // #10: IFormattable T -> string with culture / format, .Value access
             var formatArg = DetermineFormatArg(mapping);
-            var cultureArg = mapping.HasCulture
+            var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
@@ -4013,12 +4038,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var conditions = new List<string>();
 
         // Check for nullable source path segments (intermediate elements only)
-        if (mapping.SourcePathSegments.Count > 0)
+        var sourceSegmentsArr = mapping.SourcePathSegments.ToArray();
+        if (sourceSegmentsArr.Length > 0)
         {
             var pathBuilder = new StringBuilder();
             pathBuilder.Append(sourceParamName);
 
-            foreach (var segment in mapping.SourcePathSegments)
+            foreach (var segment in sourceSegmentsArr)
             {
                 pathBuilder.Append('.').Append(segment.Path.Split('.').Last());
                 if (segment.IsNullable)
@@ -4065,7 +4091,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var sourceExpr = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
 
         // Enum mapping takes priority over specialized converters
-        if (mapping.IsEnumMapping)
+        if (mapping.IsEnumMapping())
         {
             BuildEnumConversion(builder, mapping, sourceExpr);
             return;
@@ -4074,9 +4100,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var converterTypeName = method.MapConverterTypeName ?? DefaultValueConverterTypeName;
 
         // Check if specialized converter method should be used
-        if (mapping.HasSpecializedConverter)
+        if (mapping.HasSpecializedConverter())
         {
-            if (mapping.HasCulture)
+            if (mapping.HasCulture())
             {
                 // Culture-aware overload: Converter.ConvertToInt32(source.Value, culture, format)
                 var formatArg = DetermineFormatArg(mapping);
@@ -4101,11 +4127,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(")");
             }
         }
-        else if (mapping.HasParsableMethod)
+        else if (mapping.HasParsableMethod())
         {
             // B3: IParsable<T> / ISpanParsable<T> direct Parse call
             var targetTypeForParse = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            var cultureArg = mapping.HasCulture
+            var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
@@ -4127,7 +4153,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
             builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceExpr);
         }
-        else if (mapping.HasUserDefinedExplicit)
+        else if (mapping.HasUserDefinedExplicit())
         {
             // #7: user-defined op_Explicit — emit explicit cast
             var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
@@ -4137,7 +4163,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             // #10: IFormattable T -> string with culture / format
             var formatArg = DetermineFormatArg(mapping);
-            var cultureArg = mapping.HasCulture
+            var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
@@ -4186,10 +4212,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 // Generate switch expression: source switch { Src.A => Dest.A, ... _ => default }
                 builder.Append(sourceExpr).Append(" switch").NewLine();
                 builder.Indent().Append("{").NewLine();
-                foreach (var memberName in mapping.SourceEnumMembers)
+                var destMembersArr = mapping.DestEnumMembers.ToArray();
+                foreach (var memberName in mapping.SourceEnumMembers.ToArray())
                 {
                     var sourceType = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
-                    if (mapping.DestEnumMembers.Contains(memberName, StringComparer.Ordinal))
+                    if (destMembersArr.Contains(memberName, StringComparer.Ordinal))
                     {
                         builder.Indent().Append("    ")
                                .Append(sourceType).Append(".").Append(memberName)
@@ -4227,7 +4254,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Reset any ParseMethod that was set in BuildPropertyMappings.
         if (model.MapConverterTypeName is not null)
         {
-            foreach (var mapping in model.PropertyMappings)
+            foreach (var mapping in model.PropertyMappings.ToArray())
             {
                 mapping.ParseMethod = ParseMethodKind.None;
             }
@@ -4254,7 +4281,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return;
         }
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (!mapping.RequiresConversion)
             {
@@ -4262,7 +4289,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Only applies to string → T conversions without a specialized converter or enum mapping
-            if (mapping.IsEnumMapping || mapping.HasSpecializedConverter || mapping.HasConverter)
+            if (mapping.IsEnumMapping() || mapping.HasSpecializedConverter() || mapping.HasConverter())
             {
                 continue;
             }
@@ -4384,7 +4411,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             return;
         }
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (!mapping.RequiresConversion)
             {
@@ -4392,7 +4419,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Skip if already handled by a more specific path.
-            if (mapping.IsEnumMapping || mapping.HasConverter)
+            if (mapping.IsEnumMapping() || mapping.HasConverter())
             {
                 continue;
             }
@@ -4496,7 +4523,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
         }
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (!mapping.RequiresConversion)
             {
@@ -4511,19 +4538,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Culture or a format must be specified; otherwise use the existing specialized converter path.
-            if (!mapping.HasCulture && mapping.EffectiveDateTimeFormat is null && mapping.EffectiveNumberFormat is null)
+            if (!mapping.HasCulture() && mapping.EffectiveDateTimeFormat is null && mapping.EffectiveNumberFormat is null)
             {
                 continue;
             }
 
             // Skip if already handled by a more specific path.
-            if (mapping.IsEnumMapping || mapping.HasConverter || mapping.HasSpecializedConverter || mapping.HasParsableMethod)
+            if (mapping.IsEnumMapping() || mapping.HasConverter() || mapping.HasSpecializedConverter() || mapping.HasParsableMethod())
             {
                 continue;
             }
 
             // Skip if a user-defined explicit operator handles the conversion.
-            if (mapping.HasUserDefinedExplicit)
+            if (mapping.HasUserDefinedExplicit())
             {
                 continue;
             }
@@ -4633,7 +4660,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         var methodPrefix = model.MapConverterMethodName; // e.g., "Convert"
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var mapping in model.PropertyMappings.ToArray())
         {
             if (!mapping.RequiresConversion)
             {
@@ -4641,7 +4668,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Skip enum mappings - they are handled by BuildEnumConversion
-            if (mapping.IsEnumMapping)
+            if (mapping.IsEnumMapping())
             {
                 continue;
             }

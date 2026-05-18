@@ -3,6 +3,7 @@ namespace Smart.Mapper.Generator.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SourceGenerateHelper;
 
 /// <summary>
 /// Represents the kind of enum conversion to perform.
@@ -119,12 +120,12 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// <summary>
     /// Gets or sets the nested target path segments with their types for auto-instantiation.
     /// </summary>
-    public List<NestedPathSegment> TargetPathSegments { get; set; } = [];
+    public EquatableArray<NestedPathSegment> TargetPathSegments { get; set; } = new EquatableArray<NestedPathSegment>([]);
 
     /// <summary>
     /// Gets or sets the nested source path segments for null checking.
     /// </summary>
-    public List<NestedPathSegment> SourcePathSegments { get; set; } = [];
+    public EquatableArray<NestedPathSegment> SourcePathSegments { get; set; } = new EquatableArray<NestedPathSegment>([]);
 
     /// <summary>
     /// Gets or sets a value indicating whether source type is nullable.
@@ -150,7 +151,7 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// Gets a value indicating whether null check is required before mapping.
     /// This is true only when source has nullable nested path segments (intermediate elements).
     /// </summary>
-    public bool RequiresNullCheck => SourcePathSegments.Any(s => s.IsNullable);
+    public bool RequiresNullCheck => SourcePathSegments.ToArray().Any(s => s.IsNullable);
 
     /// <summary>
     /// Gets a value indicating whether null coalescing is required for the assignment.
@@ -300,12 +301,12 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     /// <summary>
     /// Gets or sets the source enum member names (used for enum-to-enum switch generation).
     /// </summary>
-    public List<string> SourceEnumMembers { get; set; } = [];
+    public EquatableArray<string> SourceEnumMembers { get; set; } = new EquatableArray<string>([]);
 
     /// <summary>
     /// Gets or sets the destination enum member names (used for enum-to-enum switch generation).
     /// </summary>
-    public List<string> DestEnumMembers { get; set; } = [];
+    public EquatableArray<string> DestEnumMembers { get; set; } = new EquatableArray<string>([]);
 
     /// <summary>
     /// Gets a value indicating whether this mapping uses enum conversion.
@@ -358,8 +359,8 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                UserDefinedConversion == other.UserDefinedConversion &&
                RequiresExplicitNumericCast == other.RequiresExplicitNumericCast &&
                UseFormattable == other.UseFormattable &&
-               TargetPathSegments.SequenceEqual(other.TargetPathSegments) &&
-               SourcePathSegments.SequenceEqual(other.SourcePathSegments);
+               TargetPathSegments == other.TargetPathSegments &&
+               SourcePathSegments == other.SourcePathSegments;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyMappingModel);

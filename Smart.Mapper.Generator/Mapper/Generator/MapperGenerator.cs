@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Generator;
+namespace Smart.Mapper.Generator;
 
 using System;
 using System.Collections.Generic;
@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
+using Smart.Mapper.Generator.Helpers;
 using Smart.Mapper.Generator.Models;
 
 using Microsoft.CodeAnalysis;
@@ -206,7 +207,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
                 var effectiveDest = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-                if (IsExplicitNumericConversion(effectiveSource, effectiveDest))
+                if (TypeNameHelper.IsExplicitNumericConversion(effectiveSource, effectiveDest))
                 {
                     mapping.RequiresExplicitNumericCast = true;
                 }
@@ -238,7 +239,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Validate and build MapFrom mappings
-        var mapFromError = ValidateAndBuildMapFromMappings(symbol, model, sourceType, destinationType, syntax);
+        var mapFromError = ValidateAndBuildMapFromMappings(model, sourceType, destinationType, syntax);
         if (mapFromError is not null)
         {
             return Results.Error<MapperMethodModel>(mapFromError);
@@ -1146,7 +1147,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
     {
-        var destinationProperties = GetAllProperties(destinationType);
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
 
         foreach (var constantMapping in model.ConstantMappings.ToArray())
@@ -1250,7 +1251,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
-        var destinationProperties = GetAllProperties(destinationType);
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
         foreach (var mapUsing in model.MapUsingMappings.ToArray())
         {
@@ -1344,7 +1345,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 if (sourceMatch && customParamsMatch)
                 {
                     var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    if (returnType == targetTypeName || IsAssignableTo(method.ReturnType, targetType))
+                    if (returnType == targetTypeName || method.ReturnType.IsAssignableTo(targetType))
                     {
                         hasMatchWithCustomParams = true;
                         matchedMethod = method;
@@ -1364,7 +1365,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 if (sourceMatch)
                 {
                     var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    if (returnType == targetTypeName || IsAssignableTo(method.ReturnType, targetType))
+                    if (returnType == targetTypeName || method.ReturnType.IsAssignableTo(targetType))
                     {
                         hasMatchWithoutCustomParams = true;
                         if (matchedMethod is null)
@@ -1399,55 +1400,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return new MapUsingMatchInfo { Result = MapUsingMatchResult.NoMatch };
     }
 
-    private static bool IsAssignableTo(ITypeSymbol sourceType, ITypeSymbol targetType)
-    {
-        // Simple check for implicit conversion
-        if (SymbolEqualityComparer.Default.Equals(sourceType, targetType))
-        {
-            return true;
-        }
-
-        // Check for nullable target
-        if (targetType.NullableAnnotation == NullableAnnotation.Annotated)
-        {
-            var nonNullableTarget = targetType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
-            if (SymbolEqualityComparer.Default.Equals(sourceType, nonNullableTarget))
-            {
-                return true;
-            }
-        }
-
-        // Check inheritance
-        var current = sourceType;
-        while (current is not null)
-        {
-            if (SymbolEqualityComparer.Default.Equals(current, targetType))
-            {
-                return true;
-            }
-            current = current.BaseType;
-        }
-
-        // Check interfaces
-        foreach (var iface in sourceType.AllInterfaces)
-        {
-            if (SymbolEqualityComparer.Default.Equals(iface, targetType))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static DiagnosticInfo? ValidateAndBuildMapFromMappings(
-        IMethodSymbol mapperMethod,
         MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
     {
-        var destinationProperties = GetAllProperties(destinationType);
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
         foreach (var mapFrom in model.MapFromMappings.ToArray())
         {
@@ -1479,7 +1438,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var returnType = sourceMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     var targetTypeName = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                    if (returnType != targetTypeName && !IsAssignableTo(sourceMethod.ReturnType, destProp.Type))
+                    if (returnType != targetTypeName && !sourceMethod.ReturnType.IsAssignableTo(destProp.Type))
                     {
                         return new DiagnosticInfo(
                             Diagnostics.MapFromMethodReturnTypeMismatch,
@@ -1494,13 +1453,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Try as property path
-            var (resolvedType, isValid) = ResolvePropertyPath(sourceType, member);
+            var (resolvedType, isValid) = PropertyPathHelper.ResolvePropertyPath(sourceType, member);
             if (isValid && resolvedType is not null)
             {
                 var returnType = resolvedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var targetTypeName = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                if (returnType != targetTypeName && !IsAssignableTo(resolvedType, destProp.Type))
+                if (returnType != targetTypeName && !resolvedType.IsAssignableTo(destProp.Type))
                 {
                     return new DiagnosticInfo(
                         Diagnostics.MapFromMethodReturnTypeMismatch,
@@ -1523,49 +1482,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static (ITypeSymbol? Type, bool IsValid) ResolvePropertyPath(ITypeSymbol rootType, string path)
-    {
-        var parts = path.Split('.');
-        var currentType = rootType;
-
-        foreach (var part in parts)
-        {
-            if (currentType is null)
-            {
-                return (null, false);
-            }
-
-            var properties = GetAllProperties(currentType);
-            var prop = properties.FirstOrDefault(p => p.Name == part);
-            if (prop is not null)
-            {
-                currentType = prop.Type;
-                continue;
-            }
-
-            // Check for Length/Count on collections/arrays
-            if (part == "Length" && currentType is IArrayTypeSymbol)
-            {
-                // Array.Length returns int
-                return (currentType.ContainingAssembly?.GetTypeByMetadataName("System.Int32"), true);
-            }
-
-            if ((part == "Length" || part == "Count") && currentType is INamedTypeSymbol namedType)
-            {
-                var member = namedType.GetMembers(part).FirstOrDefault();
-                if (member is IPropertySymbol propSymbol)
-                {
-                    currentType = propSymbol.Type;
-                    continue;
-                }
-            }
-
-            return (null, false);
-        }
-
-        return (currentType, true);
-    }
-
     private static DiagnosticInfo? ValidateAndBuildMapCollectionMappings(
         IMethodSymbol mapperMethod,
         MapperMethodModel model,
@@ -1574,8 +1490,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
-        var sourceProperties = GetAllProperties(sourceType);
-        var destinationProperties = GetAllProperties(destinationType);
+        var sourceProperties = sourceType.GetAllPublicInstanceProperties();
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
         foreach (var mapCollection in model.MapCollectionMappings.ToArray())
         {
@@ -1594,8 +1510,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Get element types
-            var sourceElementType = GetCollectionElementType(sourceProp.Type);
-            var targetElementType = GetCollectionElementType(destProp.Type);
+            var sourceElementType = sourceProp.Type.GetCollectionElementType();
+            var targetElementType = destProp.Type.GetCollectionElementType();
 
             if (sourceElementType is null || targetElementType is null)
             {
@@ -1606,7 +1522,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapCollection.SourceElementType = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             mapCollection.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             mapCollection.TargetElementType = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapCollection.IsSourceNullable = IsNullableSymbol(sourceProp.Type);
+            mapCollection.IsSourceNullable = sourceProp.Type.IsNullableSymbol();
             mapCollection.TargetIsArray = destProp.Type is IArrayTypeSymbol;
             mapCollection.TargetCollectionMethod = DetermineCollectionMethod(destProp.Type);
             mapCollection.SourceShape = DetermineSourceShape(sourceProp.Type);
@@ -1643,8 +1559,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
-        var sourceProperties = GetAllProperties(sourceType);
-        var destinationProperties = GetAllProperties(destinationType);
+        var sourceProperties = sourceType.GetAllPublicInstanceProperties();
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
         foreach (var mapNested in model.MapNestedMappings.ToArray())
         {
@@ -1664,7 +1580,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             mapNested.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             mapNested.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapNested.IsSourceNullable = IsNullableSymbol(sourceProp.Type);
+            mapNested.IsSourceNullable = sourceProp.Type.IsNullableSymbol();
 
             // Get the underlying type for nullable reference types
             var sourceUnderlyingType = sourceProp.Type;
@@ -1861,37 +1777,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return CollectionTargetShape.List;
     }
 
-    private static ITypeSymbol? GetCollectionElementType(ITypeSymbol collectionType)
-    {
-        // Handle array types
-        if (collectionType is IArrayTypeSymbol arrayType)
-        {
-            return arrayType.ElementType;
-        }
-
-        // Handle generic types like List<T>, IEnumerable<T>, ICollection<T>, etc.
-        if (collectionType is INamedTypeSymbol namedType && namedType.IsGenericType)
-        {
-            // Check if it implements IEnumerable<T>
-            foreach (var iface in namedType.AllInterfaces)
-            {
-                if (iface.IsGenericType &&
-                    iface.ConstructedFrom.ToDisplayString() == "System.Collections.Generic.IEnumerable<T>")
-                {
-                    return iface.TypeArguments[0];
-                }
-            }
-
-            // Direct generic type like List<T>
-            if (namedType.TypeArguments.Length == 1)
-            {
-                return namedType.TypeArguments[0];
-            }
-        }
-
-        return null;
-    }
-
     private static List<(DiagnosticDescriptor Descriptor, string Arg)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
     {
         var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
@@ -1938,7 +1823,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Warn for every writable destination property that has no mapping at all
-        foreach (var destProp in GetAllProperties(destinationType))
+        foreach (var destProp in destinationType.GetAllPublicInstanceProperties())
         {
             if (destProp.IsReadOnly)
             {
@@ -2045,10 +1930,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // type's name suggests it is user-defined. Re-evaluate here to avoid a false ML0022.
             {
                 var lcTargetType = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-                if (IsStringType(lcTargetType))
+                if (TypeNameHelper.IsStringType(lcTargetType))
                 {
                     var lcSourceType = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
-                    if (!IsBuiltInNumericOrDateType(lcSourceType))
+                    if (!TypeNameHelper.IsBuiltInNumericOrDateType(lcSourceType))
                     {
                         mapping.UseFormattable = true;
                         continue;
@@ -2118,7 +2003,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // Error for every required destination property that has no mapping
-        foreach (var destProp in GetAllProperties(destinationType))
+        foreach (var destProp in destinationType.GetAllPublicInstanceProperties())
         {
             if (!destProp.IsRequired)
             {
@@ -2167,7 +2052,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // - For plain classes, activate only when at least one constructor parameter
         //   has no corresponding settable (non-init-only) property – meaning the value
         //   can only be supplied via the constructor.
-        var allDestProps = GetAllProperties(destinationType);
+        var allDestProps = destinationType.GetAllPublicInstanceProperties();
         var isRecord = namedDest.IsRecord;
 
         var hasConstructorOnlyParams = bestCtor.Parameters.Any(p =>
@@ -2199,7 +2084,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             .ToDictionary(pm => pm.TargetPath, pm => pm.SourcePath, StringComparer.Ordinal);
 
         var nameComparison = (StringComparison)model.NameComparison;
-        var sourceProperties = GetAllProperties(sourceType);
+        var sourceProperties = sourceType.GetAllPublicInstanceProperties();
         var ctorParams = new List<(string ParamName, string SourceExpression)>();
 
         foreach (var param in bestCtor.Parameters)
@@ -2247,8 +2132,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
     {
-        var sourceProperties = GetAllProperties(sourceType);
-        var destinationProperties = GetAllProperties(destinationType);
+        var sourceProperties = sourceType.GetAllPublicInstanceProperties();
+        var destinationProperties = destinationType.GetAllPublicInstanceProperties();
 
         // Separate custom mappings (with dot notation) from simple mappings
         var customMappings = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -2305,7 +2190,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             if (customMappings.TryGetValue(destProp.Name, out var customSourcePath))
             {
                 sourcePropPath = customSourcePath;
-                sourcePropertyType = ResolvePropertyType(sourceType, customSourcePath);
+                sourcePropertyType = PropertyPathHelper.ResolvePropertyType(sourceType, customSourcePath);
 
                 // Preserve converter and condition info from original mapping
                 if (originalMappings.TryGetValue(destProp.Name, out var originalMapping))
@@ -2339,12 +2224,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 var sourceTypeName = sourcePropertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var destTypeName = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var isSourceNullable = IsNullableSymbol(sourcePropertyType);
-                var isTargetNullable = IsNullableSymbol(destProp.Type);
+                var isSourceNullable = sourcePropertyType.IsNullableSymbol();
+                var isTargetNullable = destProp.Type.IsNullableSymbol();
 
                 // Get underlying types for nullable handling
-                var sourceUnderlyingType = GetUnderlyingType(sourcePropertyType);
-                var targetUnderlyingType = GetUnderlyingType(destProp.Type);
+                var sourceUnderlyingType = sourcePropertyType.GetUnderlyingType();
+                var targetUnderlyingType = destProp.Type.GetUnderlyingType();
                 var sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var targetUnderlyingTypeName = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
@@ -2377,8 +2262,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                 // If the underlying types are directly assignable (same type, inheritance, interface),
                 // no conversion is needed even when the string-based names differ.
-                var requiresConversion = RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName, isSourceNullable, isTargetNullable)
-                    && !IsAssignableTo(sourceUnderlyingType, targetUnderlyingType);
+                var requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName)
+                    && !sourceUnderlyingType.IsAssignableTo(targetUnderlyingType);
 
                 var mapping = new PropertyMappingModel
                 {
@@ -2446,8 +2331,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var targetIsEnum = targetUnderlying.TypeKind == TypeKind.Enum;
         var sourceIsString = sourceUnderlying.SpecialType == SpecialType.System_String;
         var targetIsString = targetUnderlying.SpecialType == SpecialType.System_String;
-        var sourceIsNumeric = IsNumericType(sourceUnderlying);
-        var targetIsNumeric = IsNumericType(targetUnderlying);
+        var sourceIsNumeric = sourceUnderlying.IsNumericType();
+        var targetIsNumeric = targetUnderlying.IsNumericType();
 
         if (!sourceIsEnum && !targetIsEnum)
         {
@@ -2521,58 +2406,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
-    private static bool IsNumericType(ITypeSymbol type)
-    {
-        return type.SpecialType is
-            SpecialType.System_Byte or
-            SpecialType.System_SByte or
-            SpecialType.System_Int16 or
-            SpecialType.System_UInt16 or
-            SpecialType.System_Int32 or
-            SpecialType.System_UInt32 or
-            SpecialType.System_Int64 or
-            SpecialType.System_UInt64;
-    }
-
-    private static ITypeSymbol GetUnderlyingType(ITypeSymbol type)
-    {
-        // For Nullable<T> value types, return T
-        if (type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
-            type is INamedTypeSymbol namedType &&
-            namedType.TypeArguments.Length == 1)
-        {
-            return namedType.TypeArguments[0];
-        }
-
-        // For nullable reference types, return the underlying type
-        if (type.NullableAnnotation == NullableAnnotation.Annotated &&
-            type is INamedTypeSymbol refType)
-        {
-            return refType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
-        }
-
-        // Not nullable, return as-is
-        return type;
-    }
-
-    private static bool IsNullableSymbol(ITypeSymbol type)
-    {
-        // Check for nullable reference type
-        if (type.NullableAnnotation == NullableAnnotation.Annotated)
-        {
-            return true;
-        }
-
-        // Check for Nullable<T> value type
-        if (type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-        {
-            return true;
-        }
-
-
-        return false;
-    }
-
     private static void ResolveNestedMapping(PropertyMappingModel mapping, ITypeSymbol sourceType, ITypeSymbol destinationType)
     {
         // Resolve source path segments and check for nullable intermediate types
@@ -2589,10 +2422,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var part = sourceParts[i];
                 pathBuilder.Add(part);
 
-                var prop = GetAllProperties(currentType).FirstOrDefault(p => p.Name == part);
+                var prop = currentType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == part);
                 if (prop is not null)
                 {
-                    var isNullable = IsNullableSymbol(prop.Type);
+                    var isNullable = prop.Type.IsNullableSymbol();
                     sourceSegments.Add(new NestedPathSegment
                     {
                         Path = string.Join(".", pathBuilder),
@@ -2605,24 +2438,24 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapping.SourcePathSegments = new EquatableArray<NestedPathSegment>([.. sourceSegments]);
 
             // Get the final property type
-            var finalSourceProp = GetAllProperties(currentType).FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
+            var finalSourceProp = currentType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
             if (finalSourceProp is not null)
             {
                 mapping.SourceType = finalSourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                mapping.IsSourceNullable = IsNullableSymbol(finalSourceProp.Type);
-                var sourceUnderlyingType = GetUnderlyingType(finalSourceProp.Type);
+                mapping.IsSourceNullable = finalSourceProp.Type.IsNullableSymbol();
+                var sourceUnderlyingType = finalSourceProp.Type.GetUnderlyingType();
                 mapping.SourceUnderlyingType = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
         else
         {
             // Simple source path
-            var sourceProp = GetAllProperties(sourceType).FirstOrDefault(p => p.Name == mapping.SourcePath);
+            var sourceProp = sourceType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == mapping.SourcePath);
             if (sourceProp is not null)
             {
                 mapping.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                mapping.IsSourceNullable = IsNullableSymbol(sourceProp.Type);
-                var sourceUnderlyingType = GetUnderlyingType(sourceProp.Type);
+                mapping.IsSourceNullable = sourceProp.Type.IsNullableSymbol();
+                var sourceUnderlyingType = sourceProp.Type.GetUnderlyingType();
                 mapping.SourceUnderlyingType = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
@@ -2641,7 +2474,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 var part = targetParts[i];
                 pathBuilder.Add(part);
 
-                var prop = GetAllProperties(currentTargetType).FirstOrDefault(p => p.Name == part);
+                var prop = currentTargetType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == part);
                 if (prop is not null)
                 {
                     targetSegments.Add(new NestedPathSegment
@@ -2655,24 +2488,24 @@ public sealed class MapperGenerator : IIncrementalGenerator
             mapping.TargetPathSegments = new EquatableArray<NestedPathSegment>([.. targetSegments]);
 
             // Get the final property type
-            var finalProp = GetAllProperties(currentTargetType).FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
+            var finalProp = currentTargetType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
             if (finalProp is not null)
             {
                 mapping.TargetType = finalProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                mapping.IsTargetNullable = IsNullableSymbol(finalProp.Type);
-                var targetUnderlyingType = GetUnderlyingType(finalProp.Type);
+                mapping.IsTargetNullable = finalProp.Type.IsNullableSymbol();
+                var targetUnderlyingType = finalProp.Type.GetUnderlyingType();
                 mapping.TargetUnderlyingType = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
         else
         {
             // Simple target, just get its type
-            var destProp = GetAllProperties(destinationType).FirstOrDefault(p => p.Name == mapping.TargetPath);
+            var destProp = destinationType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == mapping.TargetPath);
             if (destProp is not null)
             {
                 mapping.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                mapping.IsTargetNullable = IsNullableSymbol(destProp.Type);
-                var targetUnderlyingType = GetUnderlyingType(destProp.Type);
+                mapping.IsTargetNullable = destProp.Type.IsNullableSymbol();
+                var targetUnderlyingType = destProp.Type.GetUnderlyingType();
                 mapping.TargetUnderlyingType = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
@@ -2684,149 +2517,18 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Re-resolve underlying type symbols for assignability check
             var srcParts = mapping.SourcePath.Split('.');
             var dstParts = mapping.TargetPath.Split('.');
-            var srcFinalProp = ResolvePropertySymbol(sourceType, srcParts);
-            var dstFinalProp = ResolvePropertySymbol(destinationType, dstParts);
-            var srcUnderlying = srcFinalProp is not null ? GetUnderlyingType(srcFinalProp.Type) : null;
-            var dstUnderlying = dstFinalProp is not null ? GetUnderlyingType(dstFinalProp.Type) : null;
-            var assignable = srcUnderlying is not null && dstUnderlying is not null && IsAssignableTo(srcUnderlying, dstUnderlying);
+            var srcFinalProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts);
+            var dstFinalProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, dstParts);
+            var srcUnderlying = srcFinalProp is not null ? srcFinalProp.Type.GetUnderlyingType() : null;
+            var dstUnderlying = dstFinalProp is not null ? dstFinalProp.Type.GetUnderlyingType() : null;
+            var assignable = srcUnderlying is not null && dstUnderlying is not null && srcUnderlying.IsAssignableTo(dstUnderlying);
             mapping.RequiresConversion = !assignable &&
-                RequiresTypeConversion(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType, mapping.IsSourceNullable, mapping.IsTargetNullable);
+                TypeNameHelper.RequiresTypeConversion(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType);
         }
         else if (!string.IsNullOrEmpty(mapping.SourceType) && !string.IsNullOrEmpty(mapping.TargetType))
         {
-            mapping.RequiresConversion = RequiresTypeConversion(mapping.SourceType, mapping.TargetType, mapping.IsSourceNullable, mapping.IsTargetNullable);
+            mapping.RequiresConversion = TypeNameHelper.RequiresTypeConversion(mapping.SourceType, mapping.TargetType);
         }
-    }
-
-    // Resolve the IPropertySymbol at the end of a dotted path (e.g. "A.B.C") rooted at rootType.
-    private static IPropertySymbol? ResolvePropertySymbol(ITypeSymbol rootType, string[] parts)
-    {
-        var current = rootType;
-        IPropertySymbol? prop = null;
-        foreach (var part in parts)
-        {
-            prop = GetAllProperties(current).FirstOrDefault(p => p.Name == part);
-            if (prop is null) return null;
-            current = prop.Type;
-        }
-        return prop;
-    }
-
-    private static bool RequiresTypeConversion(string sourceType, string targetType, bool isSourceNullable, bool isTargetNullable)
-    {
-        // Normalize type names
-        var normalizedSource = NormalizeTypeName(sourceType);
-        var normalizedTarget = NormalizeTypeName(targetType);
-
-        // Same type - no conversion needed
-        if (normalizedSource == normalizedTarget)
-        {
-            return false;
-        }
-
-        // Check for implicit numeric widening conversions (no explicit conversion needed)
-        if (IsImplicitNumericConversion(normalizedSource, normalizedTarget))
-        {
-            return false;
-        }
-
-        // All other cases require conversion
-        return true;
-    }
-
-    private static bool IsImplicitNumericConversion(string sourceType, string targetType)
-    {
-        // Implicit numeric conversions in C#
-        // sbyte -> short, int, long, float, double, decimal
-        // byte -> short, ushort, int, uint, long, ulong, float, double, decimal
-        // short -> int, long, float, double, decimal
-        // ushort -> int, uint, long, ulong, float, double, decimal
-        // int -> long, float, double, decimal
-        // uint -> long, ulong, float, double, decimal
-        // long -> float, double, decimal
-        // ulong -> float, double, decimal
-        // float -> double
-        // char -> ushort, int, uint, long, ulong, float, double, decimal
-
-        return sourceType switch
-        {
-            "sbyte" or "SByte" => targetType is "short" or "Int16" or "int" or "Int32" or "long" or "Int64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "byte" or "Byte" => targetType is "short" or "Int16" or "ushort" or "UInt16"
-                or "int" or "Int32" or "uint" or "UInt32" or "long" or "Int64" or "ulong" or "UInt64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "short" or "Int16" => targetType is "int" or "Int32" or "long" or "Int64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "ushort" or "UInt16" => targetType is "int" or "Int32" or "uint" or "UInt32"
-                or "long" or "Int64" or "ulong" or "UInt64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "int" or "Int32" => targetType is "long" or "Int64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "uint" or "UInt32" => targetType is "long" or "Int64" or "ulong" or "UInt64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "long" or "Int64" => targetType is "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "ulong" or "UInt64" => targetType is "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            "float" or "Single" => targetType is "double" or "Double",
-            "char" or "Char" => targetType is "ushort" or "UInt16" or "int" or "Int32" or "uint" or "UInt32"
-                or "long" or "Int64" or "ulong" or "UInt64"
-                or "float" or "Single" or "double" or "Double" or "decimal" or "Decimal",
-            _ => false
-        };
-    }
-
-    private static string NormalizeTypeName(string typeName)
-    {
-        // Remove global:: prefix and System. prefix for comparison
-        var normalized = typeName
-            .Replace("global::", string.Empty)
-            .Replace("System.", string.Empty);
-
-        // Handle nullable types
-        if (normalized.EndsWith("?", StringComparison.Ordinal))
-        {
-            normalized = normalized.TrimEnd('?');
-        }
-        if (normalized.StartsWith("Nullable<", StringComparison.Ordinal) && normalized.EndsWith(">", StringComparison.Ordinal))
-        {
-            normalized = normalized.Substring(9, normalized.Length - 10);
-        }
-
-        return normalized;
-    }
-
-    private static ITypeSymbol? ResolvePropertyType(ITypeSymbol type, string path)
-    {
-        var parts = path.Split('.');
-        var currentType = type;
-
-        foreach (var part in parts)
-        {
-            var prop = GetAllProperties(currentType).FirstOrDefault(p => p.Name == part);
-            if (prop is null)
-            {
-                return null;
-            }
-            currentType = prop.Type;
-        }
-
-        return currentType;
-    }
-
-    private static List<IPropertySymbol> GetAllProperties(ITypeSymbol type)
-    {
-        var properties = new List<IPropertySymbol>();
-        var currentType = type;
-
-        while (currentType is not null)
-        {
-            properties.AddRange(currentType.GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(p => !p.IsStatic && p.DeclaredAccessibility == Accessibility.Public));
-
-            currentType = currentType.BaseType;
-        }
-
-        return properties;
     }
 
     // ------------------------------------------------------------
@@ -3303,7 +3005,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.Indent().Append("((").Append(iCollectionType).Append(")").Append(destAccess).Append(").Clear();").NewLine();
 
         // Source iteration - optimized by source shape
-        EmitInPlaceSourceIteration(builder, mapCollection, method, destVarName, sourceAccess, iCollectionType);
+        EmitInPlaceSourceIteration(builder, mapCollection, destVarName, sourceAccess, iCollectionType);
 
         if (mapCollection.IsSourceNullable)
         {
@@ -3314,7 +3016,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void EmitInPlaceSourceIteration(
         SourceBuilder builder,
         MapCollectionModel mapCollection,
-        MapperMethodModel method,
         string destVarName,
         string sourceAccess,
         string iCollectionType)
@@ -4195,15 +3896,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         // Pick the appropriate format string based on which types are involved
         // DateTime-family types use DateTimeFormat, numeric types use NumberFormat
-        var isDateTimeFamily = IsDateTimeType(mapping.SourceUnderlyingType) || IsDateTimeType(mapping.TargetUnderlyingType);
+        var isDateTimeFamily = TypeNameHelper.IsDateTimeType(mapping.SourceUnderlyingType) || TypeNameHelper.IsDateTimeType(mapping.TargetUnderlyingType);
         var format = isDateTimeFamily ? mapping.EffectiveDateTimeFormat : mapping.EffectiveNumberFormat;
         return format is null ? ", null" : $", \"{format}\"";
     }
-
-    private static bool IsDateTimeType(string typeName) =>
-        typeName is "global::System.DateTime" or "global::System.DateOnly" or
-                    "global::System.TimeOnly" or "global::System.DateTimeOffset" or
-                    "global::System.TimeSpan";
 
     private static void BuildEnumConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceExpr)
     {
@@ -4312,93 +4008,30 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             // Resolve destination ITypeSymbol — try user's assembly first, then references
             var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-            var targetTypeSymbol = ResolveTypeSymbol(mapperMethod, targetTypeName);
+            var targetTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(targetTypeName);
             if (targetTypeSymbol is null)
             {
                 continue;
             }
 
             // ISpanParsable<T> takes priority over IParsable<T>
-            if (spanParsableSymbol is not null && ImplementsGenericInterface(targetTypeSymbol, spanParsableSymbol))
+            if (spanParsableSymbol is not null && targetTypeSymbol.ImplementsGenericInterface(spanParsableSymbol))
             {
                 mapping.ParseMethod = ParseMethodKind.ISpanParsable;
             }
-            else if (spanParsableSymbol is null && ImplementsInterfaceByName(targetTypeSymbol, "System.ISpanParsable`1"))
+            else if (spanParsableSymbol is null && targetTypeSymbol.ImplementsInterfaceByName("System.ISpanParsable`1"))
             {
                 mapping.ParseMethod = ParseMethodKind.ISpanParsable;
             }
-            else if (parsableSymbol is not null && ImplementsGenericInterface(targetTypeSymbol, parsableSymbol))
+            else if (parsableSymbol is not null && targetTypeSymbol.ImplementsGenericInterface(parsableSymbol))
             {
                 mapping.ParseMethod = ParseMethodKind.IParsable;
             }
-            else if (ImplementsInterfaceByName(targetTypeSymbol, "System.IParsable`1"))
+            else if (targetTypeSymbol.ImplementsInterfaceByName("System.IParsable`1"))
             {
                 mapping.ParseMethod = ParseMethodKind.IParsable;
             }
         }
-    }
-
-    private static bool ImplementsGenericInterface(ITypeSymbol typeSymbol, INamedTypeSymbol genericInterfaceDefinition) =>
-        typeSymbol.AllInterfaces.Any(i =>
-            SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericInterfaceDefinition));
-
-    private static bool ImplementsInterfaceByName(ITypeSymbol typeSymbol, string metadataName) =>
-        typeSymbol.AllInterfaces.Any(i =>
-            i.OriginalDefinition.ToDisplayString() == metadataName ||
-            i.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == $"global::{metadataName}" ||
-            i.OriginalDefinition.MetadataName == metadataName.Split('.').Last());
-
-    /// <summary>
-    /// Returns true when the type name represents <see cref="System.String"/>,
-    /// handling both the alias form ("string") and the fully-qualified form.
-    /// </summary>
-    private static bool IsStringType(string typeName) =>
-        typeName is "string" or "global::System.String" or "global::System.String?";
-
-    /// <summary>
-    /// Returns true when the fully-qualified type name is one of the built-in numeric or date/time types
-    /// that <see cref="DefaultValueConverter"/> has specialised overloads for.
-    /// </summary>
-    private static bool IsBuiltInNumericOrDateType(string typeName) =>
-        typeName is
-            "global::System.SByte"   or "global::System.Byte"
-         or "global::System.Int16"   or "global::System.UInt16"
-         or "global::System.Int32"   or "global::System.UInt32"
-         or "global::System.Int64"   or "global::System.UInt64"
-         or "global::System.Single"  or "global::System.Double"
-         or "global::System.Decimal" or "global::System.Boolean"
-         or "global::System.DateTime" or "global::System.Guid"
-         or "global::System.DateOnly" or "global::System.TimeOnly"
-         or "global::System.DateTimeOffset" or "global::System.TimeSpan"
-         or "global::System.Half"    or "global::System.Int128"
-         or "global::System.UInt128" or "global::System.Numerics.BigInteger"
-         // alias forms
-         or "sbyte" or "byte" or "short" or "ushort" or "int" or "uint"
-         or "long" or "ulong" or "float" or "double" or "decimal" or "bool";
-
-    private static ITypeSymbol? ResolveTypeSymbol(IMethodSymbol mapperMethod, string fullyQualifiedName)
-    {
-        // Strip "global::" prefix
-        var typeName = fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal)
-            ? fullyQualifiedName.Substring("global::".Length)
-            : fullyQualifiedName;
-
-        var type = mapperMethod.ContainingAssembly.GetTypeByMetadataName(typeName);
-        if (type is not null)
-        {
-            return type;
-        }
-
-        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
-        {
-            type = reference.GetTypeByMetadataName(typeName);
-            if (type is not null)
-            {
-                return type;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -4431,11 +4064,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // which avoids string-based assembly lookup failures for user-defined types.
             var srcParts = mapping.SourcePath.Split('.');
             var dstParts = mapping.TargetPath.Split('.');
-            var srcProp = ResolvePropertySymbol(sourceType, srcParts);
-            var dstProp = ResolvePropertySymbol(destinationType, dstParts);
+            var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts);
+            var dstProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, dstParts);
 
-            ITypeSymbol? sourceTypeSymbol = srcProp is not null ? GetUnderlyingType(srcProp.Type) : null;
-            ITypeSymbol? targetTypeSymbol = dstProp is not null ? GetUnderlyingType(dstProp.Type) : null;
+            var sourceTypeSymbol = srcProp is not null ? srcProp.Type.GetUnderlyingType() : null;
+            var targetTypeSymbol = dstProp is not null ? dstProp.Type.GetUnderlyingType() : null;
 
             // Fall back to string-based resolution if property symbols are not available
             // (e.g., for MapFrom / computed paths).
@@ -4443,8 +4076,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
                 var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-                sourceTypeSymbol ??= ResolveTypeSymbol(mapperMethod, sourceTypeName);
-                targetTypeSymbol ??= ResolveTypeSymbol(mapperMethod, targetTypeName);
+                sourceTypeSymbol ??= mapperMethod.FindTypeByFullyQualifiedName(sourceTypeName);
+                targetTypeSymbol ??= mapperMethod.FindTypeByFullyQualifiedName(targetTypeName);
             }
 
             if (sourceTypeSymbol is null || targetTypeSymbol is null)
@@ -4453,7 +4086,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Check for op_Implicit first (higher priority than op_Explicit).
-            if (FindUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: true))
+            if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: true))
             {
                 mapping.UserDefinedConversion = UserDefinedConversionKind.Implicit;
                 // Implicit operator: C# compiler emits plain assignment for non-nullable source.
@@ -4463,44 +4096,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     mapping.RequiresConversion = false;
                 }
             }
-            else if (FindUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: false))
+            else if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: false))
             {
                 mapping.UserDefinedConversion = UserDefinedConversionKind.Explicit;
                 // Explicit operator: keep RequiresConversion = true so BuildTypeConversion is reached.
             }
         }
-    }
-
-    /// <summary>
-    /// Returns true if a user-defined conversion operator exists that converts
-    /// <paramref name="sourceType"/> to <paramref name="targetType"/>.
-    /// Searches both the source type and the target type for the operator definition.
-    /// </summary>
-    private static bool FindUserDefinedConversion(ITypeSymbol sourceType, ITypeSymbol targetType, bool isImplicit)
-    {
-        var operatorName = isImplicit
-            ? WellKnownMemberNames.ImplicitConversionName   // "op_Implicit"
-            : WellKnownMemberNames.ExplicitConversionName;  // "op_Explicit"
-
-        foreach (var declaringType in new[] { sourceType, targetType })
-        {
-            foreach (var member in declaringType.GetMembers(operatorName).OfType<IMethodSymbol>())
-            {
-                if (member.MethodKind != MethodKind.Conversion || !member.IsStatic)
-                {
-                    continue;
-                }
-
-                if (member.Parameters.Length == 1 &&
-                    SymbolEqualityComparer.Default.Equals(member.Parameters[0].Type, sourceType) &&
-                    SymbolEqualityComparer.Default.Equals(member.ReturnType, targetType))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -4535,7 +4136,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             // Only applies to T -> string conversions.
             var targetType = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-            if (!IsStringType(targetType))
+            if (!TypeNameHelper.IsStringType(targetType))
             {
                 continue;
             }
@@ -4560,14 +4161,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             // Resolve the source type symbol directly from the property to handle user-defined types.
             var srcParts = mapping.SourcePath.Split('.');
-            var srcProp = ResolvePropertySymbol(sourceType, srcParts);
-            ITypeSymbol? sourceTypeSymbol = srcProp is not null ? GetUnderlyingType(srcProp.Type) : null;
+            var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts);
+            var sourceTypeSymbol = srcProp is not null ? srcProp.Type.GetUnderlyingType() : null;
 
             // Fall back to string-based resolution.
             if (sourceTypeSymbol is null)
             {
                 var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
-                sourceTypeSymbol = ResolveTypeSymbol(mapperMethod, sourceTypeName);
+                sourceTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(sourceTypeName);
             }
 
             if (sourceTypeSymbol is null)
@@ -4579,13 +4180,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 ? sourceTypeSymbol.AllInterfaces.Any(i =>
                     SymbolEqualityComparer.Default.Equals(i, formattableSymbol) ||
                     SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, formattableSymbol))
-                : ImplementsInterfaceByName(sourceTypeSymbol, "System.IFormattable");
+                : sourceTypeSymbol.ImplementsInterfaceByName("System.IFormattable");
 
             // Always also try name-based fallback to guard against symbol-equality mismatches
             // across compilation boundaries (e.g., multi-targeting / netstandard ref assemblies).
             if (!implementsFormattable)
             {
-                implementsFormattable = ImplementsInterfaceByName(sourceTypeSymbol, "System.IFormattable");
+                implementsFormattable = sourceTypeSymbol.ImplementsInterfaceByName("System.IFormattable");
             }
 
             if (implementsFormattable)
@@ -4593,51 +4194,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 mapping.UseFormattable = true;
             }
         }
-    }
-
-    /// <summary>
-    /// Returns true when source and target are both built-in numeric types and the conversion
-    /// is NOT a widening implicit conversion — i.e., an explicit narrowing or sign-changing cast is needed.
-    /// </summary>
-    private static bool IsExplicitNumericConversion(string sourceType, string targetType)
-    {
-        static bool IsNumeric(string t) =>
-            t is "sbyte" or "SByte" or "global::System.SByte"
-              or "byte" or "Byte" or "global::System.Byte"
-              or "short" or "Int16" or "global::System.Int16"
-              or "ushort" or "UInt16" or "global::System.UInt16"
-              or "int" or "Int32" or "global::System.Int32"
-              or "uint" or "UInt32" or "global::System.UInt32"
-              or "long" or "Int64" or "global::System.Int64"
-              or "ulong" or "UInt64" or "global::System.UInt64"
-              or "float" or "Single" or "global::System.Single"
-              or "double" or "Double" or "global::System.Double"
-              or "decimal" or "Decimal" or "global::System.Decimal"
-              or "char" or "Char" or "global::System.Char"
-              or "Half" or "global::System.Half"
-              or "Int128" or "global::System.Int128"
-              or "UInt128" or "global::System.UInt128";
-
-        if (!IsNumeric(sourceType) || !IsNumeric(targetType))
-        {
-            return false;
-        }
-
-        var normalizedSource = NormalizeTypeName(sourceType);
-        var normalizedTarget = NormalizeTypeName(targetType);
-
-        if (normalizedSource == normalizedTarget)
-        {
-            return false;
-        }
-
-        // If it is already covered by widening implicit numeric conversion, it is not an explicit cast.
-        if (IsImplicitNumericConversion(normalizedSource, normalizedTarget))
-        {
-            return false;
-        }
-
-        return true;
     }
 
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
@@ -4681,7 +4237,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var sourceTypeForLookup = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
             var targetTypeForLookup = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
 
-            var targetSimpleName = GetSimpleTypeName(targetTypeForLookup);
+            var targetSimpleName = TypeNameHelper.GetSimpleTypeName(targetTypeForLookup);
             var specializedMethodName = $"{methodPrefix}To{targetSimpleName}";
 
             var specializedMethod = FindSpecializedMethod(
@@ -4735,7 +4291,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         string targetType)
     {
         // Get the simple source type name for parameter matching
-        var sourceSimpleName = GetSimpleTypeName(sourceType);
+        var sourceSimpleName = TypeNameHelper.GetSimpleTypeName(sourceType);
 
         var methods = converterType.GetMembers(methodName)
             .OfType<IMethodSymbol>()
@@ -4756,67 +4312,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         return null;
-    }
-
-    private static string GetSimpleTypeName(string fullyQualifiedTypeName)
-    {
-        // Extract simple type name from fully qualified name
-        // e.g., "global::System.Int32" -> "Int32", "int" -> "Int32", "string" -> "String"
-
-        // Handle aliases
-        var typeName = fullyQualifiedTypeName switch
-        {
-            "int" => "Int32",
-            "global::System.Int32" => "Int32",
-            "long" => "Int64",
-            "global::System.Int64" => "Int64",
-            "short" => "Int16",
-            "global::System.Int16" => "Int16",
-            "byte" => "Byte",
-            "global::System.Byte" => "Byte",
-            "sbyte" => "SByte",
-            "global::System.SByte" => "SByte",
-            "uint" => "UInt32",
-            "global::System.UInt32" => "UInt32",
-            "ulong" => "UInt64",
-            "global::System.UInt64" => "UInt64",
-            "ushort" => "UInt16",
-            "global::System.UInt16" => "UInt16",
-            "float" => "Single",
-            "global::System.Single" => "Single",
-            "double" => "Double",
-            "global::System.Double" => "Double",
-            "decimal" => "Decimal",
-            "global::System.Decimal" => "Decimal",
-            "bool" => "Boolean",
-            "global::System.Boolean" => "Boolean",
-            "string" => "String",
-            "global::System.String" => "String",
-            "global::System.DateTime" => "DateTime",
-            "global::System.Guid" => "Guid",
-            _ => ExtractLastSegment(fullyQualifiedTypeName)
-        };
-
-        return typeName;
-    }
-
-    private static string ExtractLastSegment(string fullyQualifiedTypeName)
-    {
-        // Remove "global::" prefix if present
-        var name = fullyQualifiedTypeName;
-        if (name.StartsWith("global::", StringComparison.Ordinal))
-        {
-            name = name.Substring("global::".Length);
-        }
-
-        // Get the last segment after the last dot
-        var lastDot = name.LastIndexOf('.');
-        if (lastDot >= 0)
-        {
-            return name.Substring(lastDot + 1);
-        }
-
-        return name;
     }
 
     // ------------------------------------------------------------

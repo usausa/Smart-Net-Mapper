@@ -179,4 +179,12 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor InvalidConverterReturnType { get; } = new(
+        id: "ML0023",
+        title: "Invalid Converter return type",
+        messageFormat: "Converter method parameter types match but return type does not match target property type. [{0}]",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

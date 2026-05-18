@@ -29,6 +29,21 @@ internal enum EnumMappingKind
 }
 
 /// <summary>
+/// Represents the kind of user-defined conversion operator to apply.
+/// </summary>
+internal enum UserDefinedConversionKind
+{
+    /// <summary>No user-defined conversion.</summary>
+    None = 0,
+
+    /// <summary>Implicit conversion operator (op_Implicit) — generates plain assignment.</summary>
+    Implicit = 1,
+
+    /// <summary>Explicit conversion operator (op_Explicit) — generates cast expression.</summary>
+    Explicit = 2,
+}
+
+/// <summary>
 /// Represents the kind of IParsable / ISpanParsable parse method to use.
 /// </summary>
 internal enum ParseMethodKind
@@ -254,6 +269,30 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     public bool HasCulture => !string.IsNullOrEmpty(EffectiveCulture);
 
     /// <summary>
+    /// Gets or sets the kind of user-defined conversion operator detected for this mapping.
+    /// Implicit: op_Implicit found — RequiresConversion is set to false (plain assignment).
+    /// Explicit: op_Explicit found — generates (TargetType)source.X cast.
+    /// </summary>
+    public UserDefinedConversionKind UserDefinedConversion { get; set; } = UserDefinedConversionKind.None;
+
+    /// <summary>
+    /// Gets a value indicating whether a user-defined explicit conversion operator applies.
+    /// </summary>
+    public bool HasUserDefinedExplicit => UserDefinedConversion == UserDefinedConversionKind.Explicit;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether an explicit numeric narrowing/sign-changing cast is required.
+    /// E.g. int -> short, long -> int, int -> uint, double -> int.
+    /// </summary>
+    public bool RequiresExplicitNumericCast { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether IFormattable.ToString(format, culture) should be used
+    /// for T -> string conversion when a Culture or Format is specified.
+    /// </summary>
+    public bool UseFormattable { get; set; }
+
+    /// <summary>
     /// Gets or sets the kind of enum conversion to apply.
     /// </summary>
     public EnumMappingKind EnumMappingKind { get; set; } = EnumMappingKind.None;
@@ -316,6 +355,9 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
                SpecializedConverterMethod == other.SpecializedConverterMethod &&
                NullSubstitute == other.NullSubstitute &&
                EnumMappingKind == other.EnumMappingKind &&
+               UserDefinedConversion == other.UserDefinedConversion &&
+               RequiresExplicitNumericCast == other.RequiresExplicitNumericCast &&
+               UseFormattable == other.UseFormattable &&
                TargetPathSegments.SequenceEqual(other.TargetPathSegments) &&
                SourcePathSegments.SequenceEqual(other.SourcePathSegments);
     }
@@ -344,6 +386,9 @@ internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
             hash = (hash * 31) + (SpecializedConverterMethod?.GetHashCode() ?? 0);
             hash = (hash * 31) + (NullSubstitute?.GetHashCode() ?? 0);
             hash = (hash * 31) + EnumMappingKind.GetHashCode();
+            hash = (hash * 31) + UserDefinedConversion.GetHashCode();
+            hash = (hash * 31) + RequiresExplicitNumericCast.GetHashCode();
+            hash = (hash * 31) + UseFormattable.GetHashCode();
             return hash;
         }
     }

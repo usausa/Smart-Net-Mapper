@@ -191,6 +191,28 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Detect IParsable<T> / ISpanParsable<T> parse methods (B3)
         DetectParsableMethods(model, symbol);
 
+        // Detect user-defined implicit/explicit conversion operators (#5 / #7)
+        DetectUserDefinedConversions(model, symbol, sourceType, destinationType);
+
+        // Detect IFormattable-based T -> string conversion (#10)
+        DetectFormattableMethod(model, symbol, sourceType);
+
+        // Set RequiresExplicitNumericCast (#4b) for numeric narrowing/sign-change pairs
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (mapping.RequiresConversion && !mapping.IsEnumMapping && !mapping.HasConverter &&
+                !mapping.HasSpecializedConverter && !mapping.HasParsableMethod &&
+                !mapping.HasUserDefinedExplicit && !mapping.UseFormattable)
+            {
+                var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+                var effectiveDest = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+                if (IsExplicitNumericConversion(effectiveSource, effectiveDest))
+                {
+                    mapping.RequiresExplicitNumericCast = true;
+                }
+            }
+        }
+
         // Validate Converter methods if specified
         var converterError = ValidateConverterMethods(symbol, model, syntax);
         if (converterError is not null)
@@ -377,6 +399,21 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 .ToList();
 
             var matchResult = FindMatchingConverterMethod(converterMethods, mapping, model);
+            if (matchResult == ConverterMatchResult.ReturnTypeMismatch)
+            {
+                // Find the actual return type for the error message.
+                var actualReturnType = converterMethods
+                    .Where(m => m.Parameters.Length >= 1 &&
+                           m.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == mapping.SourceType)
+                    .Select(m => m.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
+                    .FirstOrDefault() ?? "?";
+
+                return new DiagnosticInfo(
+                    Diagnostics.InvalidConverterReturnType,
+                    syntax.GetLocation(),
+                    $"{mapping.ConverterMethod}, expected={mapping.TargetType}, actual={actualReturnType}, {mapping.SourcePath} -> {mapping.TargetPath}");
+            }
+
             if (matchResult == ConverterMatchResult.NoMatch)
             {
                 return new DiagnosticInfo(
@@ -395,19 +432,22 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         NoMatch,
         MatchWithoutCustomParams,
-        MatchWithCustomParams
+        MatchWithCustomParams,
+        ReturnTypeMismatch
     }
 
     private static ConverterMatchResult FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
+        var hasReturnTypeMismatch = false;
         var sourceType = mapping.SourceType;
+        var targetType = mapping.TargetType;
 
         foreach (var method in candidates)
         {
-            // Return type must match target type (or be assignable)
-            //var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var returnTypeMatches = returnType == targetType;
 
             // Check for match with custom parameters: (SourceType, customParams...)
             if (model.CustomParameters.Count > 0 &&
@@ -427,7 +467,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                 if (sourceMatch && customParamsMatch)
                 {
-                    hasMatchWithCustomParams = true;
+                    if (returnTypeMatches)
+                    {
+                        hasMatchWithCustomParams = true;
+                    }
+                    else
+                    {
+                        hasReturnTypeMismatch = true;
+                    }
                 }
             }
 
@@ -438,7 +485,14 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                 if (sourceMatch)
                 {
-                    hasMatchWithoutCustomParams = true;
+                    if (returnTypeMatches)
+                    {
+                        hasMatchWithoutCustomParams = true;
+                    }
+                    else
+                    {
+                        hasReturnTypeMismatch = true;
+                    }
                 }
             }
         }
@@ -452,6 +506,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         if (hasMatchWithoutCustomParams)
         {
             return ConverterMatchResult.MatchWithoutCustomParams;
+        }
+
+        // If source params match but return type does not, report the specific error.
+        if (hasReturnTypeMismatch)
+        {
+            return ConverterMatchResult.ReturnTypeMismatch;
         }
 
         return ConverterMatchResult.NoMatch;
@@ -1890,12 +1950,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
-        // Reject property mappings that would emit Convert<TSource,TDest>() for a type pair that is
-        // NOT covered by the explicit branches inside DefaultValueConverter.Convert<T,U>.
-        // Numeric ↔ numeric, string ↔ numeric/bool/DateTime/Guid, bool/DateTime/Guid → string
-        // are all handled via static if-branches inside Convert<T,U> and are therefore safe.
-        // Unknown custom-type pairs would fall through to "(TDestination)(object)source!" at runtime
-        // causing InvalidCastException — those are always rejected at compile time.
+        // If the user explicitly specified a mapper-level converter type, the generic Convert<T,U>
+        // fallback is intentional — skip the entire validation.
+        if (model.MapConverterTypeName is not null)
+        {
+            return null;
+        }
+
         foreach (var mapping in model.PropertyMappings)
         {
             // Skip properties that have a custom converter method.
@@ -1904,22 +1965,68 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // Skip mappings handled by enum-specific code paths.
+            // Skip mappings that do not require any conversion at all (#3 direct assignment, #4/#5 implicit).
+            if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Skip mappings handled by enum-specific code paths (#6).
             if (mapping.IsEnumMapping)
             {
                 continue;
             }
 
-            // Skip mappings that have a specialized converter method.
+            // Skip mappings handled by a specialized converter method (#8).
             if (mapping.HasSpecializedConverter)
             {
                 continue;
             }
 
-            // Skip mappings handled by IParsable<T> / ISpanParsable<T> (B3).
+            // Skip mappings handled by IParsable<T> / ISpanParsable<T> (#9).
             if (mapping.HasParsableMethod)
             {
                 continue;
+            }
+
+            // Skip mappings handled by explicit numeric cast (#4b).
+            if (mapping.RequiresExplicitNumericCast)
+            {
+                continue;
+            }
+
+            // Skip mappings handled by user-defined op_Implicit (#6) — including nullable source case.
+            if (mapping.UserDefinedConversion == UserDefinedConversionKind.Implicit)
+            {
+                continue;
+            }
+
+            // Skip mappings handled by user-defined op_Explicit (#7).
+            if (mapping.HasUserDefinedExplicit)
+            {
+                continue;
+            }
+
+            // Skip mappings handled by IFormattable (#10).
+            if (mapping.UseFormattable)
+            {
+                continue;
+            }
+
+            // Last-chance IFormattable check: DetectFormattableMethod may not have run (or may have
+            // been unable to resolve the type symbol) when culture/format is specified and the source
+            // type's name suggests it is user-defined. Re-evaluate here to avoid a false ML0022.
+            {
+                var lcTargetType = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+                if (IsStringType(lcTargetType))
+                {
+                    var lcSourceType = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+                    if (!IsBuiltInNumericOrDateType(lcSourceType))
+                    {
+                        mapping.UseFormattable = true;
+                        continue;
+                    }
+                }
             }
 
             var effectiveSource = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
@@ -1931,44 +2038,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // Skip type pairs that DefaultValueConverter.Convert<T,U> handles with explicit static
-            // branches (numeric ↔ numeric, string ↔ primitive, primitive → string).
-            if (IsKnownConverterTypePair(effectiveSource, effectiveDest))
-            {
-                continue;
-            }
-
+            // None of the conversion rules matched — reject.
             return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), mapping.TargetPath);
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Returns true when DefaultValueConverter.Convert&lt;TSource,TDest&gt; handles the pair
-    /// via explicit static branches that are safe under NativeAOT / trimming.
-    /// </summary>
-    private static bool IsKnownConverterTypePair(string source, string dest)
-    {
-        // Primitive / well-known value types handled by Convert<T,U> explicit branches.
-        static bool IsKnownPrimitive(string t) =>
-            t is "int" or "global::System.Int32" or
-                 "long" or "global::System.Int64" or
-                 "short" or "global::System.Int16" or
-                 "byte" or "global::System.Byte" or
-                 "sbyte" or "global::System.SByte" or
-                 "uint" or "global::System.UInt32" or
-                 "ulong" or "global::System.UInt64" or
-                 "ushort" or "global::System.UInt16" or
-                 "float" or "global::System.Single" or
-                 "double" or "global::System.Double" or
-                 "decimal" or "global::System.Decimal" or
-                 "bool" or "global::System.Boolean" or
-                 "string" or "global::System.String" or
-                 "global::System.DateTime" or
-                 "global::System.Guid";
-
-        return IsKnownPrimitive(source) && IsKnownPrimitive(dest);
     }
 
     private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
@@ -3889,9 +3963,36 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(cultureArg).Append(")");
             }
         }
+        else if (mapping.RequiresExplicitNumericCast)
+        {
+            // #4b: explicit numeric narrowing / sign-changing cast with .Value access
+            var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".Value");
+        }
+        else if (mapping.UserDefinedConversion == UserDefinedConversionKind.Implicit)
+        {
+            // #6: user-defined op_Implicit from nullable source — unwrap via .Value; C# applies the operator automatically.
+            builder.Append(sourceAccessor).Append(".Value");
+        }
+        else if (mapping.HasUserDefinedExplicit)
+        {
+            // #7: user-defined op_Explicit with .Value access
+            var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".Value");
+        }
+        else if (mapping.UseFormattable)
+        {
+            // #10: IFormattable T -> string with culture / format, .Value access
+            var formatArg = DetermineFormatArg(mapping);
+            var cultureArg = mapping.HasCulture
+                ? GetCultureFieldName(mapping.EffectiveCulture!)
+                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
+            builder.Append(sourceAccessor).Append(".Value.ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
+        }
         else
         {
-            // Use generic converter with underlying types and .Value access
+            // Should not be reached when ValidateNoTypeConverterFallback is correct.
             var converterMethodName = method.MapConverterMethodName;
             var sourceTypeForConversion = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
             var targetTypeForConversion = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
@@ -4020,11 +4121,32 @@ public sealed class MapperGenerator : IIncrementalGenerator
                        .Append(cultureArg).Append(")");
             }
         }
+        else if (mapping.RequiresExplicitNumericCast)
+        {
+            // #4b: explicit numeric narrowing / sign-changing cast
+            var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceExpr);
+        }
+        else if (mapping.HasUserDefinedExplicit)
+        {
+            // #7: user-defined op_Explicit — emit explicit cast
+            var targetTypeForCast = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceExpr);
+        }
+        else if (mapping.UseFormattable)
+        {
+            // #10: IFormattable T -> string with culture / format
+            var formatArg = DetermineFormatArg(mapping);
+            var cultureArg = mapping.HasCulture
+                ? GetCultureFieldName(mapping.EffectiveCulture!)
+                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
+            builder.Append(sourceExpr).Append(".ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
+        }
         else
         {
-            // Use generic converter for type conversion
-            // Use underlying types (without nullable wrapper) for the conversion
-            // DefaultValueConverter.Convert<TSourceUnderlying, TDestUnderlying>(source.Value)
+            // Should not be reached when ValidateNoTypeConverterFallback is correct.
+            // Emit generic converter as a safe last-resort (not AOT safe).
             var converterMethodName = method.MapConverterMethodName;
             var sourceTypeForConversion = !string.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
             var targetTypeForConversion = !string.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
@@ -4193,7 +4315,36 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static bool ImplementsInterfaceByName(ITypeSymbol typeSymbol, string metadataName) =>
         typeSymbol.AllInterfaces.Any(i =>
             i.OriginalDefinition.ToDisplayString() == metadataName ||
+            i.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == $"global::{metadataName}" ||
             i.OriginalDefinition.MetadataName == metadataName.Split('.').Last());
+
+    /// <summary>
+    /// Returns true when the type name represents <see cref="System.String"/>,
+    /// handling both the alias form ("string") and the fully-qualified form.
+    /// </summary>
+    private static bool IsStringType(string typeName) =>
+        typeName is "string" or "global::System.String" or "global::System.String?";
+
+    /// <summary>
+    /// Returns true when the fully-qualified type name is one of the built-in numeric or date/time types
+    /// that <see cref="DefaultValueConverter"/> has specialised overloads for.
+    /// </summary>
+    private static bool IsBuiltInNumericOrDateType(string typeName) =>
+        typeName is
+            "global::System.SByte"   or "global::System.Byte"
+         or "global::System.Int16"   or "global::System.UInt16"
+         or "global::System.Int32"   or "global::System.UInt32"
+         or "global::System.Int64"   or "global::System.UInt64"
+         or "global::System.Single"  or "global::System.Double"
+         or "global::System.Decimal" or "global::System.Boolean"
+         or "global::System.DateTime" or "global::System.Guid"
+         or "global::System.DateOnly" or "global::System.TimeOnly"
+         or "global::System.DateTimeOffset" or "global::System.TimeSpan"
+         or "global::System.Half"    or "global::System.Int128"
+         or "global::System.UInt128" or "global::System.Numerics.BigInteger"
+         // alias forms
+         or "sbyte" or "byte" or "short" or "ushort" or "int" or "uint"
+         or "long" or "ulong" or "float" or "double" or "decimal" or "bool";
 
     private static ITypeSymbol? ResolveTypeSymbol(IMethodSymbol mapperMethod, string fullyQualifiedName)
     {
@@ -4218,6 +4369,245 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Detects user-defined implicit/explicit conversion operators between source and target underlying types.
+    /// Sets <see cref="PropertyMappingModel.UserDefinedConversion"/> and adjusts
+    /// <see cref="PropertyMappingModel.RequiresConversion"/> accordingly.
+    /// </summary>
+    private static void DetectUserDefinedConversions(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType, ITypeSymbol destinationType)
+    {
+        // If a custom converter type is specified, user-defined operators should not be auto-applied.
+        if (model.MapConverterTypeName is not null)
+        {
+            return;
+        }
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Skip if already handled by a more specific path.
+            if (mapping.IsEnumMapping || mapping.HasConverter)
+            {
+                continue;
+            }
+
+            // Resolve type symbols directly from the source/destination property symbols,
+            // which avoids string-based assembly lookup failures for user-defined types.
+            var srcParts = mapping.SourcePath.Split('.');
+            var dstParts = mapping.TargetPath.Split('.');
+            var srcProp = ResolvePropertySymbol(sourceType, srcParts);
+            var dstProp = ResolvePropertySymbol(destinationType, dstParts);
+
+            ITypeSymbol? sourceTypeSymbol = srcProp is not null ? GetUnderlyingType(srcProp.Type) : null;
+            ITypeSymbol? targetTypeSymbol = dstProp is not null ? GetUnderlyingType(dstProp.Type) : null;
+
+            // Fall back to string-based resolution if property symbols are not available
+            // (e.g., for MapFrom / computed paths).
+            if (sourceTypeSymbol is null || targetTypeSymbol is null)
+            {
+                var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+                var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+                sourceTypeSymbol ??= ResolveTypeSymbol(mapperMethod, sourceTypeName);
+                targetTypeSymbol ??= ResolveTypeSymbol(mapperMethod, targetTypeName);
+            }
+
+            if (sourceTypeSymbol is null || targetTypeSymbol is null)
+            {
+                continue;
+            }
+
+            // Check for op_Implicit first (higher priority than op_Explicit).
+            if (FindUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: true))
+            {
+                mapping.UserDefinedConversion = UserDefinedConversionKind.Implicit;
+                // Implicit operator: C# compiler emits plain assignment for non-nullable source.
+                // For nullable source, we still need null-checking code so keep RequiresConversion = true.
+                if (!mapping.IsSourceNullable)
+                {
+                    mapping.RequiresConversion = false;
+                }
+            }
+            else if (FindUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: false))
+            {
+                mapping.UserDefinedConversion = UserDefinedConversionKind.Explicit;
+                // Explicit operator: keep RequiresConversion = true so BuildTypeConversion is reached.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns true if a user-defined conversion operator exists that converts
+    /// <paramref name="sourceType"/> to <paramref name="targetType"/>.
+    /// Searches both the source type and the target type for the operator definition.
+    /// </summary>
+    private static bool FindUserDefinedConversion(ITypeSymbol sourceType, ITypeSymbol targetType, bool isImplicit)
+    {
+        var operatorName = isImplicit
+            ? WellKnownMemberNames.ImplicitConversionName   // "op_Implicit"
+            : WellKnownMemberNames.ExplicitConversionName;  // "op_Explicit"
+
+        foreach (var declaringType in new[] { sourceType, targetType })
+        {
+            foreach (var member in declaringType.GetMembers(operatorName).OfType<IMethodSymbol>())
+            {
+                if (member.MethodKind != MethodKind.Conversion || !member.IsStatic)
+                {
+                    continue;
+                }
+
+                if (member.Parameters.Length == 1 &&
+                    SymbolEqualityComparer.Default.Equals(member.Parameters[0].Type, sourceType) &&
+                    SymbolEqualityComparer.Default.Equals(member.ReturnType, targetType))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Detects whether IFormattable.ToString(format, culture) should be used for T -> string conversion
+    /// when Culture or a format string is specified on the mapping.
+    /// </summary>
+    private static void DetectFormattableMethod(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType)
+    {
+        // If a custom converter type is specified, IFormattable path should not be auto-applied.
+        if (model.MapConverterTypeName is not null)
+        {
+            return;
+        }
+
+        // Resolve IFormattable from referenced assemblies (it is a .NET Standard 1.0+ interface, always available).
+        INamedTypeSymbol? formattableSymbol = null;
+        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+        {
+            formattableSymbol = reference.GetTypeByMetadataName("System.IFormattable");
+            if (formattableSymbol is not null)
+            {
+                break;
+            }
+        }
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (!mapping.RequiresConversion)
+            {
+                continue;
+            }
+
+            // Only applies to T -> string conversions.
+            var targetType = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+            if (!IsStringType(targetType))
+            {
+                continue;
+            }
+
+            // Culture or a format must be specified; otherwise use the existing specialized converter path.
+            if (!mapping.HasCulture && mapping.EffectiveDateTimeFormat is null && mapping.EffectiveNumberFormat is null)
+            {
+                continue;
+            }
+
+            // Skip if already handled by a more specific path.
+            if (mapping.IsEnumMapping || mapping.HasConverter || mapping.HasSpecializedConverter || mapping.HasParsableMethod)
+            {
+                continue;
+            }
+
+            // Skip if a user-defined explicit operator handles the conversion.
+            if (mapping.HasUserDefinedExplicit)
+            {
+                continue;
+            }
+
+            // Resolve the source type symbol directly from the property to handle user-defined types.
+            var srcParts = mapping.SourcePath.Split('.');
+            var srcProp = ResolvePropertySymbol(sourceType, srcParts);
+            ITypeSymbol? sourceTypeSymbol = srcProp is not null ? GetUnderlyingType(srcProp.Type) : null;
+
+            // Fall back to string-based resolution.
+            if (sourceTypeSymbol is null)
+            {
+                var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+                sourceTypeSymbol = ResolveTypeSymbol(mapperMethod, sourceTypeName);
+            }
+
+            if (sourceTypeSymbol is null)
+            {
+                continue;
+            }
+
+            var implementsFormattable = formattableSymbol is not null
+                ? sourceTypeSymbol.AllInterfaces.Any(i =>
+                    SymbolEqualityComparer.Default.Equals(i, formattableSymbol) ||
+                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, formattableSymbol))
+                : ImplementsInterfaceByName(sourceTypeSymbol, "System.IFormattable");
+
+            // Always also try name-based fallback to guard against symbol-equality mismatches
+            // across compilation boundaries (e.g., multi-targeting / netstandard ref assemblies).
+            if (!implementsFormattable)
+            {
+                implementsFormattable = ImplementsInterfaceByName(sourceTypeSymbol, "System.IFormattable");
+            }
+
+            if (implementsFormattable)
+            {
+                mapping.UseFormattable = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns true when source and target are both built-in numeric types and the conversion
+    /// is NOT a widening implicit conversion — i.e., an explicit narrowing or sign-changing cast is needed.
+    /// </summary>
+    private static bool IsExplicitNumericConversion(string sourceType, string targetType)
+    {
+        static bool IsNumeric(string t) =>
+            t is "sbyte" or "SByte" or "global::System.SByte"
+              or "byte" or "Byte" or "global::System.Byte"
+              or "short" or "Int16" or "global::System.Int16"
+              or "ushort" or "UInt16" or "global::System.UInt16"
+              or "int" or "Int32" or "global::System.Int32"
+              or "uint" or "UInt32" or "global::System.UInt32"
+              or "long" or "Int64" or "global::System.Int64"
+              or "ulong" or "UInt64" or "global::System.UInt64"
+              or "float" or "Single" or "global::System.Single"
+              or "double" or "Double" or "global::System.Double"
+              or "decimal" or "Decimal" or "global::System.Decimal"
+              or "char" or "Char" or "global::System.Char"
+              or "Half" or "global::System.Half"
+              or "Int128" or "global::System.Int128"
+              or "UInt128" or "global::System.UInt128";
+
+        if (!IsNumeric(sourceType) || !IsNumeric(targetType))
+        {
+            return false;
+        }
+
+        var normalizedSource = NormalizeTypeName(sourceType);
+        var normalizedTarget = NormalizeTypeName(targetType);
+
+        if (normalizedSource == normalizedTarget)
+        {
+            return false;
+        }
+
+        // If it is already covered by widening implicit numeric conversion, it is not an explicit cast.
+        if (IsImplicitNumericConversion(normalizedSource, normalizedTarget))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)

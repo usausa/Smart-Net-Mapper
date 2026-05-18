@@ -560,3 +560,27 @@ internal static partial class TestMappers
     [Mapper]
     public static partial void Map(NullableSpanParsableSource source, NullableSpanParsableDestination destination);
 }
+
+// User-defined conversion mappings (op_Implicit / op_Explicit / IFormattable)
+internal static partial class TestMappers
+{
+    // op_Implicit: UserId (struct) → int
+    [Mapper]
+    public static partial void Map(ImplicitConversionSource source, ImplicitConversionDestination destination);
+
+    // op_Explicit: Celsius (struct) → double
+    [Mapper]
+    public static partial void Map(ExplicitConversionSource source, ExplicitConversionDestination destination);
+
+    // DualOp: both op_Implicit(→long) and op_Explicit(→int) exist; op_Implicit target wins
+    [Mapper]
+    public static partial void Map(DualOpSource source, DualOpImplicitDestination destination);
+
+    // DualOp explicit path (op_Explicit only match for int target)
+    [Mapper]
+    public static partial void Map(DualOpSource source, DualOpExplicitDestination destination);
+
+    // IFormattable: Money → string with Culture+NumberFormat
+    [Mapper(Culture = "ja-JP", NumberFormat = "G")]
+    public static partial void MapFormattable(FormattableSource source, FormattableDestination destination);
+}

@@ -1,292 +1,54 @@
 namespace Smart.Mapper.Generator.Models;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 using Microsoft.CodeAnalysis;
 
 using SourceGenerateHelper;
 
+using System.Collections.Immutable;
+
 /// <summary>
 /// Represents a mapper method model.
 /// </summary>
-internal sealed class MapperMethodModel : IEquatable<MapperMethodModel>
+internal sealed record MapperMethodModel
 {
-    /// <summary>
-    /// Gets or sets the namespace.
-    /// </summary>
     public string Namespace { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the class name.
-    /// </summary>
     public string ClassName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the containing type is a value type.
-    /// </summary>
     public bool IsValueType { get; set; }
-
-    /// <summary>
-    /// Gets or sets the method accessibility.
-    /// </summary>
     public Accessibility MethodAccessibility { get; set; }
-
-    /// <summary>
-    /// Gets or sets the method name.
-    /// </summary>
     public string MethodName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the source type name.
-    /// </summary>
     public string SourceTypeName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the source parameter name.
-    /// </summary>
     public string SourceParameterName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the destination type name.
-    /// </summary>
     public string DestinationTypeName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the destination parameter name (for void methods).
-    /// </summary>
     public string? DestinationParameterName { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the method returns the destination.
-    /// </summary>
     public bool ReturnsDestination { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to automatically map properties with matching names.
-    /// </summary>
     public bool AutoMap { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether strict mode is enabled. When true,
-    /// destination properties without any mapping configuration result in compile-time warnings.
-    /// </summary>
     public bool Strict { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether <see cref="Strict"/> was explicitly set on the method-level [Mapper] attribute.
-    /// When false, the value may be inherited from [MapperProfile].
-    /// </summary>
     public bool StrictExplicitlySet { get; set; }
-
-    /// <summary>
-    /// Gets or sets the name comparison rule for automatic property matching.
-    /// Stored as the underlying integer value of <see cref="System.StringComparison"/>.
-    /// </summary>
     public int NameComparison { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether <see cref="NameComparison"/> was explicitly set on the method-level [Mapper] attribute.
-    /// When false, the value may be inherited from [MapperProfile].
-    /// </summary>
     public bool NameComparisonExplicitlySet { get; set; }
-
-    /// <summary>
-    /// Gets or sets the culture name (e.g. "en-US") used for culture-aware string conversions.
-    /// Null means no culture override; conversions use InvariantCulture.
-    /// </summary>
     public string? Culture { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether <see cref="Culture"/> was explicitly set on the method-level attribute.
-    /// </summary>
     public bool CultureExplicitlySet { get; set; }
-
-    /// <summary>
-    /// Gets or sets the DateTime format string used together with <see cref="Culture"/>.
-    /// </summary>
     public string? DateTimeFormat { get; set; }
-
-    /// <summary>
-    /// Gets or sets the numeric format string used together with <see cref="Culture"/>.
-    /// </summary>
     public string? NumberFormat { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the source type is a readonly struct.
-    /// When true, the generated method parameter uses the <c>in</c> modifier to avoid defensive copies.
-    /// </summary>
     public bool IsSourceReadOnlyStruct { get; set; }
-
-    /// <summary>
-    /// Gets or sets the custom parameters (additional parameters beyond source and destination).
-    /// </summary>
-    public EquatableArray<CustomParameterModel> CustomParameters { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the property mappings.
-    /// </summary>
-    public EquatableArray<PropertyMappingModel> PropertyMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the ignored property names.
-    /// </summary>
-    public EquatableArray<string> IgnoredProperties { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the property condition mappings.
-    /// </summary>
-    public EquatableArray<PropertyConditionModel> PropertyConditions { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the constant mappings.
-    /// </summary>
-    public EquatableArray<ConstantMappingModel> ConstantMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the expression mappings (dynamic values like DateTime.Now).
-    /// </summary>
-    public EquatableArray<ExpressionMappingModel> ExpressionMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the MapUsing mappings (computed from source via a method in containing class).
-    /// </summary>
-    public EquatableArray<MapUsingModel> MapUsingMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the MapFrom mappings (source expression - method call or property path).
-    /// </summary>
-    public EquatableArray<MapFromModel> MapFromMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the MapCollection mappings (collection properties using a mapper method).
-    /// </summary>
-    public EquatableArray<MapCollectionModel> MapCollectionMappings { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the MapNested mappings (nested object properties using a mapper method).
-    /// </summary>
-    public EquatableArray<MapNestedModel> MapNestedMappings { get; set; } = new([]);
-
-
-    /// <summary>
-    /// Gets or sets the method name to call before mapping.
-    /// </summary>
-    public string? BeforeMapMethod { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether BeforeMap method accepts custom parameters.
-    /// </summary>
-    public bool BeforeMapAcceptsCustomParameters { get; set; }
-
-    /// <summary>
-    /// Gets or sets the method name to call after mapping.
-    /// </summary>
-    public string? AfterMapMethod { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether AfterMap method accepts custom parameters.
-    /// </summary>
-    public bool AfterMapAcceptsCustomParameters { get; set; }
-
-    /// <summary>
-    /// Gets or sets the custom type converter type name.
-    /// If null, DefaultValueConverter is used.
-    /// </summary>
     public string? MapConverterTypeName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the method name prefix for the custom converter.
-    /// Default is "Convert".
-    /// </summary>
     public string MapConverterMethodName { get; set; } = "Convert";
-
-    /// <summary>
-    /// Gets or sets the custom collection converter type name.
-    /// If null, DefaultCollectionConverter is used.
-    /// </summary>
     public string? CollectionConverterTypeName { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the destination type requires constructor-based mapping
-    /// (i.e., it is a record or has a primary constructor with parameters, so properties are init-only).
-    /// </summary>
+    public EquatableArray<CustomParameterModel> CustomParameters { get; set; } = new([]);
+    public EquatableArray<PropertyMappingModel> PropertyMappings { get; set; } = new([]);
+    public EquatableArray<string> IgnoredProperties { get; set; } = new([]);
+    public EquatableArray<PropertyConditionModel> PropertyConditions { get; set; } = new([]);
+    public EquatableArray<ConstantMappingModel> ConstantMappings { get; set; } = new([]);
+    public EquatableArray<ExpressionMappingModel> ExpressionMappings { get; set; } = new([]);
+    public EquatableArray<MapUsingModel> MapUsingMappings { get; set; } = new([]);
+    public EquatableArray<MapFromModel> MapFromMappings { get; set; } = new([]);
+    public EquatableArray<MapCollectionModel> MapCollectionMappings { get; set; } = new([]);
+    public EquatableArray<MapNestedModel> MapNestedMappings { get; set; } = new([]);
+    public string? BeforeMapMethod { get; set; }
+    public bool BeforeMapAcceptsCustomParameters { get; set; }
+    public string? AfterMapMethod { get; set; }
+    public bool AfterMapAcceptsCustomParameters { get; set; }
     public bool UseConstructorMapping { get; set; }
-
-    /// <summary>
-    /// Gets or sets the ordered list of constructor parameter names and their resolved source expressions
-    /// for constructor-based mapping. Each entry is (paramName, sourceExpression).
-    /// </summary>
     public EquatableArray<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = new([]);
-
-    /// <summary>
-    /// Gets or sets the diagnostic warnings to report after a successful parse.
-    /// </summary>
-    public List<(DiagnosticDescriptor Descriptor, string Arg)> Warnings { get; set; } = [];
-
-    public bool Equals(MapperMethodModel? other)
-    {
-        if (other is null)
-        {
-            return false;
-        }
-
-        if (ReferenceEquals(this, other))
-        {
-            return true;
-        }
-
-        return Namespace == other.Namespace &&
-               ClassName == other.ClassName &&
-               IsValueType == other.IsValueType &&
-               MethodAccessibility == other.MethodAccessibility &&
-               MethodName == other.MethodName &&
-               SourceTypeName == other.SourceTypeName &&
-               SourceParameterName == other.SourceParameterName &&
-               DestinationTypeName == other.DestinationTypeName &&
-               DestinationParameterName == other.DestinationParameterName &&
-               ReturnsDestination == other.ReturnsDestination &&
-               CustomParameters == other.CustomParameters &&
-               PropertyMappings == other.PropertyMappings &&
-               IgnoredProperties == other.IgnoredProperties &&
-               PropertyConditions == other.PropertyConditions &&
-               ConstantMappings == other.ConstantMappings &&
-               BeforeMapMethod == other.BeforeMapMethod &&
-               BeforeMapAcceptsCustomParameters == other.BeforeMapAcceptsCustomParameters &&
-               AfterMapMethod == other.AfterMapMethod &&
-               AfterMapAcceptsCustomParameters == other.AfterMapAcceptsCustomParameters &&
-               AutoMap == other.AutoMap &&
-               Strict == other.Strict &&
-               NameComparison == other.NameComparison &&
-               UseConstructorMapping == other.UseConstructorMapping &&
-               ConstructorParameters == other.ConstructorParameters &&
-               IsSourceReadOnlyStruct == other.IsSourceReadOnlyStruct;
-    }
-
-    public override bool Equals(object? obj) => Equals(obj as MapperMethodModel);
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            var hash = 17;
-            hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (ClassName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + IsValueType.GetHashCode();
-            hash = (hash * 31) + MethodAccessibility.GetHashCode();
-            hash = (hash * 31) + (MethodName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (SourceTypeName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (SourceParameterName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (DestinationTypeName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + (DestinationParameterName?.GetHashCode() ?? 0);
-            hash = (hash * 31) + ReturnsDestination.GetHashCode();
-            hash = (hash * 31) + (BeforeMapMethod?.GetHashCode() ?? 0);
-            hash = (hash * 31) + BeforeMapAcceptsCustomParameters.GetHashCode();
-            hash = (hash * 31) + (AfterMapMethod?.GetHashCode() ?? 0);
-            hash = (hash * 31) + AfterMapAcceptsCustomParameters.GetHashCode();
-            hash = (hash * 31) + UseConstructorMapping.GetHashCode();
-            return hash;
-        }
-    }
+    public EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)> Warnings { get; set; } = new([]);
 }

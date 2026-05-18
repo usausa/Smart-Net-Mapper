@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Generator;
+﻿namespace Smart.Mapper.Generator;
 
 using System;
 using System.Collections.Generic;
@@ -261,8 +261,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // E1: Strict mode – warn about destination properties that have no mapping at all
         if (model.Strict)
         {
-            CollectStrictModeWarnings(model, destinationType);
+            model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)>([.. CollectStrictModeWarnings(model, destinationType)]);
         }
+
 
         // D3/D1: Detect and apply constructor-based mapping for destinations with primary constructors / records
         var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
@@ -1619,7 +1620,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             }
 
             // Find mapper method
-            var mapperMethodResult = FindMapperMethod(containingType, mapCollection.Mapper, sourceElementType, targetElementType);
+            var mapperMethodResult = FindMapperMethod(containingType, mapCollection.Mapper!, sourceElementType, targetElementType);
             if (mapperMethodResult is null)
             {
                 return new DiagnosticInfo(
@@ -1891,9 +1892,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static void CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
+    private static List<(DiagnosticDescriptor Descriptor, string Arg)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
     {
-
+        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var pm in model.PropertyMappings.ToArray())
@@ -1946,9 +1947,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             if (!mappedTargets.Contains(destProp.Name))
             {
-                model.Warnings.Add((Diagnostics.UnmappedDestinationProperty, destProp.Name));
+                warnings.Add((Diagnostics.UnmappedDestinationProperty, destProp.Name));
             }
         }
+
+        return warnings;
     }
 
     private static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodModel model, MethodDeclarationSyntax syntax)
@@ -2845,7 +2848,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // Report strict-mode warnings
             foreach (var model in group)
             {
-                foreach (var (descriptor, arg) in model.Warnings)
+                foreach (var (descriptor, arg) in model.Warnings.ToArray())
                 {
                     context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg));
                 }
@@ -3386,12 +3389,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(dstCollExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(").Append(itemExpr).Append("));").NewLine();
+            builder.Indent().Append(dstCollExpr).Append(".Add(").Append(mapCollection.Mapper!).Append("(").Append(itemExpr).Append("));").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(itemExpr).Append(", __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(itemExpr).Append(", __dest);").NewLine();
             builder.Indent().Append(dstCollExpr).Append(".Add(__dest);").NewLine();
         }
     }
@@ -3423,7 +3426,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                .Append(mapCollection.TargetElementType)
                .Append(">(");
         builder.Append(sourceAccess).Append(", ");
-        builder.Append(mapCollection.Mapper);
+        builder.Append(mapCollection.Mapper!);
         builder.Append(")!");
         builder.Append(";").NewLine();
     }
@@ -3660,12 +3663,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.BeginScope();
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(dstSpanExpr).Append("[__i] = ").Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i]);").NewLine();
+            builder.Indent().Append(dstSpanExpr).Append("[__i] = ").Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i]);").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
             builder.Indent().Append(dstSpanExpr).Append("[__i] = __dest;").NewLine();
         }
         builder.EndScope();
@@ -3681,12 +3684,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.BeginScope();
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(containerExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i]));").NewLine();
+            builder.Indent().Append(containerExpr).Append(".Add(").Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i]));").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
             builder.Indent().Append(containerExpr).Append(".Add(__dest);").NewLine();
         }
         builder.EndScope();
@@ -3700,12 +3703,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(arrExpr).Append("[").Append(idxExpr).Append("++] = ").Append(mapCollection.Mapper).Append("(__item);").NewLine();
+            builder.Indent().Append(arrExpr).Append("[").Append(idxExpr).Append("++] = ").Append(mapCollection.Mapper!).Append("(__item);").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper).Append("(__item, __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(__item, __dest);").NewLine();
             builder.Indent().Append(arrExpr).Append("[").Append(idxExpr).Append("++] = __dest;").NewLine();
         }
     }
@@ -3717,12 +3720,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(listExpr).Append(".Add(").Append(mapCollection.Mapper).Append("(__item));").NewLine();
+            builder.Indent().Append(listExpr).Append(".Add(").Append(mapCollection.Mapper!).Append("(__item));").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper).Append("(__item, __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(__item, __dest);").NewLine();
             builder.Indent().Append(listExpr).Append(".Add(__dest);").NewLine();
         }
     }

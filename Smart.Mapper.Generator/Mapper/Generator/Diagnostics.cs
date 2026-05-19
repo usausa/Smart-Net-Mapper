@@ -180,9 +180,23 @@ internal static class Diagnostics
 
     public static DiagnosticDescriptor TypeConverterFallbackNotAllowed { get; } = new(
         id: "SMP0020",
-        title: "TypeConverter fallback requires AllowTypeConverter",
-        messageFormat: "Property '{0}' has no specialized converter and would fall back to Convert<TSource,TDest> which is not AOT-safe. Add [Mapper(AllowTypeConverter = true)] to opt in, or provide a specialized conversion.",
+        title: "TypeConverter fallback is not AOT-safe",
+        messageFormat: "Property '{0}' has no specialized converter and would fall back to Convert<TSource,TDest> which is not AOT-safe. " +
+                       "Provide a specialized conversion (ConvertTo{{TargetType}} method, IParsable, IFormattable, explicit cast, or op_Implicit/op_Explicit), " +
+                       "or apply [ValueConverter(typeof(...))] at method level to opt into the generic converter path.",
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // SMP0021: Reflection usage in MapExpression
+
+    public static DiagnosticDescriptor MapExpressionReflectionNotAllowed { get; } = new(
+        id: "SMP0021",
+        title: "MapExpression contains potentially AOT-incompatible reflection",
+        messageFormat: "MapExpression for '{0}' contains potentially AOT-incompatible reflection. " +
+                       "Avoid Activator, Type.GetType, MethodInfo, PropertyInfo, FieldInfo, Assembly.Load, and RuntimeHelpers.GetUninitializedObject. " +
+                       "Consider using [MapFrom(Method = nameof(...))] or [MapUsing(Method = nameof(...))] instead.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 }

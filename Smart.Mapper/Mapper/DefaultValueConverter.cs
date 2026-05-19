@@ -228,7 +228,6 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(bool source) => source.ToString();
 
-
     /// <summary>Converts DateTime to string.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateTime source) => source.ToString(CultureInfo.InvariantCulture);
@@ -391,7 +390,6 @@ public static class DefaultValueConverter
         // Numeric conversions - JIT will optimize away unused branches
         return ConvertNumeric<TSource, TDestination>(source);
     }
-
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

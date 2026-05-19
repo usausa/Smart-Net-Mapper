@@ -279,7 +279,7 @@ public static class DefaultCollectionConverter
     {
         if (source is null)
         {
-            return ImmutableArray<TDest>.Empty;
+            return [];
         }
 
         var src = source.AsSpan();
@@ -299,7 +299,7 @@ public static class DefaultCollectionConverter
     {
         if (source is null)
         {
-            return ImmutableArray<TDest>.Empty;
+            return [];
         }
 
         var src = CollectionsMarshal.AsSpan(source);
@@ -333,7 +333,7 @@ public static class DefaultCollectionConverter
     {
         if (source is null)
         {
-            return ImmutableArray<TDest>.Empty;
+            return [];
         }
 
         var builder = ImmutableArray.CreateBuilder<TDest>(source.Count);
@@ -648,7 +648,7 @@ public static class DefaultCollectionConverter
     {
         if (source is null)
         {
-            return ImmutableArray<TDest>.Empty;
+            return [];
         }
 
         return source.Select(mapper).ToImmutableArray();
@@ -725,7 +725,7 @@ public static class DefaultCollectionConverter
     {
         if (source is null)
         {
-            return ImmutableArray<TDest>.Empty;
+            return [];
         }
 
         return source.Select(x =>

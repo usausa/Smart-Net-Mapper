@@ -62,12 +62,12 @@ public class SimpleMapBenchmark
 {
     private const int N = 1000;
 
-    private SimpleSource _source = default!;
+    private SimpleSource source = default!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _source = new SimpleSource
+        source = new SimpleSource
         {
             Value1 = 1, Value2 = 2, Value3 = 3, Value4 = 4,
             Value5 = "a", Value6 = "b", Value7 = "c", Value8 = "d"
@@ -78,7 +78,7 @@ public class SimpleMapBenchmark
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public SimpleDestination Direct()
     {
-        var src = _source;
+        var src = source;
         SimpleDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -101,7 +101,7 @@ public class SimpleMapBenchmark
     [Benchmark(OperationsPerInvoke = N)]
     public SimpleDestination SmartMapper()
     {
-        var src = _source;
+        var src = source;
         SimpleDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -122,12 +122,12 @@ public class NestedMapBenchmark
 {
     private const int N = 1000;
 
-    private NestedSource _source = default!;
+    private NestedSource source = default!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _source = new NestedSource
+        source = new NestedSource
         {
             Id = 1,
             Name = "Test",
@@ -138,7 +138,7 @@ public class NestedMapBenchmark
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public NestedDestination Direct()
     {
-        var src = _source;
+        var src = source;
         NestedDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -159,7 +159,7 @@ public class NestedMapBenchmark
     [Benchmark(OperationsPerInvoke = N)]
     public NestedDestination SmartMapper()
     {
-        var src = _source;
+        var src = source;
         NestedDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -183,12 +183,12 @@ public class CollectionMapBenchmark
     [Params(10, 100)]
     public int ItemCount { get; set; }
 
-    private CollectionSource _source = default!;
+    private CollectionSource source = default!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _source = new CollectionSource
+        source = new CollectionSource
         {
             Items = Enumerable.Range(1, ItemCount)
                 .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
@@ -199,7 +199,7 @@ public class CollectionMapBenchmark
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public List<CollectionItemDestination> Direct()
     {
-        var src = _source;
+        var src = source;
         List<CollectionItemDestination> ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -215,7 +215,7 @@ public class CollectionMapBenchmark
     [Benchmark(OperationsPerInvoke = N)]
     public CollectionWrapper SmartMapper()
     {
-        var src = _source;
+        var src = source;
         CollectionWrapper ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -236,12 +236,12 @@ public class ConversionMapBenchmark
 {
     private const int N = 1000;
 
-    private ConversionSource _source = default!;
+    private ConversionSource source = default!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _source = new ConversionSource
+        source = new ConversionSource
         {
             IntValue = 42,
             LongValue = 123456789L,
@@ -253,7 +253,7 @@ public class ConversionMapBenchmark
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public ConversionDestination Direct()
     {
-        var src = _source;
+        var src = source;
         ConversionDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
@@ -271,7 +271,7 @@ public class ConversionMapBenchmark
     [Benchmark(OperationsPerInvoke = N)]
     public ConversionDestination SmartMapper()
     {
-        var src = _source;
+        var src = source;
         ConversionDestination ret = default!;
         for (var i = 0; i < N; i++)
         {

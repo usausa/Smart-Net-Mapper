@@ -58,7 +58,6 @@ internal static partial class ObjectMapper
     [MapProperty("SourceName", "DestName")]
     public static partial void Map(DiffSource source, DiffDestination destination);
 
-
     [Mapper]
     [MapIgnore("Secret")]
     public static partial void Map(IgnoreSource source, IgnoreDestination destination);

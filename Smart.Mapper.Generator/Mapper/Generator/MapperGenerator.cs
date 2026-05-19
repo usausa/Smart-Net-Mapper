@@ -260,11 +260,16 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         // E1: Strict mode – warn about destination properties that have no mapping at all
+        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
         if (model.Strict)
         {
-            model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)>([.. CollectStrictModeWarnings(model, destinationType)]);
+            warnings.AddRange(CollectStrictModeWarnings(model, destinationType));
         }
 
+        // AOT: warn about potentially unsafe reflection patterns in MapExpression
+        warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
+
+        model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)>([.. warnings]);
 
         // D3/D1: Detect and apply constructor-based mapping for destinations with primary constructors / records
         var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
@@ -624,7 +629,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         return CallbackMatchResult.NoMatch;
     }
-
 
     private static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
@@ -1148,7 +1152,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
     {
         var destinationProperties = destinationType.GetAllPublicInstanceProperties();
-
 
         foreach (var constantMapping in model.ConstantMappings.ToArray())
         {
@@ -1955,6 +1958,34 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
 
         return null;
+    }
+
+    private static readonly string[] ReflectionPatterns =
+    [
+        "Activator.",
+        "Type.GetType",
+        "Assembly.Load",
+        "MethodInfo",
+        "PropertyInfo",
+        "FieldInfo",
+        "RuntimeHelpers.GetUninitializedObject",
+        "MakeGenericType",
+        "MakeGenericMethod",
+    ];
+
+    private static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg)> CollectMapExpressionReflectionWarnings(MapperMethodModel model)
+    {
+        foreach (var expression in model.ExpressionMappings.ToArray())
+        {
+            foreach (var pattern in ReflectionPatterns)
+            {
+                if (expression.Expression.IndexOf(pattern, StringComparison.Ordinal) >= 0)
+                {
+                    yield return (Diagnostics.MapExpressionReflectionNotAllowed, expression.TargetName);
+                    break;
+                }
+            }
+        }
     }
 
     private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
@@ -2898,7 +2929,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 builder.Append(sourceAccess).Append(" is not null ? ");
             }
 
-
             if (mapNested.MapperReturnsValue)
             {
                 // Return value pattern: MapChild(source.Child)
@@ -2956,7 +2986,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             builder.Indent().Append("return ").Append(destVarName).Append(";").NewLine();
         }
-
 
         builder.EndScope();
     }

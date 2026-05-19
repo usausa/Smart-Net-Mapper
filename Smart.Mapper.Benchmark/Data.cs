@@ -1,3 +1,4 @@
+#pragma warning disable CA2227
 namespace Smart.Mapper.Benchmark;
 
 // Single
@@ -113,7 +114,7 @@ public sealed class CollectionItemDestination
     public string? Label { get; set; }
 }
 
-/// <summary>MapCollection 属性はプロパティ単位のため、コレクションをラップするオブジェクトを用意する。</summary>
+// MapCollection 属性はプロパティ単位のため、コレクションをラップするオブジェクトを用意する
 public sealed class CollectionSource
 {
     public List<CollectionItemSource> Items { get; set; } = [];

@@ -1,3 +1,6 @@
+#pragma warning disable SA1500
+#pragma warning disable CA1024
+#pragma warning disable CA1819
 namespace Smart.Mapper;
 
 public class MapFromSource
@@ -17,8 +20,6 @@ public class MapFromContext
     public string Separator { get; set; } = " ";
 }
 
-#pragma warning disable CA1024
-#pragma warning disable CA1819
 public class MapFromMethodSource
 {
     public int[] Items { get; set; } = [];
@@ -26,8 +27,6 @@ public class MapFromMethodSource
     public int GetItemCount() => Items.Length;
     public int GetItemSum() => Items.Sum();
 }
-#pragma warning restore CA1819
-#pragma warning restore CA1024
 
 public class MapFromMethodDestination
 {
@@ -46,17 +45,23 @@ public class OrderTestDestination
 
     public string Step1
     {
-        get => step1;
-        set { step1 = value; setOrder.Add("Step1"); }
-    }
-    private string step1 = string.Empty;
+        get;
+        set
+        {
+            field = value;
+            setOrder.Add("Step1");
+        }
+    } = string.Empty;
 
     public string Step2
     {
-        get => step2;
-        set { step2 = value; setOrder.Add("Step2"); }
-    }
-    private string step2 = string.Empty;
+        get;
+        set
+        {
+            field = value;
+            setOrder.Add("Step2");
+        }
+    } = string.Empty;
 
     public string Step3
     {

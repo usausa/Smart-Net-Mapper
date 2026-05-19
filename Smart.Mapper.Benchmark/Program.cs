@@ -97,7 +97,7 @@ public class SimpleMapBenchmark
         return ret;
     }
 
-    /// <summary>Smart.Mapper 生成コード（同型プロパティコピー）</summary>
+    // Smart.Mapper 生成コード（同型プロパティコピー）
     [Benchmark(OperationsPerInvoke = N)]
     public SimpleDestination SmartMapper()
     {

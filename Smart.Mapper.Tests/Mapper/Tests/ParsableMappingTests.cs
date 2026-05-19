@@ -83,6 +83,6 @@ public class ParsableMappingTests
 
         TestMappers.Map(source, destination);
 
-        Assert.Equal(default(TestSpanParsableId), destination.IdText);
+        Assert.Equal(default, destination.IdText);
     }
 }

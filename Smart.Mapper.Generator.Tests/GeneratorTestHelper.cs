@@ -77,8 +77,7 @@ internal static class GeneratorTestHelper
 
     private static IEnumerable<MetadataReference> GetRuntimeReferences()
     {
-        var trustedAssemblies = System.AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
-        if (trustedAssemblies is null)
+        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is not string trustedAssemblies)
         {
             yield break;
         }

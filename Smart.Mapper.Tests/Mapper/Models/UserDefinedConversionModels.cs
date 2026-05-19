@@ -1,3 +1,5 @@
+#pragma warning disable CA1815
+#pragma warning disable CA2225
 namespace Smart.Mapper;
 
 // op_Implicit: UserId <-> int
@@ -9,13 +11,13 @@ public struct UserId
     public static implicit operator UserId(int v) => new() { Value = v };
 }
 
-public class ImplicitConversionSource
+public sealed class ImplicitConversionSource
 {
     public UserId Id { get; set; }
     public UserId? NullableId { get; set; }
 }
 
-public class ImplicitConversionDestination
+public sealed class ImplicitConversionDestination
 {
     public int Id { get; set; }
     public int NullableId { get; set; }
@@ -29,13 +31,13 @@ public struct Celsius
     public static explicit operator double(Celsius v) => v.Value;
 }
 
-public class ExplicitConversionSource
+public sealed class ExplicitConversionSource
 {
     public Celsius Temp { get; set; }
     public Celsius? NullableTemp { get; set; }
 }
 
-public class ExplicitConversionDestination
+public sealed class ExplicitConversionDestination
 {
     public double Temp { get; set; }
     public double NullableTemp { get; set; }
@@ -50,17 +52,17 @@ public struct DualOpStruct
     public static explicit operator int(DualOpStruct v) => v.Value;
 }
 
-public class DualOpSource
+public sealed class DualOpSource
 {
     public DualOpStruct X { get; set; }
 }
 
-public class DualOpImplicitDestination
+public sealed class DualOpImplicitDestination
 {
     public long X { get; set; }
 }
 
-public class DualOpExplicitDestination
+public sealed class DualOpExplicitDestination
 {
     public int X { get; set; }
 }
@@ -76,12 +78,12 @@ public struct Money : IFormattable
     public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
-public class FormattableSource
+public sealed class FormattableSource
 {
     public Money Price { get; set; }
 }
 
-public class FormattableDestination
+public sealed class FormattableDestination
 {
     public string Price { get; set; } = string.Empty;
 }

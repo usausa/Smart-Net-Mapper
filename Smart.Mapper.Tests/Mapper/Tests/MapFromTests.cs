@@ -31,7 +31,7 @@ public class MapFromMethodTests
     [Fact]
     public void MapFromMethod_CallsSourceMethod()
     {
-        var source = new MapFromMethodSource { Items = new[] { 1, 2, 3, 4, 5 } };
+        var source = new MapFromMethodSource { Items = [1, 2, 3, 4, 5] };
         var destination = new MapFromMethodDestination();
 
         TestMappers.Map(source, destination);

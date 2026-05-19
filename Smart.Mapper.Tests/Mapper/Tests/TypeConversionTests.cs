@@ -36,11 +36,11 @@ public class ExtendedTypeConversionTests
         TestMappers.Map(source, destination);
 
         Assert.Equal("1234567890", destination.LongValue);
-        Assert.Contains("3.14159", destination.DoubleValue);
-        Assert.Contains("99.99", destination.DecimalValue);
+        Assert.Contains("3.14159", destination.DoubleValue, StringComparison.Ordinal);
+        Assert.Contains("99.99", destination.DecimalValue, StringComparison.Ordinal);
         Assert.Equal("True", destination.BoolValue);
-        Assert.Contains("01/15/2024", destination.DateTimeValue);
-        Assert.Contains("10:30:00", destination.DateTimeValue);
+        Assert.Contains("01/15/2024", destination.DateTimeValue, StringComparison.Ordinal);
+        Assert.Contains("10:30:00", destination.DateTimeValue, StringComparison.Ordinal);
         Assert.Equal(guid, destination.GuidString);
     }
 }

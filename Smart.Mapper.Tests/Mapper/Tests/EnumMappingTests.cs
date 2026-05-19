@@ -54,7 +54,7 @@ public class EnumMappingTests
 
         TestMappers.MapPartialEnum(source, destination);
 
-        Assert.Equal(default(PartialDestStatus), destination.Status);
+        Assert.Equal(default, destination.Status);
     }
 
     [Fact]

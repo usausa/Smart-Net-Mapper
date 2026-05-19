@@ -11,9 +11,9 @@ public class CultureFormatMappingTests
         var destination = TestMappers.MapWithCultureFormat(source);
 
         // fr-FR N2: "1\u00a0234,56" (non-breaking space as thousands separator)
-        Assert.Contains("1", destination.Amount);
-        Assert.Contains("234", destination.Amount);
-        Assert.Contains(",56", destination.Amount);
+        Assert.Contains("1", destination.Amount, StringComparison.Ordinal);
+        Assert.Contains("234", destination.Amount, StringComparison.Ordinal);
+        Assert.Contains(",56", destination.Amount, StringComparison.Ordinal);
     }
 
     [Fact]

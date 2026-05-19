@@ -54,7 +54,7 @@ Console.WriteLine("Smart.Mapper AOT smoke tests starting...");
     var src = new NullSource { Name = null, Count = null };
     var dst = new NullDest();
     AotMappers.Map(src, dst);
-    Assert(dst.Name == "", "NullSubstitute: Name");
+    Assert(dst.Name == string.Empty, "NullSubstitute: Name");
     Assert(dst.Count == 0, "NullSubstitute: Count");
     Console.WriteLine("  [OK] Null handling");
 }

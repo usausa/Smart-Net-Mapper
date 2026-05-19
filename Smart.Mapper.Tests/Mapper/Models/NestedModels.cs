@@ -1,3 +1,5 @@
+#pragma warning disable CA1024
+#pragma warning disable CA1822
 namespace Smart.Mapper;
 
 public class FlatSource

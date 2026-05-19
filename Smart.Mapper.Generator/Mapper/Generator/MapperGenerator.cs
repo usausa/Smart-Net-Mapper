@@ -2443,7 +2443,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var pathBuilder = new List<string>();
 
             // Process all but the last segment
-            var sourceSegments = new System.Collections.Generic.List<NestedPathSegment>();
+            var sourceSegments = new List<NestedPathSegment>();
             for (var i = 0; i < sourceParts.Length - 1; i++)
             {
                 var part = sourceParts[i];

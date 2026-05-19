@@ -1,3 +1,5 @@
+#pragma warning disable CA1819
+#pragma warning disable CA2227
 namespace Smart.Mapper;
 
 using System.Collections.Immutable;
@@ -8,14 +10,12 @@ public class CollectionSourceChild
     public string Name { get; set; } = string.Empty;
 }
 
-#pragma warning disable CA1819
 public class CollectionSource
 {
     public CollectionSourceChild[]? Children { get; set; }
     public List<CollectionSourceChild>? Items { get; set; }
     public int DirectValue { get; set; }
 }
-#pragma warning restore CA1819
 
 public class CollectionDestinationChild
 {
@@ -23,14 +23,12 @@ public class CollectionDestinationChild
     public string Name { get; set; } = string.Empty;
 }
 
-#pragma warning disable CA1819
 public class CollectionDestination
 {
     public List<CollectionDestinationChild>? Children { get; set; }
     public CollectionDestinationChild[]? Items { get; set; }
     public int DirectValue { get; set; }
 }
-#pragma warning restore CA1819
 
 public class CustomCollectionConverterSourceChild
 {
@@ -38,12 +36,10 @@ public class CustomCollectionConverterSourceChild
     public string Name { get; set; } = string.Empty;
 }
 
-#pragma warning disable CA1819
 public class CustomCollectionConverterSource
 {
     public List<CustomCollectionConverterSourceChild>? Children { get; set; }
 }
-#pragma warning restore CA1819
 
 public class CustomCollectionConverterDestChild
 {
@@ -99,12 +95,10 @@ public class VoidMapperDestination
     public List<VoidMapperDestinationChild>? Children { get; set; }
 }
 
-#pragma warning disable CA1819
 public class CustomCollectionSource
 {
     public CollectionSourceChild[]? Numbers { get; set; }
 }
-#pragma warning restore CA1819
 
 public class CustomCollectionDestination
 {
@@ -238,19 +232,16 @@ public class MatrixListSource
 {
     public List<MatrixSrcItem>? Items { get; set; }
 }
-#pragma warning restore CA1819
 
 public class MatrixToListDst
 {
     public List<MatrixDstItem>? Items { get; set; }
 }
 
-#pragma warning disable CA1819
 public class MatrixToArrayDst
 {
     public MatrixDstItem[]? Items { get; set; }
 }
-#pragma warning restore CA1819
 
 public class MatrixToImmutableArrayDst
 {

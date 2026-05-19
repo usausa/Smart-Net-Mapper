@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 /// </summary>
 public class CollectionMatrixMappingTests
 {
-    public static TheoryData<int> ElementCounts => new() { 0, 1, 10 };
+    public static TheoryData<int> ElementCounts => [0, 1, 10];
 
     private static MatrixSrcItem[] MakeArray(int count) =>
         Enumerable.Range(1, count).Select(i => new MatrixSrcItem { Value = i }).ToArray();
@@ -96,7 +96,10 @@ public class CollectionMatrixMappingTests
         var dst = new MatrixToImmutableArrayDst();
         TestMappers.MapListToImmutableArray(src, dst);
         Assert.Equal(count, dst.Items.Length);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
     [Theory, MemberData(nameof(ElementCounts))]

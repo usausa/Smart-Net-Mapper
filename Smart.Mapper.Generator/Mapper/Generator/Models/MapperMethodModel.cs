@@ -1,14 +1,12 @@
 namespace Smart.Mapper.Generator.Models;
 
+using System.Collections.Immutable;
+
 using Microsoft.CodeAnalysis;
 
 using SourceGenerateHelper;
 
-using System.Collections.Immutable;
-
-/// <summary>
-/// Represents a mapper method model.
-/// </summary>
+// Represents a mapper method model.
 internal sealed record MapperMethodModel
 {
     public string Namespace { get; set; } = string.Empty;

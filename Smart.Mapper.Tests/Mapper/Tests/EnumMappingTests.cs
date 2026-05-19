@@ -33,7 +33,7 @@ public class EnumMappingTests
     [Fact]
     public void MapEnumToEnum_AllValues_MappedByName()
     {
-        foreach (SourceStatus value in Enum.GetValues<SourceStatus>())
+        foreach (var value in Enum.GetValues<SourceStatus>())
         {
             var source = new EnumToEnumSource { Status = value };
             var destination = new EnumToEnumDestination();

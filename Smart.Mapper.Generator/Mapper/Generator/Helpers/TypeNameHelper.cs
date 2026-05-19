@@ -2,48 +2,40 @@ namespace Smart.Mapper.Generator.Helpers;
 
 using System;
 
-/// <summary>
-/// Utilities for working with fully-qualified C# type name strings as produced by
-/// <c>ITypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)</c>.
-/// </summary>
+// Utilities for working with fully-qualified C# type name strings as produced by
+// ITypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).
 internal static class TypeNameHelper
 {
     // -------------------------------------------------------
     // Type category checks
     // -------------------------------------------------------
 
-    /// <summary>
-    /// Returns true when the type name represents <see cref="System.String"/>,
-    /// handling both the alias form ("string") and the fully-qualified form.
-    /// </summary>
+    // Returns true when the type name represents System.String,
+    // handling both the alias form ("string") and the fully-qualified form.
     public static bool IsStringType(string typeName) =>
         typeName is "string" or "global::System.String" or "global::System.String?";
 
-    /// <summary>
-    /// Returns true when the type name is a DateTime-family type:
-    /// DateTime, DateOnly, TimeOnly, DateTimeOffset, or TimeSpan.
-    /// </summary>
+    // Returns true when the type name is a DateTime-family type:
+    // DateTime, DateOnly, TimeOnly, DateTimeOffset, or TimeSpan.
     public static bool IsDateTimeType(string typeName) =>
         typeName is "global::System.DateTime" or "global::System.DateOnly" or
                     "global::System.TimeOnly" or "global::System.DateTimeOffset" or
                     "global::System.TimeSpan";
 
-    /// <summary>
-    /// Returns true when the fully-qualified type name is one of the built-in numeric or date/time types
-    /// that <c>DefaultValueConverter</c> has specialised overloads for.
-    /// </summary>
+    // Returns true when the fully-qualified type name is one of the built-in numeric or date/time types
+    // that DefaultValueConverter has specialised overloads for.
     public static bool IsBuiltInNumericOrDateType(string typeName) =>
         typeName is
-            "global::System.SByte"   or "global::System.Byte"
-         or "global::System.Int16"   or "global::System.UInt16"
-         or "global::System.Int32"   or "global::System.UInt32"
-         or "global::System.Int64"   or "global::System.UInt64"
-         or "global::System.Single"  or "global::System.Double"
+            "global::System.SByte" or "global::System.Byte"
+         or "global::System.Int16" or "global::System.UInt16"
+         or "global::System.Int32" or "global::System.UInt32"
+         or "global::System.Int64" or "global::System.UInt64"
+         or "global::System.Single" or "global::System.Double"
          or "global::System.Decimal" or "global::System.Boolean"
          or "global::System.DateTime" or "global::System.Guid"
          or "global::System.DateOnly" or "global::System.TimeOnly"
          or "global::System.DateTimeOffset" or "global::System.TimeSpan"
-         or "global::System.Half"    or "global::System.Int128"
+         or "global::System.Half" or "global::System.Int128"
          or "global::System.UInt128" or "global::System.Numerics.BigInteger"
          or "sbyte" or "byte" or "short" or "ushort" or "int" or "uint"
          or "long" or "ulong" or "float" or "double" or "decimal" or "bool";
@@ -52,10 +44,8 @@ internal static class TypeNameHelper
     // Type name normalisation
     // -------------------------------------------------------
 
-    /// <summary>
-    /// Strips <c>global::</c> and <c>System.</c> prefixes and removes trailing <c>?</c>
-    /// or <c>Nullable&lt;&gt;</c> wrappers so that two equivalent type names compare equal.
-    /// </summary>
+    // Strips global:: and System. prefixes and removes trailing ?
+    // or Nullable<> wrappers so that two equivalent type names compare equal.
     public static string NormalizeTypeName(string typeName)
     {
         var normalized = typeName
@@ -76,35 +66,31 @@ internal static class TypeNameHelper
         return normalized;
     }
 
-    /// <summary>
-    /// Returns the simple (unqualified) type name, mapping C# aliases to their CLR names.
-    /// For example: <c>"global::System.Int32"</c> → <c>"Int32"</c>, <c>"int"</c> → <c>"Int32"</c>.
-    /// </summary>
+    // Returns the simple (unqualified) type name, mapping C# aliases to their CLR names.
+    // For example: "global::System.Int32" → "Int32", "int" → "Int32".
     public static string GetSimpleTypeName(string fullyQualifiedTypeName) =>
         fullyQualifiedTypeName switch
         {
-            "int"                  or "global::System.Int32"    => "Int32",
-            "long"                 or "global::System.Int64"    => "Int64",
-            "short"                or "global::System.Int16"    => "Int16",
-            "byte"                 or "global::System.Byte"     => "Byte",
-            "sbyte"                or "global::System.SByte"    => "SByte",
-            "uint"                 or "global::System.UInt32"   => "UInt32",
-            "ulong"                or "global::System.UInt64"   => "UInt64",
-            "ushort"               or "global::System.UInt16"   => "UInt16",
-            "float"                or "global::System.Single"   => "Single",
-            "double"               or "global::System.Double"   => "Double",
-            "decimal"              or "global::System.Decimal"  => "Decimal",
-            "bool"                 or "global::System.Boolean"  => "Boolean",
-            "string"               or "global::System.String"   => "String",
-            "global::System.DateTime"                           => "DateTime",
-            "global::System.Guid"                               => "Guid",
-            _                                                   => ExtractLastSegment(fullyQualifiedTypeName)
+            "int" or "global::System.Int32" => "Int32",
+            "long" or "global::System.Int64" => "Int64",
+            "short" or "global::System.Int16" => "Int16",
+            "byte" or "global::System.Byte" => "Byte",
+            "sbyte" or "global::System.SByte" => "SByte",
+            "uint" or "global::System.UInt32" => "UInt32",
+            "ulong" or "global::System.UInt64" => "UInt64",
+            "ushort" or "global::System.UInt16" => "UInt16",
+            "float" or "global::System.Single" => "Single",
+            "double" or "global::System.Double" => "Double",
+            "decimal" or "global::System.Decimal" => "Decimal",
+            "bool" or "global::System.Boolean" => "Boolean",
+            "string" or "global::System.String" => "String",
+            "global::System.DateTime" => "DateTime",
+            "global::System.Guid" => "Guid",
+            _ => ExtractLastSegment(fullyQualifiedTypeName)
         };
 
-    /// <summary>
-    /// Returns the last dot-separated segment of a fully-qualified type name,
-    /// stripping any leading <c>global::</c> prefix first.
-    /// </summary>
+    // Returns the last dot-separated segment of a fully-qualified type name,
+    // stripping any leading global:: prefix first.
     public static string ExtractLastSegment(string fullyQualifiedTypeName)
     {
         var name = fullyQualifiedTypeName;
@@ -121,11 +107,8 @@ internal static class TypeNameHelper
     // Numeric conversion classification
     // -------------------------------------------------------
 
-    /// <summary>
-    /// Returns true when the conversion from <paramref name="sourceType"/> to
-    /// <paramref name="targetType"/> requires an explicit cast rather than being a
-    /// widening implicit numeric conversion.
-    /// </summary>
+    // Returns true when the conversion from sourceType to targetType requires an explicit cast
+    // rather than being a widening implicit numeric conversion.
     public static bool RequiresTypeConversion(string sourceType, string targetType)
     {
         var normalizedSource = NormalizeTypeName(sourceType);
@@ -144,11 +127,8 @@ internal static class TypeNameHelper
         return true;
     }
 
-    /// <summary>
-    /// Returns true when C# allows an implicit widening numeric conversion from
-    /// <paramref name="sourceType"/> to <paramref name="targetType"/>.
-    /// Type names should be normalized before calling.
-    /// </summary>
+    // Returns true when C# allows an implicit widening numeric conversion from
+    // sourceType to targetType. Type names should be normalized before calling.
     public static bool IsImplicitNumericConversion(string sourceType, string targetType) =>
         sourceType switch
         {
@@ -175,10 +155,8 @@ internal static class TypeNameHelper
             _ => false
         };
 
-    /// <summary>
-    /// Returns true when both types are numeric and the conversion is a narrowing (explicit) cast
-    /// that is not already covered by implicit widening rules.
-    /// </summary>
+    // Returns true when both types are numeric and the conversion is a narrowing (explicit) cast
+    // that is not already covered by implicit widening rules.
     public static bool IsExplicitNumericConversion(string sourceType, string targetType)
     {
         static bool IsNumeric(string t) =>

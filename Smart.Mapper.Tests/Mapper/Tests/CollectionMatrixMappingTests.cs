@@ -69,7 +69,10 @@ public class CollectionMatrixMappingTests
         TestMappers.MapListToList(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Count);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
     [Theory, MemberData(nameof(ElementCounts))]
@@ -80,7 +83,10 @@ public class CollectionMatrixMappingTests
         TestMappers.MapListToArray(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Length);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
     [Theory, MemberData(nameof(ElementCounts))]
@@ -133,7 +139,10 @@ public class CollectionMatrixMappingTests
         TestMappers.MapArrayToListVoid(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Count);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
     [Theory, MemberData(nameof(ElementCounts))]
@@ -144,6 +153,9 @@ public class CollectionMatrixMappingTests
         TestMappers.MapListToListVoid(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Count);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 }

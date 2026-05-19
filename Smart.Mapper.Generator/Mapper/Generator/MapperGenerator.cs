@@ -6,12 +6,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-using Smart.Mapper.Generator.Helpers;
-using Smart.Mapper.Generator.Models;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+
+using Smart.Mapper.Generator.Helpers;
+using Smart.Mapper.Generator.Models;
 
 using SourceGenerateHelper;
 
@@ -679,7 +679,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     {
                         model.NumberFormat = numFmt;
                     }
-
                 }
             }
             else if (attributeName == MapPropertyAttributeName ||
@@ -1371,10 +1370,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     if (returnType == targetTypeName || method.ReturnType.IsAssignableTo(targetType))
                     {
                         hasMatchWithoutCustomParams = true;
-                        if (matchedMethod is null)
-                        {
-                            matchedMethod = method;
-                        }
+                        matchedMethod ??= method;
                     }
                     else
                     {
@@ -4057,7 +4053,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 mapping.ParseMethod = ParseMethodKind.ISpanParsable;
             }
-            else if (parsableSymbol is not null && targetTypeSymbol.ImplementsGenericInterface(parsableSymbol))
+            else if (targetTypeSymbol.ImplementsGenericInterface(parsableSymbol))
             {
                 mapping.ParseMethod = ParseMethodKind.IParsable;
             }
@@ -4233,7 +4229,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
         // Get the converter type to check for specialized methods
-        ITypeSymbol? converterType = null;
+        ITypeSymbol? converterType;
 
         if (model.MapConverterTypeName is not null)
         {

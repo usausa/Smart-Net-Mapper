@@ -1,16 +1,19 @@
-# Smart-Net-Mapper
+# Smart.Mapper
 
-[![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper)
+[![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
+[![NuGet](https://img.shields.io/nuget/dt/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
 
-## Overview
+**Smart.Mapper** is a high-performance object mapper library based on Roslyn Incremental Source Generator.
+It automatically generates property-copying code at compile time for `static partial` methods decorated with the `[Mapper]` attribute.
 
-Smart.Mapper is a high-performance object mapper for .NET built on a Roslyn Incremental Source Generator.
-Mapping code is generated at compile time from `[Mapper]`-annotated `partial` methods, so there is zero reflection, zero runtime configuration, and the JIT can fully inline the generated assignments.
+## Features
 
-- **Target frameworks:** `net10.0` / `net9.0` / `net8.0`
-- **Package:** [`Usa.Smart.Mapper`](https://www.nuget.org/packages/Usa.Smart.Mapper) (analyzer is bundled — no separate generator package needed)
-- **Declaration style:** per-method `[Mapper]` attribute on a `partial` method inside a `static partial class`
-- **NativeAOT / Trimming compatible:** `IsAotCompatible=true` — zero IL2xxx/IL3xxx warnings; validated with `Smart.Mapper.AotTests`
+- **Zero overhead** - no reflection at runtime; all code is generated statically at compile time
+- **Specialized-method dispatch** - `ConvertTo{TargetType}` naming convention enables direct-call generation, friendly to JIT inlining
+- **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
+- **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
+- **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
+- **Rich diagnostics** - 21 compiler-time diagnostics (SMP0001-SMP0021)
 
 ## Installation
 
@@ -18,167 +21,596 @@ Mapping code is generated at compile time from `[Mapper]`-annotated `partial` me
 dotnet add package Usa.Smart.Mapper
 ```
 
+The package includes the source generator DLL under `analyzers/dotnet/cs`, so the generator is activated automatically when you reference the package - no additional setup required.
+
+## Target Frameworks
+
+| Library | Frameworks |
+|---------|-----------|
+| `Smart.Mapper` | net10.0, net9.0, net8.0 |
+| `Smart.Mapper.Generator` | netstandard2.0 (Roslyn Incremental Source Generator) |
+
+---
+
 ## Quick Start
 
 ```csharp
-using Smart.Mapper;
-
+// Define mapper in a static partial class
 internal static partial class ObjectMapper
 {
-    // Auto-mapping: same-name properties are mapped automatically.
+    // void pattern: map into an existing instance
     [Mapper]
     public static partial void Map(Source source, Destination destination);
 
-    // Return-style mapping: destination is constructed and returned.
+    // return pattern: create and return a new instance
     [Mapper]
-    public static partial Destination MapToNew(Source source);
-
-    // Rename and ignore.
-    [Mapper]
-    [MapProperty(nameof(Destination.DisplayName), nameof(Source.Name))]
-    [MapIgnore(nameof(Destination.Secret))]
-    public static partial void MapRenamed(Source source, Destination destination);
+    public static partial Destination Map(Source source);
 }
 ```
 
-The Source Generator emits the implementation directly into the partial class — no runtime configuration, no IoC registration.
+### Generated code (void pattern)
 
-## Features
+```csharp
+public static partial void Map(Source source, Destination destination)
+{
+    destination.Id          = source.Id;
+    destination.Name        = source.Name;
+    destination.Description = source.Description;
+}
+```
 
-### Mapping basics
+### Generated code (return pattern)
 
-- Same-name automatic mapping (`[Mapper]`, opt out via `AutoMap = false`)
-- Property renaming (`[MapProperty("Target", "Source")]`)
-- Ignore (`[MapIgnore]`)
-- Strict mode (`[Mapper(Strict = true)]`) — emits **ML0017** for unmapped destination properties
-- Name comparison strategy (`[Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]`)
-- Order control (`Order` property on every mapping attribute)
+```csharp
+public static partial Destination Map(Source source)
+{
+    var destination = new Destination();
+    destination.Id          = source.Id;
+    destination.Name        = source.Name;
+    destination.Description = source.Description;
+    return destination;
+}
+```
 
-### Values and computation
-
-- Constant values (`[MapConstant]`, `[MapConstant<T>]` with C# 11 generic attributes)
-- Inline expressions (`[MapExpression("System.DateTime.Now")]`)
-- Computed values via static method (`[MapUsing("Target", nameof(Compute))]`)
-- Source method / property-path projection (`[MapFrom("Target", "Nested.Value")]` / `[MapFrom("Target", nameof(Source.GetSomething))]`)
-
-### Type conversion
-
-- Built-in conversions for primitives, `string`, `Guid`, `DateTime`, `Nullable<T>` (`DefaultValueConverter`)
-- C#-spec compliant numeric widening
-- Custom converter via type (`[ValueConverter(typeof(MyConverter))]`)
-- Per-property converter method (`[MapProperty(..., Converter = nameof(MyConvert))]`)
-- **Specialized method dispatch** — if your converter defines `ConvertTo{TargetType}(...)`, the generator emits a direct call to that method instead of going through a generic `Convert<TS, TD>` shim, improving inlining and avoiding boxing.
-
-### Nesting and collections
-
-- Dot-notation flatten / unflatten (`[MapProperty("A.B.C", "X")]` / `[MapProperty("X", "A.B.C")]`)
-- Nested object mapping with child mapper (`[MapNested("Child", "Child", Mapper = nameof(MapChild))]`)
-- Collection mapping (`[MapCollection("Items", "Items", Mapper = nameof(MapItem))]`)
-- Custom collection converter (`[CollectionConverter(typeof(MyConverter))]`)
-
-### Null handling
-
-- `NullBehavior.Default` (default) — null source falls back to a sensible default value
-- `NullBehavior.Skip` — leave the destination property untouched on null source
-- `NullSubstitute = ...` (also typed `[MapProperty<T>(... NullSubstitute = ...)]`) — explicit substitute value
-
-### Hooks and context
-
-- `[BeforeMap(nameof(OnBeforeMap))]` / `[AfterMap(nameof(OnAfterMap))]`
-- Custom parameter (context) — any extra parameters on the `[Mapper]` method are propagated to `BeforeMap` / `AfterMap` / `Converter` / `Condition` / `MapUsing` / `MapFrom`
-
-### Other
-
-- `struct` source / destination supported
-- Nullable reference type aware (works with `<Nullable>enable</Nullable>`)
-- 17 compile-time diagnostics (`ML0001`–`ML0017`) catch bad signatures, unknown members, duplicate targets, and more
+---
 
 ## Attribute Reference
 
-| Attribute | Purpose |
-|---|---|
-| `[Mapper]` | Marks a `partial` method as a mapper. Options: `AutoMap`, `Strict`, `NameComparison`. |
-| `[MapProperty]` / `[MapProperty<T>]` | Rename / convert / null-handle a property. Supports `Converter`, `NullBehavior`, `NullSubstitute`, `Order`, dot-notation paths. |
-| `[MapIgnore]` | Exclude a destination property from auto-mapping. |
-| `[MapConstant]` / `[MapConstant<T>]` | Assign a constant value. |
-| `[MapExpression]` | Assign an arbitrary inline expression (string). |
-| `[MapUsing]` | Compute a value via a static method. |
-| `[MapFrom]` | Pull a value from a source method or a property path. |
-| `[MapCondition]` | Predicate-controlled per-property mapping. |
-| `[MapNested]` | Map a nested object through a child mapper. |
-| `[MapCollection]` | Map a collection through an element mapper. |
-| `[ValueConverter]` | Register a type-level custom converter (class / struct / method). |
-| `[CollectionConverter]` | Register a collection-level custom converter. |
-| `[BeforeMap]` / `[AfterMap]` | Pre / post hooks for the mapping. |
+### Method-level attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `[Mapper]` | Marks a method as a mapping method |
+| `[Mapper(AutoMap = false)]` | Disables automatic same-name property mapping |
+| `[Mapper(Strict = true)]` | Emits SMP0016 warning for unmapped destination properties |
+| `[Mapper(NameComparison = ...)]` | Property name comparison mode for auto-mapping (default: `Ordinal`) |
+| `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
+| `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
+| `[Mapper(NumberFormat = "...")]` | Format string for numeric <-> `string` conversion (use with `Culture`) |
+| `[MapProperty]` | Explicit property-to-property mapping; supports `NullSubstitute`, `Culture`, `DateTimeFormat`, `NumberFormat`, `Converter` |
+| `[MapProperty<T>]` | Type-safe variant of `[MapProperty]` (C# 11+) |
+| `[MapUsing]` | Calculates a value via a static method (custom-parameter aware) |
+| `[MapFrom]` | Maps from a source instance-method call or dot-notation property path |
+| `[MapConstant]` | Sets a constant value on a destination property |
+| `[MapConstant<T>]` | Type-safe variant of `[MapConstant]` (C# 11+) |
+| `[MapExpression]` | Embeds an arbitrary C# expression (e.g., `"System.DateTime.Now"`) |
+| `[MapIgnore]` | Excludes a destination property from mapping |
+| `[BeforeMap]` | Callback invoked before mapping |
+| `[AfterMap]` | Callback invoked after mapping |
+| `[MapCondition]` | Conditional mapping - global or per-property |
+| `[MapCollection]` | Collection property mapping via an explicit mapper method |
+| `[MapNested]` | Nested object mapping via an explicit mapper method |
+| `[ValueConverter]` | Custom type converter (method / class level) |
+| `[CollectionConverter]` | Custom collection converter (method / class level) |
+
+> **First argument convention** - For all attributes, the **first** argument is the **destination** (target) property name; the **second** is the source.
+
+### Class-level attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `[MapperProfile]` | Sets defaults (`Strict`, `NameComparison`, `Culture`, `DateTimeFormat`, `NumberFormat`) for all `[Mapper]` methods in the class; method-level settings take precedence |
+| `[ValueConverter]` | Default custom type converter for all `[Mapper]` methods in the class |
+| `[CollectionConverter]` | Default custom collection converter for all `[Mapper]` methods in the class |
+
+---
+
+## Core Features
+
+### Auto-mapping
+
+Same-name, compatible-type properties are mapped automatically.
+
+```csharp
+[Mapper]
+public static partial void Map(Source source, Destination destination);
+```
+
+### Property remapping (`[MapProperty]`)
+
+```csharp
+[Mapper]
+[MapProperty(nameof(Destination.FullName), nameof(Source.Name))]
+public static partial void Map(Source source, Destination destination);
+```
+
+### Null substitution
+
+```csharp
+[Mapper]
+[MapProperty(nameof(Destination.Name),  nameof(Source.Name),  NullSubstitute = "Unknown")]
+[MapProperty(nameof(Destination.Count), nameof(Source.Count), NullSubstitute = 0)]
+public static partial void Map(Source source, Destination destination);
+```
+
+### Ignore properties (`[MapIgnore]`)
+
+```csharp
+[Mapper]
+[MapIgnore(nameof(Destination.InternalId))]
+[MapIgnore(nameof(Destination.TempValue))]
+public static partial void Map(Source source, Destination destination);
+```
+
+### Static method calculation (`[MapUsing]`)
+
+```csharp
+[Mapper]
+[MapUsing(nameof(Destination.FullName), nameof(CombineFullName))]
+public static partial void Map(Source source, Destination destination);
+
+private static string CombineFullName(Source source) => $"{source.FirstName} {source.LastName}";
+```
+
+Custom parameters are automatically forwarded:
+
+```csharp
+[Mapper]
+[MapUsing(nameof(Destination.FullName), nameof(CombineFullName))]
+public static partial Destination Map(Source source, FormattingContext context);
+
+private static string CombineFullName(Source source, FormattingContext context)
+    => $"{source.FirstName}{context.Separator}{source.LastName}";
+```
+
+### Source method / property-path (`[MapFrom]`)
+
+```csharp
+[Mapper]
+[MapFrom(nameof(Destination.ItemCount), nameof(Source.GetItemCount))]  // instance method call
+[MapFrom(nameof(Destination.NestedValue), "Nested.Value")]              // dot-notation path
+public static partial void Map(Source source, Destination destination);
+```
+
+### Constant values (`[MapConstant]` / `[MapConstant<T>]`)
+
+```csharp
+[Mapper]
+[MapConstant<int>("Version", 1)]
+[MapConstant<string>("Status", "Active")]
+[MapConstant<bool>("IsEnabled", true)]
+public static partial void Map(Source source, Destination destination);
+```
+
+Non-generic variant: `[MapConstant("Status", "Active")]`
+For expressions: `[MapExpression("CreatedAt", "System.DateTime.Now")]`
+
+### Before / After Map callbacks
+
+```csharp
+[Mapper]
+[BeforeMap(nameof(BeforeMapping))]
+[AfterMap(nameof(AfterMapping))]
+public static partial void Map(Source source, Destination destination);
+
+private static void BeforeMapping(Source source, Destination destination) { /* ... */ }
+private static void AfterMapping(Source source, Destination destination) { /* ... */ }
+```
+
+### Conditional mapping (`[MapCondition]`)
+
+Global condition:
+
+```csharp
+[Mapper]
+[MapCondition(nameof(ShouldMap))]
+public static partial void Map(Source source, Destination destination);
+
+private static bool ShouldMap(Source source, Destination destination) => source.IsActive;
+```
+
+Per-property condition:
+
+```csharp
+[Mapper]
+[MapCondition(nameof(Destination.Name), nameof(ShouldMapName))]
+public static partial void Map(Source source, Destination destination);
+
+private static bool ShouldMapName(string? name) => !string.IsNullOrEmpty(name);
+```
+
+### Auto-mapping disabled (`AutoMap = false`)
+
+```csharp
+[Mapper(AutoMap = false)]
+[MapProperty(nameof(Source.Id), nameof(Destination.Id))]
+public static partial void Map(Source source, Destination destination);
+// Only 'Id' is mapped; other properties are ignored.
+```
+
+---
+
+## Nested Property Mapping
+
+Use dot notation in `[MapProperty]` to flatten or unflatten nested properties.
+
+### Flatten (nested source -> flat destination)
+
+```csharp
+[Mapper]
+[MapProperty("Child.Id",   "ChildId")]
+[MapProperty("Child.Name", "ChildName")]
+public static partial void Map(Source source, Destination destination);
+```
+
+Generated code adds a null guard for nullable intermediate objects:
+
+```csharp
+if (source.Child is not null)
+{
+    destination.ChildId   = source.Child.Id;
+    destination.ChildName = source.Child.Name;
+}
+```
+
+### Unflatten (flat source -> nested destination)
+
+```csharp
+[Mapper]
+[MapProperty("Value1", "Child1.Value")]
+[MapProperty("Value2", "Child2.Value")]
+public static partial void Map(Source source, Destination destination);
+```
+
+Intermediate destination objects are auto-instantiated:
+
+```csharp
+destination.Child1 ??= new DestinationChild();
+destination.Child2 ??= new DestinationChild();
+destination.Child1.Value = source.Value1;
+destination.Child2.Value = source.Value2;
+```
+
+---
+
+## Collection Mapping (`[MapCollection]`)
+
+An explicit mapper method must be specified.
+
+```csharp
+internal static partial class ObjectMapper
+{
+    [Mapper]
+    public static partial DestinationChild MapChild(SourceChild source);
+
+    [Mapper]
+    [MapCollection(nameof(Destination.Children), nameof(Source.Children), MapperMethod = nameof(MapChild))]
+    public static partial void Map(Source source, Destination destination);
+}
+```
+
+Generated code:
+
+```csharp
+destination.Children = global::Smart.Mapper.DefaultCollectionConverter.ToList<SourceChild, DestinationChild>(
+    source.Children, MapChild)!;
+```
+
+`DefaultCollectionConverter` provides `ToArray` / `ToList` overloads for both function-mapper and action-mapper variants. A null source collection returns `default`.
+
+---
+
+## Nested Object Mapping (`[MapNested]`)
+
+```csharp
+[Mapper]
+[MapNested(nameof(Destination.Child), nameof(Source.Child), Mapper = nameof(MapChild))]
+public static partial void Map(Source source, Destination destination);
+```
+
+Generated code:
+
+```csharp
+destination.Child = source.Child is not null ? MapChild(source.Child!) : default!;
+```
+
+---
+
+## record / Primary Constructor Support
+
+When the destination type is a `record` or has a primary constructor, the generator automatically uses constructor-call syntax.
+
+```csharp
+public record DestModel(int Id, string Name);
+
+[Mapper]
+public static partial DestModel Map(SrcModel src);
+```
+
+Generated code:
+
+```csharp
+public static partial DestModel Map(SrcModel src)
+{
+    var destination = new DestModel(src.Id, src.Name);
+    return destination;
+}
+```
+
+> `void` mapper is not allowed for `init-only` / `record` destination types (SMP0018).
+
+---
+
+## Null Handling
+
+| Source type | Destination type | Behavior |
+|-------------|-----------------|----------|
+| `T?` | `T?` | Copied as-is (including null) |
+| `T?` | `T` (leaf) | `default!` assigned when null |
+| `T` | `T?` | Copied as-is |
+| `T` | `T` | Copied as-is |
+
+Nullable intermediate paths on the **source side** are guarded with `if (... is not null)`.
+Nullable intermediate paths on the **destination side** are auto-instantiated with `??= new`.
+
+---
+
+## Type Conversion
+
+Same-type and implicitly convertible assignments are generated without a converter.
+When explicit conversion is needed, `DefaultValueConverter` is used.
+
+### Specialized-method pattern
+
+```csharp
+// string -> int
+destination.IntValue = DefaultValueConverter.ConvertToInt32(source.StringValue);
+
+// int -> string
+destination.StringValue = DefaultValueConverter.ConvertToString(source.IntValue);
+```
+
+### Nullable handling (handled by the generator)
+
+```csharp
+// int? -> string
+destination.StringValue = source.NullableValue is not null
+    ? DefaultValueConverter.ConvertToString(source.NullableValue.Value)
+    : default!;
+```
+
+### Custom value converter (`[ValueConverter]`)
+
+```csharp
+public static class CustomConverter
+{
+    public static string ConvertToString(int source) => $"ID_{source}";
+    public static TDestination Convert<TSource, TDestination>(TSource source) { ... }
+}
+
+[Mapper]
+[ValueConverter(typeof(CustomConverter))]
+public static partial void Map(Source source, Destination destination);
+```
+
+Priority order (highest to lowest):
+
+| Level | Scope |
+|-------|-------|
+| `[MapProperty(Converter = nameof(...))]` | Single property |
+| `[ValueConverter]` on mapper method | All properties of that method |
+| `[ValueConverter]` on class | All mapper methods in the class |
+| `DefaultValueConverter` | Fallback |
+
+### Custom collection converter (`[CollectionConverter]`)
+
+```csharp
+public static class CustomCollectionConverter
+{
+    public static List<TDest>? ToList<TSource, TDest>(
+        IEnumerable<TSource>? source, Func<TSource, TDest> mapper) { ... }
+    public static TDest[]? ToArray<TSource, TDest>(
+        IEnumerable<TSource>? source, Func<TSource, TDest> mapper) { ... }
+}
+
+[Mapper]
+[CollectionConverter(typeof(CustomCollectionConverter))]
+[MapCollection(nameof(Source.Items), nameof(Destination.Items), MapperMethod = nameof(MapItem))]
+public static partial void Map(Source source, Destination destination);
+```
+
+---
+
+## Culture / Format
+
+```csharp
+[MapperProfile(Culture = "ja-JP")]
+internal static partial class AppMappers
+{
+    [Mapper(Culture = "de-DE", NumberFormat = "N2")]
+    public static partial Dest Map(Src src);
+
+    [Mapper]
+    [MapProperty(nameof(Dst.Amount), nameof(Src.Price), Culture = "en-US", NumberFormat = "C")]
+    public static partial Dest2 Map(Src2 src);
+}
+```
+
+Priority: `[MapProperty]` > `[Mapper]` > `[MapperProfile]` > `CultureInfo.InvariantCulture`
+
+The resolved `CultureInfo` is cached as a `static readonly` field in the generated class to avoid repeated `GetCultureInfo(...)` calls.
+
+> Specifying `DateTimeFormat` / `NumberFormat` without `Culture` is a compile-time error (SMP0019).
+
+---
+
+## NativeAOT / Trimming
+
+Smart.Mapper is fully compatible with NativeAOT and IL trimming.
+
+- `<IsAotCompatible>true</IsAotCompatible>` is declared in `Smart.Mapper.csproj`
+- All type conversions are handled through specialized methods - no generic reflection fallback at runtime
+- `Activator.CreateInstance` is never used; object creation is expanded inline by the generator
+- `[DynamicallyAccessedMembers]` annotations are applied to `ValueConverterAttribute.ConverterType` and `CollectionConverterAttribute.ConverterType`
+
+> **`[MapExpression]` warning** - If an expression contains reflection APIs (`Activator`, `Type.GetType`, `MethodInfo`, etc.), SMP0021 is emitted. Prefer `[MapFrom]` or `[MapUsing]` in AOT contexts.
+
+---
 
 ## Diagnostics
 
-All diagnostics are emitted under the `Smart.Mapper` category.
+| Code | Description | Severity |
+|------|-------------|----------|
+| SMP0001 | Mapper method must be `static partial` | Error |
+| SMP0002 | Invalid parameter count on mapper method | Error |
+| SMP0003 | Duplicate custom parameter type | Error |
+| SMP0004 | `BeforeMap` method signature mismatch | Error |
+| SMP0005 | `AfterMap` method signature mismatch | Error |
+| SMP0006 | Converter method signature mismatch | Error |
+| SMP0007 | Converter return type does not match destination property type | Error |
+| SMP0008 | Property-condition method signature mismatch | Error |
+| SMP0009 | `MapUsing` method signature mismatch | Error |
+| SMP0010 | `MapUsing` return type does not match destination property type | Error |
+| SMP0011 | `MapFrom` target must be a no-argument instance method | Error |
+| SMP0012 | `MapFrom` method return type does not match destination property type | Error |
+| SMP0013 | `MapCollection` mapper method not found or signature mismatch | Error |
+| SMP0014 | `MapNested` mapper method not found or signature mismatch | Error |
+| SMP0015 | Duplicate mapping to the same destination property | Error |
+| SMP0016 | Strict mode: unmapped destination property | Warning |
+| SMP0017 | `required` member is not mapped | Error |
+| SMP0018 | `void` mapper cannot be used with `init-only` / `record` destination | Error |
+| SMP0019 | `DateTimeFormat` / `NumberFormat` specified without `Culture` | Error |
+| SMP0020 | AOT incompatible: generic fallback `Convert<TSource,TDest>` is reachable | Error |
+| SMP0021 | AOT warning: possible reflection pattern in `MapExpression` | Warning |
 
-| ID | Severity | Summary |
-|---|---|---|
-| ML0001 | Error | Mapper method must be `static partial`. |
-| ML0002 | Error | Mapper method needs a valid parameter signature. |
-| ML0003 | Error | Custom parameter types must be unique. |
-| ML0004 / ML0005 | Error | Invalid `BeforeMap` / `AfterMap` signature. |
-| ML0006 | Error | Invalid `Converter` signature. |
-| ML0007 / ML0008 | Error | Invalid `Condition` / property-level condition signature. |
-| ML0009 / ML0010 | Error | Invalid `MapFrom` / `MapFromMethod` signature. |
-| ML0011 / ML0012 | Error | `MapFrom` return type mismatch. |
-| ML0013 | Error | Invalid `MapCollection` mapper method. |
-| ML0014 | Error | Invalid `MapNested` mapper method. |
-| ML0015 | Error | Duplicate target mapping. |
-| ML0016 | Warning | Mapping attribute on a `[MapIgnore]`-marked property. |
-| ML0017 | Warning | Unmapped destination property (strict mode). |
-
-## Documentation
-
-- [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) — full feature specification (Japanese)
-- [`docs/MAPPER_GENERATOR_ARCHITECTURE.md`](docs/MAPPER_GENERATOR_ARCHITECTURE.md) — generator internals (Japanese)
-- [`docs/REVIEW.md`](docs/REVIEW.md) — implementation review (Japanese)
-- [`docs/PROPOSALS.md`](docs/PROPOSALS.md) — roadmap and feature proposals (Japanese)
-- [`docs/COMPARISON.md`](docs/COMPARISON.md) — comparison with Mapperly / Mapster / NextGenMapper / AutoMapper (Japanese)
+---
 
 ## Benchmark
 
-A historical run is provided below for reference; numbers were captured on .NET 6 / Windows 10 with an older revision of the library and predate the current target frameworks and the specialized-method-dispatch implementation. The benchmark project (`Smart.Mapper.Benchmark`, BenchmarkDotNet) is included in the repository and a fresh run on .NET 8 / 9 / 10 is planned ahead of the 1.0 release.
+Measured with [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) on .NET 10.
 
-``` ini
-BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
-AMD Ryzen 9 5900X, 1 CPU, 24 logical and 12 physical cores
-.NET SDK=6.0.100
-  [Host]    : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
-  MediumRun : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
-
-Job=MediumRun  IterationCount=15  LaunchCount=2
-WarmupCount=10
+```
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8457/25H2)
+AMD Ryzen 9 5900X 3.70GHz, 1 CPU, 24 logical and 12 physical cores
+.NET SDK 10.0.300  [Host / MediumRun] : .NET 10.0.8, X64 RyuJIT x86-64-v3
+Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 ```
 
-|                      Method |      Mean |     Error |    StdDev |    Median |       Min |       Max |       P90 |  Gen 0 | Allocated |
-|---------------------------- |----------:|----------:|----------:|----------:|----------:|----------:|----------:|-------:|----------:|
-|            SimpleAutoMapper | 65.466 ns | 0.9948 ns | 1.4267 ns | 64.705 ns | 63.738 ns | 67.147 ns | 67.078 ns | 0.0038 |      64 B |
-|           SimpleAutoMapper2 | 64.700 ns | 0.2078 ns | 0.2981 ns | 64.724 ns | 63.975 ns | 65.383 ns | 65.067 ns | 0.0038 |      64 B |
-|            SimpleTinyMapper | 24.601 ns | 0.2740 ns | 0.4101 ns | 24.602 ns | 23.903 ns | 25.191 ns | 25.099 ns | 0.0038 |      64 B |
-|         SimpleInstantMapper | 61.863 ns | 0.2972 ns | 0.4167 ns | 61.856 ns | 61.064 ns | 62.838 ns | 62.292 ns | 0.0095 |     160 B |
-|             SimpleRawMapper | 33.114 ns | 0.3367 ns | 0.5040 ns | 32.896 ns | 32.317 ns | 34.165 ns | 33.866 ns | 0.0038 |      64 B |
-|           SimpleSmartMapper | 11.746 ns | 0.0430 ns | 0.0644 ns | 11.759 ns | 11.607 ns | 11.880 ns | 11.810 ns | 0.0038 |      64 B |
-| SimpleInstantMapperWoLookup | 54.184 ns | 0.1680 ns | 0.2515 ns | 54.159 ns | 53.744 ns | 54.609 ns | 54.549 ns | 0.0095 |     160 B |
-|     SimpleRawMapperWoLookup | 24.994 ns | 0.0704 ns | 0.1054 ns | 24.990 ns | 24.810 ns | 25.174 ns | 25.137 ns | 0.0038 |      64 B |
-|   SimpleSmartMapperWoLookup |  8.704 ns | 0.0290 ns | 0.0424 ns |  8.702 ns |  8.643 ns |  8.810 ns |  8.747 ns | 0.0038 |      64 B |
-|                SimpleDirect |  8.028 ns | 0.0249 ns | 0.0365 ns |  8.029 ns |  7.957 ns |  8.102 ns |  8.078 ns | 0.0038 |      64 B |
-|                SimpleInline |  7.407 ns | 0.0346 ns | 0.0518 ns |  7.395 ns |  7.341 ns |  7.553 ns |  7.476 ns | 0.0038 |      64 B |
-|             MixedAutoMapper | 62.985 ns | 0.7563 ns | 1.1319 ns | 62.989 ns | 61.427 ns | 66.342 ns | 63.971 ns | 0.0038 |      64 B |
-|            MixedAutoMapper2 | 61.519 ns | 0.2114 ns | 0.2964 ns | 61.561 ns | 60.778 ns | 62.014 ns | 61.834 ns | 0.0038 |      64 B |
-|             MixedTinyMapper | 39.092 ns | 0.3748 ns | 0.5610 ns | 39.103 ns | 38.306 ns | 39.904 ns | 39.798 ns | 0.0067 |     112 B |
-|          MixedInstantMapper | 78.591 ns | 0.2413 ns | 0.3612 ns | 78.470 ns | 77.880 ns | 79.463 ns | 79.054 ns | 0.0123 |     208 B |
-|              MixedRawMapper | 32.251 ns | 0.3167 ns | 0.4642 ns | 32.313 ns | 31.508 ns | 33.211 ns | 32.889 ns | 0.0038 |      64 B |
-|            MixedSmartMapper |  8.576 ns | 0.0256 ns | 0.0376 ns |  8.575 ns |  8.507 ns |  8.657 ns |  8.619 ns | 0.0038 |      64 B |
-|            SingleAutoMapper | 58.018 ns | 0.3764 ns | 0.5398 ns | 58.054 ns | 57.280 ns | 58.918 ns | 58.611 ns | 0.0014 |      24 B |
-|           SingleAutoMapper2 | 58.242 ns | 0.5740 ns | 0.8233 ns | 57.793 ns | 57.103 ns | 59.245 ns | 59.166 ns | 0.0014 |      24 B |
-|            SingleTinyMapper | 20.350 ns | 0.0811 ns | 0.1213 ns | 20.323 ns | 20.158 ns | 20.616 ns | 20.544 ns | 0.0014 |      24 B |
-|         SingleInstantMapper | 18.291 ns | 0.1142 ns | 0.1674 ns | 18.290 ns | 18.042 ns | 18.586 ns | 18.503 ns | 0.0029 |      48 B |
-|             SingleRawMapper | 14.929 ns | 0.1577 ns | 0.2311 ns | 15.074 ns | 14.547 ns | 15.209 ns | 15.181 ns | 0.0014 |      24 B |
-|           SingleSmartMapper |  6.144 ns | 0.0197 ns | 0.0289 ns |  6.144 ns |  6.095 ns |  6.201 ns |  6.176 ns | 0.0014 |      24 B |
+### Simple mapping
+
+| Method | Mean | Error | StdDev | Ratio | Allocated |
+|--------|-----:|------:|-------:|------:|----------:|
+| Direct | 7.760 ns | 0.238 ns | 0.356 ns | 1.00 | 64 B |
+| SmartMapper | 8.736 ns | 0.334 ns | 0.499 ns | 1.13 | 64 B |
+
+### Type conversion mapping
+
+| Method | Mean | Error | StdDev | Ratio | Allocated |
+|--------|-----:|------:|-------:|------:|----------:|
+| Direct | 77.36 ns | 1.149 ns | 1.684 ns | 1.00 | 128 B |
+| SmartMapper | 77.96 ns | 1.183 ns | 1.771 ns | 1.01 | 128 B |
+
+### Nested mapping
+
+| Method | Mean | Error | StdDev | Ratio | Allocated |
+|--------|-----:|------:|-------:|------:|----------:|
+| Direct | 8.993 ns | 0.254 ns | 0.380 ns | 1.00 | 72 B |
+| SmartMapper | 8.887 ns | 0.263 ns | 0.385 ns | 0.99 | 72 B |
+
+### Collection mapping
+
+| Method | ItemCount | Mean | Ratio | Allocated |
+|--------|----------:|-----:|------:|----------:|
+| Direct | 10 | 77.90 ns | 1.00 | 456 B |
+| SmartMapper | 10 | 70.76 ns | 0.91 | 512 B |
+| Direct | 100 | 623.78 ns | 1.00 | 4056 B |
+| SmartMapper | 100 | 561.97 ns | 0.90 | 4112 B |
+
+> Smart.Mapper's generated code compiles to essentially the same instructions as hand-written code. The small overhead in simple mapping is due to a method-call boundary that JIT inlining typically eliminates.
+
+---
+
+## Running Tests
+
+### Unit Tests (`Smart.Mapper.Tests`)
+
+Uses xUnit v3 with Microsoft Testing Platform.
+
+```powershell
+# Run all unit tests
+dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
+
+# Run with code coverage
+dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj --settings CodeCoverage.runsettings
+```
+
+You can also run tests from Visual Studio Test Explorer.
+
+### Source Generator Tests (`Smart.Mapper.Generator.Tests`)
+
+Verifies that the Roslyn source generator produces correct output and emits the correct diagnostics.
+
+```powershell
+dotnet test Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj
+```
+
+### NativeAOT Smoke Tests (`Smart.Mapper.AotTests`)
+
+Verifies that the generated mapper code works correctly under NativeAOT publish.
+
+**1. Publish as NativeAOT**
+
+```powershell
+dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r win-x64
+```
+
+> Supported RIDs: `win-x64`, `linux-x64`, etc. Adjust to match your platform.
+
+**2. Run the published executable**
+
+```powershell
+.\Smart.Mapper.AotTests\bin\Release\net10.0\win-x64\publish\Smart.Mapper.AotTests.exe
+```
+
+**3. Verify the output**
+
+All 8 scenarios must pass:
+
+```
+Smart.Mapper AOT smoke tests starting...
+  [OK] Basic void mapping
+  [OK] Basic return mapping
+  [OK] Type conversion
+  [OK] Enum mapping
+  [OK] Null handling
+  [OK] Nested property mapping
+  [OK] Collection mapping
+  [OK] Custom value converter
+All AOT smoke tests passed.
+```
+
+If any test fails, the process exits with a non-zero exit code and prints `FAIL: <message>` to standard error.
+
+**4. Check for AOT warnings (optional)**
+
+```powershell
+dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r win-x64 2>&1 |
+    Select-String "IL2|IL3"
+```
+
+No `IL2xxx` / `IL3xxx` diagnostics should appear.
+
+---
 
 ## License
 

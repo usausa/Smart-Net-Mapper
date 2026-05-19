@@ -18,6 +18,7 @@
   <Project Path="Smart.Mapper/Smart.Mapper.csproj">
     <BuildDependency Project="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
   </Project>
+  <Project Path="Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj" />
   <Project Path="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
   <Project Path="Smart.Mapper.Tests/Smart.Mapper.Tests.csproj" />
   <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />

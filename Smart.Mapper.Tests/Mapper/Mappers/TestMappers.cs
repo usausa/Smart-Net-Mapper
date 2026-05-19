@@ -523,7 +523,6 @@ internal static partial class TestMappers
     public static partial void MapListToListVoid(MatrixListSource source, MatrixVoidDst destination);
 }
 
-
 // E3: MapperProfile – class-level defaults applied to all methods
 [MapperProfile(Strict = true, NameComparison = StringComparison.OrdinalIgnoreCase)]
 internal static partial class ProfileMappers

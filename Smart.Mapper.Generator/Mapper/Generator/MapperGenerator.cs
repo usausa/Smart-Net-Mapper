@@ -2645,6 +2645,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     private static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        builder.Indent()
+               .Append("[global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]")
+               .NewLine();
+
         // Method signature
         builder.Indent().Append(method.MethodAccessibility.ToText()).Append(" static partial ");
 

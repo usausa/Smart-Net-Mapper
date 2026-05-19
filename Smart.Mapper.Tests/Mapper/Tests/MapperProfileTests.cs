@@ -1,4 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
+
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 /// <summary>
 /// E3: MapperProfile 集約のテスト。

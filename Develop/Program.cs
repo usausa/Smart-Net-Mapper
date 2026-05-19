@@ -75,6 +75,9 @@ internal static partial class ObjectMapper
     [AfterMap(nameof(OnAfterMap))]
     public static partial void Map(BeforeAfterSource source, BeforeAfterDestination destination);
 
+    // ReSharper disable UnusedParameter.Local
+#pragma warning disable IDE0060
+#pragma warning disable CA1303
     private static void OnBeforeMap(BeforeAfterSource source, BeforeAfterDestination destination)
     {
         destination.BeforeMapCalled = true;
@@ -86,6 +89,9 @@ internal static partial class ObjectMapper
         destination.AfterMapCalled = true;
         Console.WriteLine("  AfterMap called!");
     }
+#pragma warning restore CA1303
+#pragma warning restore IDE0060
+    // ReSharper restore UnusedParameter.Local
 }
 
 internal sealed class Source

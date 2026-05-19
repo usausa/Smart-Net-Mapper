@@ -1,4 +1,4 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 public class ConverterSource
 {
@@ -39,7 +39,7 @@ public static class TestCustomConverter
             var value = (string)(object)source!;
             if (value.StartsWith("NUM_", StringComparison.Ordinal))
             {
-                return (TDestination)(object)int.Parse(value.Substring(4), System.Globalization.CultureInfo.InvariantCulture);
+                return (TDestination)(object)int.Parse(value[4..], System.Globalization.CultureInfo.InvariantCulture);
             }
             return (TDestination)(object)int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
         }

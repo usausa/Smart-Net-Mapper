@@ -1,4 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
+
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 public class CultureFormatMappingTests
 {
@@ -47,8 +50,8 @@ public class CultureFormatMappingTests
         var destination = TestMappers.MapWithPropertyCultureOverride(source);
 
         // en-US: dot as decimal separator
-        Assert.Contains(".", destination.ValueA);
+        Assert.Contains(".", destination.ValueA, StringComparison.Ordinal);
         // de-DE: comma as decimal separator
-        Assert.Contains(",", destination.ValueB);
+        Assert.Contains(",", destination.ValueB, StringComparison.Ordinal);
     }
 }

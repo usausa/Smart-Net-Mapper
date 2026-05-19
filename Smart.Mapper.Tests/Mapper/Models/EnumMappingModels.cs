@@ -1,4 +1,5 @@
-namespace Smart.Mapper;
+#pragma warning disable CA1008
+namespace Smart.Mapper.Models;
 
 // A2: Enum マッピング用モデル
 

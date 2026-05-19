@@ -2495,7 +2495,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var pathBuilder = new List<string>();
 
             // Process all but the last segment (which is the actual property to set)
-            var targetSegments = new System.Collections.Generic.List<NestedPathSegment>();
+            var targetSegments = new List<NestedPathSegment>();
             for (var i = 0; i < targetParts.Length - 1; i++)
             {
                 var part = targetParts[i];

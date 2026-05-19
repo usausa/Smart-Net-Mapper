@@ -1,6 +1,6 @@
 #pragma warning disable CA1815
 #pragma warning disable CA2225
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 // op_Implicit: UserId <-> int
 public struct UserId

@@ -1,7 +1,7 @@
 #pragma warning disable SA1500
 #pragma warning disable CA1024
 #pragma warning disable CA1819
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 public class MapFromSource
 {
@@ -65,10 +65,13 @@ public class OrderTestDestination
 
     public string Step3
     {
-        get => step3;
-        set { step3 = value; setOrder.Add("Step3"); }
-    }
-    private string step3 = string.Empty;
+        get;
+        set
+        {
+            field = value;
+            setOrder.Add("Step3");
+        }
+    } = string.Empty;
 
     public IReadOnlyList<string> GetSetOrder() => setOrder;
 }

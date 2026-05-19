@@ -1,6 +1,7 @@
+#pragma warning disable CA1815
 #pragma warning disable CA1819
 #pragma warning disable CA2227
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 using System.Collections.Immutable;
 

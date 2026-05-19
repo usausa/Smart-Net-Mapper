@@ -1,4 +1,4 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 public class TypeConversionSource
 {
@@ -79,8 +79,14 @@ public class ModernNumericConversionDestination
 // E2: Case-insensitive name comparison
 public class CaseInsensitiveSource
 {
+    // ReSharper disable InconsistentNaming
+#pragma warning disable IDE1006
+#pragma warning disable SA1300
     public int userid { get; set; }
     public string username { get; set; } = string.Empty;
+#pragma warning restore SA1300
+#pragma warning restore IDE1006
+    // ReSharper restore InconsistentNaming
 }
 
 public class CaseInsensitiveDestination

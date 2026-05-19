@@ -1,6 +1,6 @@
 #pragma warning disable CA1815
 #pragma warning disable CA2231
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 using System;
 using System.Globalization;

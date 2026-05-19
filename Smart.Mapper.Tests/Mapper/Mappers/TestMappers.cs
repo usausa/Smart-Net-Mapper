@@ -1,5 +1,7 @@
 #pragma warning disable IDE0060
-namespace Smart.Mapper;
+namespace Smart.Mapper.Mappers;
+
+using Smart.Mapper.Models;
 
 internal static partial class TestMappers
 {

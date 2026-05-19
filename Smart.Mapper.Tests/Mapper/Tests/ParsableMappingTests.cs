@@ -1,4 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
+
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 // B3: IParsable<T> / ISpanParsable<T> 自動変換テスト
 public class ParsableMappingTests

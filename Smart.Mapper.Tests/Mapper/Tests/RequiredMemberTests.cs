@@ -1,4 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
+
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 /// <summary>
 /// D2: required メンバー対応のテスト。

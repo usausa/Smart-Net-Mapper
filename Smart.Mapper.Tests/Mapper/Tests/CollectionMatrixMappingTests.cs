@@ -1,6 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
 
-using System.Collections.Immutable;
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 /// <summary>
 /// Source-shape × Target-shape matrix tests for C4 inline collection emit.
@@ -17,7 +18,8 @@ public class CollectionMatrixMappingTests
 
     // ── Array source ─────────────────────────────────────────────────────────
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ArrayToList_PreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
@@ -25,10 +27,14 @@ public class CollectionMatrixMappingTests
         TestMappers.MapArrayToList(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Count);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ArrayToArray_PreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
@@ -36,20 +42,28 @@ public class CollectionMatrixMappingTests
         TestMappers.MapArrayToArray(src, dst);
         Assert.NotNull(dst.Items);
         Assert.Equal(count, dst.Items.Length);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ArrayToImmutableArray_PreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToImmutableArrayDst();
         TestMappers.MapArrayToImmutableArray(src, dst);
         Assert.Equal(count, dst.Items.Length);
-        for (var i = 0; i < count; i++) Assert.Equal(i + 1, dst.Items[i].Value);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ArrayToHashSet_PreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
@@ -61,7 +75,8 @@ public class CollectionMatrixMappingTests
 
     // ── List source ──────────────────────────────────────────────────────────
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ListToList_PreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
@@ -75,7 +90,8 @@ public class CollectionMatrixMappingTests
         }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ListToArray_PreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
@@ -89,7 +105,8 @@ public class CollectionMatrixMappingTests
         }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ListToImmutableArray_PreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
@@ -102,7 +119,8 @@ public class CollectionMatrixMappingTests
         }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ListToHashSet_PreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
@@ -134,7 +152,8 @@ public class CollectionMatrixMappingTests
 
     // ── Void (Action) mapper ─────────────────────────────────────────────────
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ArrayToListVoid_PreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
@@ -148,7 +167,8 @@ public class CollectionMatrixMappingTests
         }
     }
 
-    [Theory, MemberData(nameof(ElementCounts))]
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
     public void Map_ListToListVoid_PreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };

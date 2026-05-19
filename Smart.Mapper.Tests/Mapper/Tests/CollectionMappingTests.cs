@@ -1,4 +1,7 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Tests;
+
+using Smart.Mapper.Mappers;
+using Smart.Mapper.Models;
 
 public class MapCollectionTests
 {

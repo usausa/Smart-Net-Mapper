@@ -1,4 +1,4 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 // B4: Culture / Format mapping models
 

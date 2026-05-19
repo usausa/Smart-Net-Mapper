@@ -1,5 +1,7 @@
 namespace Smart.Mapper.Benchmark;
 
+using System.Globalization;
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
@@ -45,7 +47,7 @@ public sealed class BenchmarkConfig : ManualConfig
             StatisticColumn.P90,
             StatisticColumn.Error,
             StatisticColumn.StdDev);
-        AddDiagnoser(MemoryDiagnoser.Default, new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(maxDepth: 3, printSource: true, printInstructionAddresses: true, exportDiff: true)));
+        AddDiagnoser(MemoryDiagnoser.Default, new DisassemblyDiagnoser(new(maxDepth: 3, printSource: true, printInstructionAddresses: true, exportDiff: true)));
         AddJob(Job.MediumRun);
     }
 }
@@ -67,14 +69,14 @@ public class SimpleMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        source = new SimpleSource
+        source = new()
         {
             Value1 = 1, Value2 = 2, Value3 = 3, Value4 = 4,
             Value5 = "a", Value6 = "b", Value7 = "c", Value8 = "d"
         };
     }
 
-    /// <summary>手書きの直接代入（理論上の最速ベースライン）</summary>
+    // 手書きの直接代入（理論上の最速ベースライン）
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public SimpleDestination Direct()
     {
@@ -82,7 +84,7 @@ public class SimpleMapBenchmark
         SimpleDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
-            ret = new SimpleDestination
+            ret = new()
             {
                 Value1 = src.Value1,
                 Value2 = src.Value2,
@@ -127,11 +129,11 @@ public class NestedMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        source = new NestedSource
+        source = new()
         {
             Id = 1,
             Name = "Test",
-            Address = new AddressSource { City = "Tokyo", ZipCode = "100-0001" }
+            Address = new() { City = "Tokyo", ZipCode = "100-0001" }
         };
     }
 
@@ -142,7 +144,7 @@ public class NestedMapBenchmark
         NestedDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
-            ret = new NestedDestination
+            ret = new()
             {
                 Id = src.Id,
                 Name = src.Name,
@@ -188,7 +190,7 @@ public class CollectionMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        source = new CollectionSource
+        source = new()
         {
             Items = Enumerable.Range(1, ItemCount)
                 .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
@@ -203,10 +205,10 @@ public class CollectionMapBenchmark
         List<CollectionItemDestination> ret = default!;
         for (var i = 0; i < N; i++)
         {
-            ret = new List<CollectionItemDestination>(src.Items.Count);
+            ret = new(src.Items.Count);
             foreach (var item in src.Items)
             {
-                ret.Add(new CollectionItemDestination { Id = item.Id, Label = item.Label });
+                ret.Add(new() { Id = item.Id, Label = item.Label });
             }
         }
         return ret;
@@ -241,7 +243,7 @@ public class ConversionMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        source = new ConversionSource
+        source = new()
         {
             IntValue = 42,
             LongValue = 123456789L,
@@ -257,11 +259,11 @@ public class ConversionMapBenchmark
         ConversionDestination ret = default!;
         for (var i = 0; i < N; i++)
         {
-            ret = new ConversionDestination
+            ret = new()
             {
-                IntValue = src.IntValue.ToString(),
-                LongValue = src.LongValue.ToString(),
-                DoubleValue = src.DoubleValue.ToString(),
+                IntValue = src.IntValue.ToString(CultureInfo.InvariantCulture),
+                LongValue = src.LongValue.ToString(CultureInfo.InvariantCulture),
+                DoubleValue = src.DoubleValue.ToString(CultureInfo.InvariantCulture),
                 BoolValue = src.BoolValue.ToString()
             };
         }

@@ -1,4 +1,4 @@
-namespace Smart.Mapper;
+namespace Smart.Mapper.Models;
 
 // Record types (D1)
 public record RecordSource(int Id, string Name, int Age);

@@ -14,10 +14,6 @@
 
   <Import Project="..\Smart.Mapper.props" />
 
-  <PropertyGroup>
-    <TemplateLibraryGeneratorValue>test</TemplateLibraryGeneratorValue>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Smart.Mapper.Generator\Smart.Mapper.Generator.csproj" OutputItemType="analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Smart.Mapper\Smart.Mapper.csproj" />

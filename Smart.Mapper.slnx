@@ -21,5 +21,6 @@
   <Project Path="Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj" />
   <Project Path="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
   <Project Path="Smart.Mapper.Tests/Smart.Mapper.Tests.csproj" />
+  <Project Path="Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj" />
   <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
 </Solution>

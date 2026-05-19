@@ -1,0 +1,3 @@
+<linker>
+  <assembly fullname="Smart.Mapper.AotTests" preserve="all" />
+</linker>

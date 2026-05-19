@@ -10,6 +10,7 @@ Mapping code is generated at compile time from `[Mapper]`-annotated `partial` me
 - **Target frameworks:** `net10.0` / `net9.0` / `net8.0`
 - **Package:** [`Usa.Smart.Mapper`](https://www.nuget.org/packages/Usa.Smart.Mapper) (analyzer is bundled — no separate generator package needed)
 - **Declaration style:** per-method `[Mapper]` attribute on a `partial` method inside a `static partial class`
+- **NativeAOT / Trimming compatible:** `IsAotCompatible=true` — zero IL2xxx/IL3xxx warnings; validated with `Smart.Mapper.AotTests`
 
 ## Installation
 

@@ -1,5 +1,7 @@
 namespace Smart.Mapper.Generator.Tests;
 
+using System.Globalization;
+
 using Microsoft.CodeAnalysis;
 
 // Source Generator が正しい診断（SMP0001〜SMP0020）を発行することを検証するテスト。
@@ -150,7 +152,7 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d =>
             d.Id == "SMP0016" &&
             d.Severity == DiagnosticSeverity.Warning &&
-            d.GetMessage().Contains("Extra", StringComparison.Ordinal));
+            d.GetMessage(CultureInfo.InvariantCulture).Contains("Extra", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -202,7 +204,7 @@ public class DiagnosticTests
 
         Assert.Contains(diagnostics, d =>
             d.Id == "SMP0017" &&
-            d.GetMessage().Contains("Name", StringComparison.Ordinal));
+            d.GetMessage(CultureInfo.InvariantCulture).Contains("Name", StringComparison.Ordinal));
     }
 
     // -----------------------------------------------------------------------

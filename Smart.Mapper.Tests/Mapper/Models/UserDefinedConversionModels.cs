@@ -3,7 +3,7 @@
 namespace Smart.Mapper.Models;
 
 // op_Implicit: UserId <-> int
-public struct UserId
+public readonly struct UserId
 {
     public int Value { get; init; }
 
@@ -24,7 +24,7 @@ public sealed class ImplicitConversionDestination
 }
 
 // op_Explicit: Celsius -> double (one direction only)
-public struct Celsius
+public readonly struct Celsius
 {
     public double Value { get; init; }
 
@@ -44,7 +44,7 @@ public sealed class ExplicitConversionDestination
 }
 
 // op_Implicit takes priority over op_Explicit when both exist
-public struct DualOpStruct
+public readonly struct DualOpStruct
 {
     public int Value { get; init; }
 
@@ -68,7 +68,7 @@ public sealed class DualOpExplicitDestination
 }
 
 // IFormattable: Money -> string with Culture/Format
-public struct Money : IFormattable
+public readonly struct Money : IFormattable
 {
     public decimal Amount { get; init; }
 

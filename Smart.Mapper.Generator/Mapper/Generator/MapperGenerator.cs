@@ -1533,7 +1533,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     $"{mapCollection.Mapper}, {mapCollection.SourceName} -> {mapCollection.TargetName}");
             }
 
-            mapCollection.MapperReturnsValue = mapperMethodResult.ReturnsValue;
+            mapCollection.MapperReturnsValue = mapperMethodResult.Value;
         }
 
         return null;
@@ -1597,27 +1597,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     $"{mapNested.Mapper}, {mapNested.SourceName} -> {mapNested.TargetName}");
             }
 
-            mapNested.MapperReturnsValue = mapperMethodResult.ReturnsValue;
+            mapNested.MapperReturnsValue = mapperMethodResult.Value;
         }
 
         return null;
     }
 
-    private sealed class MapperMethodInfo
-    {
-        public bool ReturnsValue { get; set; }
-    }
-
-    private static MapperMethodInfo? FindMapperMethod(INamedTypeSymbol containingType, string methodName, ITypeSymbol sourceElementType, ITypeSymbol targetElementType)
+    private static bool? FindMapperMethod(INamedTypeSymbol containingType, string methodName, ITypeSymbol sourceElementType, ITypeSymbol targetElementType)
     {
         var sourceTypeName = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var targetTypeName = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         var methods = containingType.GetMembers(methodName)
             .OfType<IMethodSymbol>()
-            .Where(m => m.IsStatic)
-            .ToList();
-
+            .Where(m => m.IsStatic);
         foreach (var method in methods)
         {
             // For partial methods, we need to check the definition
@@ -1632,7 +1625,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                 if ((paramType == sourceTypeName) && (returnType == targetTypeName))
                 {
-                    return new MapperMethodInfo { ReturnsValue = true };
+                    return true;
                 }
             }
 
@@ -1645,7 +1638,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
                 if ((sourceParamType == sourceTypeName) && (destParamType == targetTypeName))
                 {
-                    return new MapperMethodInfo { ReturnsValue = false };
+                    return false;
                 }
             }
         }
@@ -4211,10 +4204,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Get the converter type to check for specialized methods
         // Custom converter - find the type
         // DefaultValueConverter - find from containing assembly or referenced assemblies
-        var converterType =
-            FindConverterType(mapperMethod, model.MapConverterTypeName ??
-                                            "Smart.Mapper.DefaultValueConverter");
-
+        var converterType = FindConverterType(mapperMethod, model.MapConverterTypeName ?? "Smart.Mapper.DefaultValueConverter");
         if (converterType is null)
         {
             return;

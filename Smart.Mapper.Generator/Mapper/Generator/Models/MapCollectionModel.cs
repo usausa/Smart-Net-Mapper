@@ -53,3 +53,8 @@ internal sealed record MapCollectionModel
     public CollectionTargetShape TargetShape { get; set; } = CollectionTargetShape.List;
     public bool UseHelperPath { get; set; }
 }
+
+internal static class MapCollectionModelExtensions
+{
+    public static bool HasCustomConverter(this MapCollectionModel m) => !string.IsNullOrEmpty(m.Converter);
+}

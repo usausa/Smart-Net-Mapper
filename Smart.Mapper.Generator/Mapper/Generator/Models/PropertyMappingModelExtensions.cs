@@ -25,7 +25,7 @@ internal static class PropertyMappingModelExtensions
     public static bool IsTargetNested(this PropertyMappingModel m) => m.TargetPath.Contains('.');
 
     public static bool RequiresNullCheck(this PropertyMappingModel m) =>
-        m.SourcePathSegments.ToArray().Any(s => s.IsNullable);
+        m.SourcePathSegments.AsArray().Any(s => s.IsNullable);
 
     public static bool RequiresNullCoalescing(this PropertyMappingModel m) =>
         m.IsSourceNullable && !m.IsTargetNullable && m.NullBehavior == NullBehaviorType.Default && !m.HasNullSubstitute();

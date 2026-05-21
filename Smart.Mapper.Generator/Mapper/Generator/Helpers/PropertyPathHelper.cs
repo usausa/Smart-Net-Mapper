@@ -6,6 +6,8 @@ using System.Linq;
 
 using Microsoft.CodeAnalysis;
 
+using SourceGenerateHelper;
+
 /// <summary>
 /// Utilities for resolving property paths (dot-separated member access expressions)
 /// against Roslyn <see cref="ITypeSymbol"/> instances.
@@ -24,7 +26,7 @@ internal static class PropertyPathHelper
 
         foreach (var part in parts)
         {
-            var properties = currentType.GetAllPublicInstanceProperties();
+            var properties = currentType.GetAllPublicProperties();
             var prop = properties.FirstOrDefault(p => p.Name == part);
             if (prop is not null)
             {
@@ -63,7 +65,7 @@ internal static class PropertyPathHelper
         IPropertySymbol? prop = null;
         foreach (var part in parts)
         {
-            prop = current.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == part);
+            prop = current.GetAllPublicProperties().FirstOrDefault(p => p.Name == part);
             if (prop is null)
             {
                 return null;
@@ -84,7 +86,7 @@ internal static class PropertyPathHelper
 
         foreach (var part in parts)
         {
-            var prop = currentType.GetAllPublicInstanceProperties().FirstOrDefault(p => p.Name == part);
+            var prop = currentType.GetAllPublicProperties().FirstOrDefault(p => p.Name == part);
             if (prop is null)
             {
                 return null;

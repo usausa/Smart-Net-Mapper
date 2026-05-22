@@ -30,7 +30,7 @@ public static class Program
             BenchmarkConverter.TypeToBenchmarks(typeof(SimpleMapBenchmark)),
             BenchmarkConverter.TypeToBenchmarks(typeof(NestedMapBenchmark)),
             BenchmarkConverter.TypeToBenchmarks(typeof(CollectionMapBenchmark)),
-            BenchmarkConverter.TypeToBenchmarks(typeof(ConversionMapBenchmark)),
+            BenchmarkConverter.TypeToBenchmarks(typeof(ConversionMapBenchmark))
         ]);
     }
 }

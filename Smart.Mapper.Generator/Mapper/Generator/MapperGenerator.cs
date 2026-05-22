@@ -2472,11 +2472,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         if (hasSpanParsable)
         {
-            mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+            mapping.ParseMethod = ParseMethodKind.SpanParsable;
         }
         else if (hasParsable)
         {
-            mapping.ParseMethod = ParseMethodKind.IParsable;
+            mapping.ParseMethod = ParseMethodKind.Parsable;
         }
     }
 
@@ -3760,7 +3760,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
-            if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
+            if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
                 builder.Append(targetTypeForParse).Append(".Parse(")
                        .Append(sourceAccessor).Append(".Value.AsSpan(), ")
@@ -3919,7 +3919,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var cultureArg = mapping.HasCulture()
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
-            if (mapping.ParseMethod == ParseMethodKind.ISpanParsable)
+            if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
                 builder.Append(targetTypeForParse).Append(".Parse(")
                        .Append(sourceExpr).Append(".AsSpan(), ")
@@ -4100,19 +4100,19 @@ public sealed class MapperGenerator : IIncrementalGenerator
             // ISpanParsable<T> takes priority over IParsable<T>
             if ((spanParsableSymbol is not null) && targetTypeSymbol.IsImplementGenericInterface(spanParsableSymbol))
             {
-                mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+                mapping.ParseMethod = ParseMethodKind.SpanParsable;
             }
             else if ((spanParsableSymbol is null) && targetTypeSymbol.IsImplementsInterfaceByName("System.ISpanParsable`1"))
             {
-                mapping.ParseMethod = ParseMethodKind.ISpanParsable;
+                mapping.ParseMethod = ParseMethodKind.SpanParsable;
             }
             else if (targetTypeSymbol.IsImplementGenericInterface(parsableSymbol))
             {
-                mapping.ParseMethod = ParseMethodKind.IParsable;
+                mapping.ParseMethod = ParseMethodKind.Parsable;
             }
             else if (targetTypeSymbol.IsImplementsInterfaceByName("System.IParsable`1"))
             {
-                mapping.ParseMethod = ParseMethodKind.IParsable;
+                mapping.ParseMethod = ParseMethodKind.Parsable;
             }
         }
     }

@@ -1,4 +1,4 @@
-namespace Develop;
+namespace Example;
 
 using Smart.Mapper;
 

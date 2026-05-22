@@ -1,3 +1,4 @@
+// ReSharper disable ForCanBeConvertedToForeach
 namespace Smart.Mapper;
 
 using System;
@@ -18,12 +19,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToArray();
+        return source?.Select(mapper).ToArray();
     }
 
     // Converts a collection to a List using the specified mapper function.
@@ -32,12 +28,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToList();
+        return source?.Select(mapper).ToList();
     }
 
     // Converts a collection to an array using the specified void mapper action.
@@ -49,12 +40,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);
@@ -71,12 +57,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);
@@ -621,6 +602,7 @@ public static class DefaultCollectionConverter
             return [];
         }
 
+        // ReSharper disable once UseCollectionExpression
         return source.Select(mapper).ToImmutableArray();
     }
 
@@ -630,12 +612,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToImmutableList();
+        return source?.Select(mapper).ToImmutableList();
     }
 
     // Converts a collection to a HashSet using the specified mapper function.
@@ -644,12 +621,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToHashSet();
+        return source?.Select(mapper).ToHashSet();
     }
 
     // Converts a collection to an ImmutableHashSet using the specified mapper function.
@@ -658,12 +630,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToImmutableHashSet();
+        return source?.Select(mapper).ToImmutableHashSet();
     }
 
     // Converts a collection to a FrozenSet using the specified mapper function.
@@ -672,12 +639,7 @@ public static class DefaultCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(mapper).ToFrozenSet();
+        return source?.Select(mapper).ToFrozenSet();
     }
 
     // ============================================================
@@ -698,6 +660,7 @@ public static class DefaultCollectionConverter
             return [];
         }
 
+        // ReSharper disable once UseCollectionExpression
         return source.Select(x =>
         {
             var dest = new TDest();
@@ -715,12 +678,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);
@@ -737,12 +695,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);
@@ -759,12 +712,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);
@@ -781,12 +729,7 @@ public static class DefaultCollectionConverter
         Action<TSource, TDest> mapper)
         where TDest : new()
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var dest = new TDest();
             mapper(x, dest);

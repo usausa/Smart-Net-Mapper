@@ -13,7 +13,7 @@ internal static class MapperSymbolExtensions
     // the containing assembly and all referenced assemblies of .
     public static ITypeSymbol? FindTypeByFullyQualifiedName(this IMethodSymbol mapperMethod, string fullyQualifiedName)
     {
-        var typeName = fullyQualifiedName.StartsWith("global::", System.StringComparison.Ordinal)
+        var typeName = fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal)
             ? fullyQualifiedName.Substring("global::".Length)
             : fullyQualifiedName;
 

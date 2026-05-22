@@ -112,12 +112,7 @@ public static class TestCustomCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var mapped = mapper(x);
             if (mapped is CollectionDestinationChild child)
@@ -132,12 +127,7 @@ public static class TestCustomCollectionConverter
         IEnumerable<TSource>? source,
         Func<TSource, TDest> mapper)
     {
-        if (source is null)
-        {
-            return default;
-        }
-
-        return source.Select(x =>
+        return source?.Select(x =>
         {
             var mapped = mapper(x);
             if (mapped is CollectionDestinationChild child)
@@ -246,12 +236,12 @@ public class MatrixToArrayDst
 
 public class MatrixToImmutableArrayDst
 {
-    public System.Collections.Immutable.ImmutableArray<MatrixDstItem> Items { get; set; }
+    public ImmutableArray<MatrixDstItem> Items { get; set; }
 }
 
 public class MatrixToHashSetDst
 {
-    public System.Collections.Generic.HashSet<MatrixDstItem>? Items { get; set; }
+    public HashSet<MatrixDstItem>? Items { get; set; }
 }
 
 public class MatrixVoidDst

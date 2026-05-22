@@ -23,11 +23,9 @@ internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
         suppressedDiagnosticId: "CS8602",
         justification: "Smart.Mapper Source Generator guarantees non-null access in the generated implementation.");
 
-    // 
     public override ImmutableArray<SuppressionDescriptor> SupportedSuppressions { get; } =
         [SuppressCS8618, SuppressCS8602];
 
-    // 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
         foreach (var diagnostic in context.ReportedDiagnostics)

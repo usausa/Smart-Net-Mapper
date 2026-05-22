@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Generator.Helpers;
 
-using System.Linq;
-
 using Microsoft.CodeAnalysis;
 
 // Mapper-domain Roslyn extension methods that are not candidates for SourceGenerateHelper promotion.

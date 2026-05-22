@@ -46,7 +46,7 @@ internal static class GeneratorTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(List<>).Assembly.Location),
-            MetadataReference.CreateFromFile(SmartMapperAssembly.Location),
+            MetadataReference.CreateFromFile(SmartMapperAssembly.Location)
         }.Concat(GetRuntimeReferences());
 
         var compilation = CSharpCompilation.Create(

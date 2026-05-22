@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/Behchmark/">
+    <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
+  </Folder>
+  <Folder Name="/Example/">
+    <Project Path="Example/Example.csproj" />
+  </Folder>
   <Folder Name="/Library/">
     <Project Path="Smart.Mapper.Generator/Smart.Mapper.Generator.csproj" />
     <Project Path="Smart.Mapper/Smart.Mapper.csproj">
@@ -24,9 +30,5 @@
     <Project Path="Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj" />
     <Project Path="Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj" />
     <Project Path="Smart.Mapper.Tests/Smart.Mapper.Tests.csproj" />
-  </Folder>
-  <Folder Name="/Tools/">
-    <Project Path="Example/Example.csproj" />
-    <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
   </Folder>
 </Solution>

@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Generator.Helpers;
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
@@ -53,7 +51,7 @@ internal static class PropertyPathHelper
 
     // Resolves the IPropertySymbol at the end of a pre-split property path,
     // returning null when any segment cannot be found.
-    public static IPropertySymbol? ResolvePropertySymbol(ITypeSymbol rootType, string[] parts)
+    public static IPropertySymbol? ResolvePropertySymbol(ITypeSymbol rootType, IEnumerable<string> parts)
     {
         var current = rootType;
         IPropertySymbol? prop = null;
@@ -69,7 +67,7 @@ internal static class PropertyPathHelper
         return prop;
     }
 
-    // Returns the ITypeSymbol at the end of a dot-separated 
+    // Returns the ITypeSymbol at the end of a dot-separated
     // starting from , or null when the path cannot be resolved.
     public static ITypeSymbol? ResolvePropertyType(ITypeSymbol type, string path)
     {

@@ -18,7 +18,7 @@ internal enum UserDefinedConversionKind
 {
     None = 0,
     Implicit = 1,
-    Explicit = 2,
+    Explicit = 2
 }
 
 // Represents the kind of IParsable / ISpanParsable parse method to use.
@@ -26,7 +26,7 @@ internal enum ParseMethodKind
 {
     None = 0,
     ISpanParsable = 1,
-    IParsable = 2,
+    IParsable = 2
 }
 
 // Represents the null behavior for property mapping.

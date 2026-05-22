@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
 {
+    // ReSharper disable InconsistentNaming
     // CS8618: Non-nullable field/property must contain a non-null value when exiting constructor.
     private static readonly SuppressionDescriptor SuppressCS8618 = new(
         id: "SPR0001",
@@ -22,6 +23,7 @@ internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
         id: "SPR0002",
         suppressedDiagnosticId: "CS8602",
         justification: "Smart.Mapper Source Generator guarantees non-null access in the generated implementation.");
+    // ReSharper restore InconsistentNaming
 
     public override ImmutableArray<SuppressionDescriptor> SupportedSuppressions { get; } =
         [SuppressCS8618, SuppressCS8602];

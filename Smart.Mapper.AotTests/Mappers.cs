@@ -2,8 +2,6 @@
 #pragma warning disable SA1502
 #pragma warning disable CA1008
 #pragma warning disable CA2227
-// AOT smoke test models and mappers
-
 namespace Smart.Mapper.AotTests;
 
 // ---- Models ----
@@ -54,11 +52,8 @@ public sealed class CollSrc { public List<ItemSrc>? Items { get; set; } }
 
 public sealed class CollDst
 {
-    public List<ItemDst>? Items
-    {
-        get => field;
-        set => field = value;
-    }
+    // ReSharper disable once CollectionNeverUpdated.Global
+    public List<ItemDst>? Items { get; set; }
 }
 
 // Custom value converter

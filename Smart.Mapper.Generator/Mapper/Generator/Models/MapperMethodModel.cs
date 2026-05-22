@@ -7,14 +7,14 @@ using SourceGenerateHelper;
 // Represents a mapper method model.
 internal sealed record MapperMethodModel
 {
-    public string Namespace { get; set; } = string.Empty;
-    public string ClassName { get; set; } = string.Empty;
+    public string Namespace { get; set; } = default!;
+    public string ClassName { get; set; } = default!;
     public bool IsValueType { get; set; }
     public Accessibility MethodAccessibility { get; set; }
-    public string MethodName { get; set; } = string.Empty;
-    public string SourceTypeName { get; set; } = string.Empty;
-    public string SourceParameterName { get; set; } = string.Empty;
-    public string DestinationTypeName { get; set; } = string.Empty;
+    public string MethodName { get; set; } = default!;
+    public string SourceTypeName { get; set; } = default!;
+    public string SourceParameterName { get; set; } = default!;
+    public string DestinationTypeName { get; set; } = default!;
     public string? DestinationParameterName { get; set; }
     public bool ReturnsDestination { get; set; }
     public bool AutoMap { get; set; } = true;

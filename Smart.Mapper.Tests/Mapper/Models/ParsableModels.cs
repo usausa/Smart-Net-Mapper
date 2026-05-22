@@ -84,7 +84,7 @@ public class TestParsableCode : IParsable<TestParsableCode>
 // T1: string → TestParsableId (IParsable のみ)
 public class ParsableSource
 {
-    public string IdText { get; set; } = string.Empty;
+    public string IdText { get; set; } = default!;
 }
 
 public class ParsableDestination
@@ -95,7 +95,7 @@ public class ParsableDestination
 // T2: string → TestSpanParsableId (ISpanParsable)
 public class SpanParsableSource
 {
-    public string IdText { get; set; } = string.Empty;
+    public string IdText { get; set; } = default!;
 }
 
 public class SpanParsableDestination
@@ -106,7 +106,7 @@ public class SpanParsableDestination
 // T3/T4: Culture 指定あり
 public class ParsableCultureSource
 {
-    public string IdText { get; set; } = string.Empty;
+    public string IdText { get; set; } = default!;
 }
 
 public class ParsableCultureDestination
@@ -116,7 +116,7 @@ public class ParsableCultureDestination
 
 public class SpanParsableCultureSource
 {
-    public string IdText { get; set; } = string.Empty;
+    public string IdText { get; set; } = default!;
 }
 
 public class SpanParsableCultureDestination

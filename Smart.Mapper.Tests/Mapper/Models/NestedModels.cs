@@ -24,7 +24,7 @@ public class NestedDestination
 public class NestedSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class NestedSource
@@ -36,7 +36,7 @@ public class NestedSource
 public class FlatDestination
 {
     public int ChildId { get; set; }
-    public string ChildName { get; set; } = string.Empty;
+    public string ChildName { get; set; } = default!;
     public int DirectValue { get; set; }
 }
 
@@ -63,7 +63,7 @@ public class DeepSource
 public class DeepSourceInner
 {
     public int Value { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class DeepSourceOuter
@@ -80,14 +80,14 @@ public class DeepNestedSource
 public class DeepFlatDestination
 {
     public int OuterInnerValue { get; set; }
-    public string OuterInnerName { get; set; } = string.Empty;
+    public string OuterInnerName { get; set; } = default!;
     public int DirectValue { get; set; }
 }
 
 public class NestedObjectSourceChild
 {
     public int Value { get; set; }
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; set; } = default!;
 }
 
 public class NestedObjectSource
@@ -99,7 +99,7 @@ public class NestedObjectSource
 public class NestedObjectDestinationChild
 {
     public int Value { get; set; }
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; set; } = default!;
 }
 
 public class NestedObjectDestination

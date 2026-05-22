@@ -39,12 +39,12 @@ internal enum NullBehaviorType
 // Represents a property mapping configuration.
 internal sealed record PropertyMappingModel
 {
-    public string SourcePath { get; set; } = string.Empty;
-    public string TargetPath { get; set; } = string.Empty;
-    public string SourceType { get; set; } = string.Empty;
-    public string TargetType { get; set; } = string.Empty;
-    public string SourceUnderlyingType { get; set; } = string.Empty;
-    public string TargetUnderlyingType { get; set; } = string.Empty;
+    public string SourcePath { get; set; } = default!;
+    public string TargetPath { get; set; } = default!;
+    public string SourceType { get; set; } = default!;
+    public string TargetType { get; set; } = default!;
+    public string SourceUnderlyingType { get; set; } = default!;
+    public string TargetUnderlyingType { get; set; } = default!;
     public bool RequiresConversion { get; set; }
     public EquatableArray<NestedPathSegment> TargetPathSegments { get; set; } = new([]);
     public EquatableArray<NestedPathSegment> SourcePathSegments { get; set; } = new([]);
@@ -76,8 +76,8 @@ internal sealed record PropertyMappingModel
 // Represents a segment in a nested property path.
 internal sealed record NestedPathSegment
 {
-    public string Path { get; set; } = string.Empty;
-    public string TypeName { get; set; } = string.Empty;
+    public string Path { get; set; } = default!;
+    public string TypeName { get; set; } = default!;
     public bool IsNullable { get; set; }
 }
 

@@ -83,14 +83,14 @@ public class EnumToStringSource
 
 public class EnumToStringDestination
 {
-    public string Status { get; set; } = string.Empty;
+    public string Status { get; set; } = default!;
 }
 
 // -- string → enum --
 
 public class StringToEnumSource
 {
-    public string Status { get; set; } = string.Empty;
+    public string Status { get; set; } = default!;
 }
 
 public class StringToEnumDestination

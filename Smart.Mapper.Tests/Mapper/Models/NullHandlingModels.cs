@@ -3,7 +3,7 @@ namespace Smart.Mapper.Models;
 public class NullableNestedSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class NullableNestedSource
@@ -15,7 +15,7 @@ public class NullableNestedSource
 public class NullableNestedFlatDestination
 {
     public int ChildId { get; set; }
-    public string ChildName { get; set; } = string.Empty;
+    public string ChildName { get; set; } = default!;
     public int DirectValue { get; set; }
 }
 
@@ -23,7 +23,7 @@ public class NullablePropertySource
 {
     public string? NullableName { get; set; }
     public int? NullableInt { get; set; }
-    public string NonNullableName { get; set; } = string.Empty;
+    public string NonNullableName { get; set; } = default!;
 }
 
 public class NullablePropertyDestination
@@ -62,6 +62,6 @@ public class NullSubstituteSource
 
 public class NullSubstituteDestination
 {
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
     public int Count { get; set; }
 }

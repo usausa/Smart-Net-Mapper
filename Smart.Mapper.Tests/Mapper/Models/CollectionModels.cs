@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 public class CollectionSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class CollectionSource
@@ -21,7 +21,7 @@ public class CollectionSource
 public class CollectionDestinationChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class CollectionDestination
@@ -34,7 +34,7 @@ public class CollectionDestination
 public class CustomCollectionConverterSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class CustomCollectionConverterSource
@@ -45,7 +45,7 @@ public class CustomCollectionConverterSource
 public class CustomCollectionConverterDestChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class CustomCollectionConverterDestination
@@ -88,7 +88,7 @@ public class VoidMapperSource
 public class VoidMapperDestinationChild
 {
     public int Id { get; set; }
-    public string Extra { get; set; } = string.Empty;
+    public string Extra { get; set; } = default!;
 }
 
 public class VoidMapperDestination
@@ -143,13 +143,13 @@ public static class TestCustomCollectionConverter
 public class ImmutableCollectionSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class ImmutableCollectionDestinationChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class ImmutableCollectionSource
@@ -170,13 +170,13 @@ public class ImmutableCollectionDestination
 public class InPlaceSourceChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class InPlaceDestinationChild
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class InPlaceSource
@@ -199,7 +199,7 @@ public readonly struct ReadOnlyStructSource
 public class ReadOnlyStructDestination
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 // C4-β/γ: Collection matrix test models

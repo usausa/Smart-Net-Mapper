@@ -11,15 +11,15 @@ public class CultureFormatSource
 
 public class CultureFormatDestination
 {
-    public string Amount { get; set; } = string.Empty;
-    public string EventDate { get; set; } = string.Empty;
-    public string Price { get; set; } = string.Empty;
+    public string Amount { get; set; } = default!;
+    public string EventDate { get; set; } = default!;
+    public string Price { get; set; } = default!;
 }
 
 public class CultureParseSource
 {
-    public string Amount { get; set; } = string.Empty;
-    public string EventDate { get; set; } = string.Empty;
+    public string Amount { get; set; } = default!;
+    public string EventDate { get; set; } = default!;
 }
 
 public class CultureParseDestination
@@ -37,6 +37,6 @@ public class CultureOverrideSource
 
 public class CultureOverrideDestination
 {
-    public string ValueA { get; set; } = string.Empty;
-    public string ValueB { get; set; } = string.Empty;
+    public string ValueA { get; set; } = default!;
+    public string ValueB { get; set; } = default!;
 }

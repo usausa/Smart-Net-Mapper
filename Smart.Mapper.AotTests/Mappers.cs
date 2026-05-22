@@ -8,15 +8,15 @@ namespace Smart.Mapper.AotTests;
 
 // Basic
 
-public sealed class BasicSource { public int Id { get; set; } public string Name { get; set; } = string.Empty; }
+public sealed class BasicSource { public int Id { get; set; } public string Name { get; set; } = default!; }
 
-public sealed class BasicDest { public int Id { get; set; } public string Name { get; set; } = string.Empty; }
+public sealed class BasicDest { public int Id { get; set; } public string Name { get; set; } = default!; }
 
 // Type conversion
 
 public sealed class TypeConvSource { public int IntVal { get; set; } public long LongVal { get; set; } public double DoubleVal { get; set; } }
 
-public sealed class TypeConvDest { public string IntVal { get; set; } = string.Empty; public int LongVal { get; set; } public float DoubleVal { get; set; } }
+public sealed class TypeConvDest { public string IntVal { get; set; } = default!; public int LongVal { get; set; } public float DoubleVal { get; set; } }
 
 // Enum
 
@@ -32,7 +32,7 @@ public sealed class EnumDest { public DstStatus Status { get; set; } }
 
 public sealed class NullSource { public string? Name { get; set; } public int? Count { get; set; } }
 
-public sealed class NullDest { public string Name { get; set; } = string.Empty; public int Count { get; set; } }
+public sealed class NullDest { public string Name { get; set; } = default!; public int Count { get; set; } }
 
 // Nested
 
@@ -44,9 +44,9 @@ public sealed class FlatDst { public int ChildValue { get; set; } public int Dir
 
 // Collection
 
-public sealed class ItemSrc { public int Id { get; set; } public string Label { get; set; } = string.Empty; }
+public sealed class ItemSrc { public int Id { get; set; } public string Label { get; set; } = default!; }
 
-public sealed class ItemDst { public int Id { get; set; } public string Label { get; set; } = string.Empty; }
+public sealed class ItemDst { public int Id { get; set; } public string Label { get; set; } = default!; }
 
 public sealed class CollSrc { public List<ItemSrc>? Items { get; set; } }
 
@@ -60,7 +60,7 @@ public sealed class CollDst
 
 public sealed class CvtSource { public int Value { get; set; } }
 
-public sealed class CvtDest { public string Value { get; set; } = string.Empty; }
+public sealed class CvtDest { public string Value { get; set; } = default!; }
 
 public static class IntToStringConverter
 {

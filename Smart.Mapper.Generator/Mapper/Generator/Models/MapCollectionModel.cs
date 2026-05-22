@@ -27,12 +27,12 @@ internal enum CollectionTargetShape
 // Represents a MapCollection mapping (collection property mapped using a mapper method).
 internal sealed record MapCollectionModel
 {
-    public string SourceName { get; set; } = string.Empty;
-    public string SourceType { get; set; } = string.Empty;
-    public string SourceElementType { get; set; } = string.Empty;
-    public string TargetName { get; set; } = string.Empty;
-    public string TargetType { get; set; } = string.Empty;
-    public string TargetElementType { get; set; } = string.Empty;
+    public string SourceName { get; set; } = default!;
+    public string SourceType { get; set; } = default!;
+    public string SourceElementType { get; set; } = default!;
+    public string TargetName { get; set; } = default!;
+    public string TargetType { get; set; } = default!;
+    public string TargetElementType { get; set; } = default!;
     public string? Mapper { get; set; }
     public bool MapperReturnsValue { get; set; }
     public bool TargetIsArray { get; set; }

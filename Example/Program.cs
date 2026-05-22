@@ -107,41 +107,41 @@ internal sealed class Destination
 internal sealed class DiffSource
 {
     public int SourceId { get; set; }
-    public string SourceName { get; set; } = string.Empty;
+    public string SourceName { get; set; } = default!;
 }
 
 internal sealed class DiffDestination
 {
     public int DestId { get; set; }
-    public string DestName { get; set; } = string.Empty;
+    public string DestName { get; set; } = default!;
 }
 
 internal sealed class IgnoreSource
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Secret { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
+    public string Secret { get; set; } = default!;
 }
 
 internal sealed class IgnoreDestination
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Secret { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
+    public string Secret { get; set; } = default!;
 }
 
 // Phase 2 models
 internal sealed class ConstantSource
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 internal sealed class ConstantDestination
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
+    public string Status { get; set; } = default!;
     public int Version { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -149,13 +149,13 @@ internal sealed class ConstantDestination
 internal sealed class BeforeAfterSource
 {
     public int Value { get; set; }
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; set; } = default!;
 }
 
 internal sealed class BeforeAfterDestination
 {
     public int Value { get; set; }
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; set; } = default!;
     public bool BeforeMapCalled { get; set; }
     public bool AfterMapCalled { get; set; }
 }

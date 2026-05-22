@@ -5,14 +5,14 @@ namespace Smart.Mapper.Models;
 
 public class MapFromSource
 {
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
+    public string FirstName { get; set; } = default!;
+    public string LastName { get; set; } = default!;
 }
 
 public class MapFromDestination
 {
-    public string FullName { get; set; } = string.Empty;
-    public string UpperCaseName { get; set; } = string.Empty;
+    public string FullName { get; set; } = default!;
+    public string UpperCaseName { get; set; } = default!;
 }
 
 public class MapFromContext
@@ -51,7 +51,7 @@ public class OrderTestDestination
             field = value;
             setOrder.Add("Step1");
         }
-    } = string.Empty;
+    } = default!;
 
     public string Step2
     {
@@ -61,7 +61,7 @@ public class OrderTestDestination
             field = value;
             setOrder.Add("Step2");
         }
-    } = string.Empty;
+    } = default!;
 
     public string Step3
     {
@@ -71,31 +71,31 @@ public class OrderTestDestination
             field = value;
             setOrder.Add("Step3");
         }
-    } = string.Empty;
+    } = default!;
 
     public IReadOnlyList<string> GetSetOrder() => setOrder;
 }
 
 public class MapUsingContextSource
 {
-    public string BaseValue { get; set; } = string.Empty;
+    public string BaseValue { get; set; } = default!;
 }
 
 public class MapUsingContextDestination
 {
-    public string ComputedValue { get; set; } = string.Empty;
+    public string ComputedValue { get; set; } = default!;
 }
 
 public class MapUsingContext
 {
-    public string Suffix { get; set; } = string.Empty;
+    public string Suffix { get; set; } = default!;
 }
 
 // D2: required member models
 public class RequiredMemberSource
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class RequiredMemberDestination
@@ -109,11 +109,11 @@ public class RequiredMemberDestination
 public class ProfileSource
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }
 
 public class ProfileDestination
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
 }

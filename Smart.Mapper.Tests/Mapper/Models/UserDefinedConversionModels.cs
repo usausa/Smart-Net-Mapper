@@ -85,5 +85,5 @@ public sealed class FormattableSource
 
 public sealed class FormattableDestination
 {
-    public string Price { get; set; } = string.Empty;
+    public string Price { get; set; } = default!;
 }

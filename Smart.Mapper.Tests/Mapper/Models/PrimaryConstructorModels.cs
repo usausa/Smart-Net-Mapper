@@ -11,7 +11,7 @@ public record RecordDestinationPartial(int Id, string Name);
 public class PrimaryCtorSource
 {
     public int Id { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; init; } = default!;
     public int Age { get; init; }
 }
 
@@ -31,7 +31,7 @@ public record RecordWithExtra(int Id, string Name)
 public class RecordWithExtraSource
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; } = default!;
     public string? Extra { get; set; }
 }
 
@@ -39,7 +39,7 @@ public class RecordWithExtraSource
 public class MapPropertyOverrideSource
 {
     public int Identifier { get; set; }
-    public string FullName { get; set; } = string.Empty;
+    public string FullName { get; set; } = default!;
 }
 
 public record MapPropertyOverrideDestination(int Id, string Name);

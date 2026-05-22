@@ -51,15 +51,19 @@ internal static partial class TestMappers
     [AfterMap(nameof(OnAfterMap))]
     public static partial void Map(BeforeAfterSource source, BeforeAfterDestination destination);
 
+    // ReSharper disable UnusedParameter.Local
     private static void OnBeforeMap(BeforeAfterSource source, BeforeAfterDestination destination)
     {
         destination.BeforeMapCalled = true;
     }
+    // ReSharper restore UnusedParameter.Local
 
+    // ReSharper disable UnusedParameter.Local
     private static void OnAfterMap(BeforeAfterSource source, BeforeAfterDestination destination)
     {
         destination.AfterMapCalled = true;
     }
+    // ReSharper restore UnusedParameter.Local
 
     // Extended type conversions
     [Mapper]
@@ -151,11 +155,14 @@ internal static partial class TestMappers
     [MapProperty(nameof(ConverterDestination.FormattedText), nameof(ConverterSource.Text), Converter = nameof(FormatTextWithContext))]
     public static partial void MapWithConverterAndContext(ConverterSource source, ConverterDestination destination, CustomMappingContext context);
 
+    // ReSharper disable UnusedParameter.Local
     private static void OnBeforeMapWithContext(BasicSource source, BasicDestination destination, CustomMappingContext context)
     {
         context.BeforeMapCalled = true;
     }
+    // ReSharper restore UnusedParameter.Local
 
+    // ReSharper disable UnusedParameter.Local
     private static void OnAfterMapWithContext(BasicSource source, BasicDestination destination, CustomMappingContext context)
     {
         context.AfterMapCalled = true;

@@ -74,7 +74,7 @@ public static class IntToStringConverter
         if (typeof(TSrc) == typeof(int) && typeof(TDest) == typeof(string))
         {
             var v = (int)(object)source!;
-            return (TDest)(object)v.ToString(System.Globalization.CultureInfo.InvariantCulture)!;
+            return (TDest)(object)v.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
         throw new NotSupportedException($"Conversion from {typeof(TSrc)} to {typeof(TDest)} is not supported.");
     }

@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Represents a constant value mapping configuration.
-/// </summary>
+// Represents a constant value mapping configuration.
 internal sealed record ConstantMappingModel
 {
     public string TargetName { get; set; } = string.Empty;

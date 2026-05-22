@@ -5,11 +5,9 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-/// <summary>
-/// Suppresses CS8618 and CS8602 warnings on <c>partial</c> methods decorated with <c>[Mapper]</c>.
-/// The Source Generator guarantees that all properties are assigned in the generated implementation,
-/// so these nullable warnings are false positives.
-/// </summary>
+// Suppresses CS8618 and CS8602 warnings on partial methods decorated with [Mapper].
+// The Source Generator guarantees that all properties are assigned in the generated implementation,
+// so these nullable warnings are false positives.
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
 {
@@ -25,11 +23,11 @@ internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
         suppressedDiagnosticId: "CS8602",
         justification: "Smart.Mapper Source Generator guarantees non-null access in the generated implementation.");
 
-    /// <inheritdoc/>
+    // 
     public override ImmutableArray<SuppressionDescriptor> SupportedSuppressions { get; } =
         [SuppressCS8618, SuppressCS8602];
 
-    /// <inheritdoc/>
+    // 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
         foreach (var diagnostic in context.ReportedDiagnostics)

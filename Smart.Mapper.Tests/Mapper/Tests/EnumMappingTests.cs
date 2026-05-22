@@ -3,10 +3,8 @@ namespace Smart.Mapper.Tests;
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
-/// <summary>
-/// A2: Enum マッピングのテスト。
-/// enum ↔ enum、enum ↔ int、enum ↔ string の各変換パターンを検証する。
-/// </summary>
+// A2: Enum マッピングのテスト。
+// enum ↔ enum、enum ↔ int、enum ↔ string の各変換パターンを検証する。
 public class EnumMappingTests
 {
     // ---- enum ↔ enum (by name) ----

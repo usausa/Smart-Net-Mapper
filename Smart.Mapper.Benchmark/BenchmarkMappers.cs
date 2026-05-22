@@ -1,9 +1,7 @@
 namespace Smart.Mapper.Benchmark;
 
-/// <summary>
-/// ベンチマーク用 Smart.Mapper マッパー定義。
-/// 各ベンチマークシナリオに対応した static partial メソッドを宣言する。
-/// </summary>
+// ベンチマーク用 Smart.Mapper マッパー定義。
+// 各ベンチマークシナリオに対応した static partial メソッドを宣言する。
 internal static partial class BenchmarkMappers
 {
     // Scenario 1: Simple flat copy

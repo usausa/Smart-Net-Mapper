@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Represents a condition mapping for a target property.
-/// </summary>
+// Represents a condition mapping for a target property.
 internal sealed record PropertyConditionModel
 {
     public string TargetName { get; set; } = string.Empty;

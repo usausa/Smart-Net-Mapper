@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Classifies the source collection type for optimized emit strategy selection.
-/// </summary>
+// Classifies the source collection type for optimized emit strategy selection.
 internal enum CollectionSourceShape
 {
     Enumerable = 0,
@@ -14,9 +12,7 @@ internal enum CollectionSourceShape
     Memory
 }
 
-/// <summary>
-/// Classifies the target collection type for optimized emit strategy selection.
-/// </summary>
+// Classifies the target collection type for optimized emit strategy selection.
 internal enum CollectionTargetShape
 {
     List = 0,
@@ -28,9 +24,7 @@ internal enum CollectionTargetShape
     FrozenSet
 }
 
-/// <summary>
-/// Represents a MapCollection mapping (collection property mapped using a mapper method).
-/// </summary>
+// Represents a MapCollection mapping (collection property mapped using a mapper method).
 internal sealed record MapCollectionModel
 {
     public string SourceName { get; set; } = string.Empty;

@@ -2,9 +2,7 @@ namespace Smart.Mapper.Generator.Models;
 
 using SourceGenerateHelper;
 
-/// <summary>
-/// Represents the kind of enum conversion to perform.
-/// </summary>
+// Represents the kind of enum conversion to perform.
 internal enum EnumMappingKind
 {
     None = 0,
@@ -15,9 +13,7 @@ internal enum EnumMappingKind
     StringToEnum = 5
 }
 
-/// <summary>
-/// Represents the kind of user-defined conversion operator to apply.
-/// </summary>
+// Represents the kind of user-defined conversion operator to apply.
 internal enum UserDefinedConversionKind
 {
     None = 0,
@@ -25,9 +21,7 @@ internal enum UserDefinedConversionKind
     Explicit = 2,
 }
 
-/// <summary>
-/// Represents the kind of IParsable / ISpanParsable parse method to use.
-/// </summary>
+// Represents the kind of IParsable / ISpanParsable parse method to use.
 internal enum ParseMethodKind
 {
     None = 0,
@@ -35,18 +29,14 @@ internal enum ParseMethodKind
     IParsable = 2,
 }
 
-/// <summary>
-/// Represents the null behavior for property mapping.
-/// </summary>
+// Represents the null behavior for property mapping.
 internal enum NullBehaviorType
 {
     Default = 0,
     Skip = 1
 }
 
-/// <summary>
-/// Represents a property mapping configuration.
-/// </summary>
+// Represents a property mapping configuration.
 internal sealed record PropertyMappingModel
 {
     public string SourcePath { get; set; } = string.Empty;
@@ -83,9 +73,7 @@ internal sealed record PropertyMappingModel
     public EquatableArray<string> DestEnumMembers { get; set; } = new([]);
 }
 
-/// <summary>
-/// Represents a segment in a nested property path.
-/// </summary>
+// Represents a segment in a nested property path.
 internal sealed record NestedPathSegment
 {
     public string Path { get; set; } = string.Empty;

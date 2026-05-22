@@ -9,19 +9,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-/// <summary>
-/// Default collection converter for collection property mappings.
-/// </summary>
+// Default collection converter for collection property mappings.
 public static class DefaultCollectionConverter
 {
-    /// <summary>
-    /// Converts a collection to an array using the specified mapper function.
-    /// </summary>
-    /// <typeparam name="TSource">The source element type.</typeparam>
-    /// <typeparam name="TDest">The destination element type.</typeparam>
-    /// <param name="source">The source collection.</param>
-    /// <param name="mapper">The mapper function for each element.</param>
-    /// <returns>The converted array, or default if source is null.</returns>
+    // Converts a collection to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -35,14 +26,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToArray();
     }
 
-    /// <summary>
-    /// Converts a collection to a List using the specified mapper function.
-    /// </summary>
-    /// <typeparam name="TSource">The source element type.</typeparam>
-    /// <typeparam name="TDest">The destination element type.</typeparam>
-    /// <param name="source">The source collection.</param>
-    /// <param name="mapper">The mapper function for each element.</param>
-    /// <returns>The converted list, or default if source is null.</returns>
+    // Converts a collection to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -56,14 +40,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToList();
     }
 
-    /// <summary>
-    /// Converts a collection to an array using the specified void mapper action.
-    /// </summary>
-    /// <typeparam name="TSource">The source element type.</typeparam>
-    /// <typeparam name="TDest">The destination element type.</typeparam>
-    /// <param name="source">The source collection.</param>
-    /// <param name="mapper">The mapper action for each element.</param>
-    /// <returns>The converted array, or default if source is null.</returns>
+    // Converts a collection to an array using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -85,14 +62,7 @@ public static class DefaultCollectionConverter
         }).ToArray();
     }
 
-    /// <summary>
-    /// Converts a collection to a List using the specified void mapper action.
-    /// </summary>
-    /// <typeparam name="TSource">The source element type.</typeparam>
-    /// <typeparam name="TDest">The destination element type.</typeparam>
-    /// <param name="source">The source collection.</param>
-    /// <param name="mapper">The mapper action for each element.</param>
-    /// <returns>The converted list, or default if source is null.</returns>
+    // Converts a collection to a List using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -118,7 +88,7 @@ public static class DefaultCollectionConverter
     // Array / List / ReadOnlySpan / IReadOnlyCollection source overloads (Func mapper)
     // ============================================================
 
-    /// <summary>Converts a T[] to an array using the specified mapper function.</summary>
+    // Converts a T[] to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         TSource[]? source,
@@ -138,7 +108,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    /// <summary>Converts a List&lt;T&gt; to an array using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         List<TSource>? source,
@@ -158,7 +128,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to an array using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[] ToArray<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -172,7 +142,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to an array using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -192,7 +162,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    /// <summary>Converts a T[] to a List using the specified mapper function.</summary>
+    // Converts a T[] to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         TSource[]? source,
@@ -214,7 +184,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    /// <summary>Converts a List&lt;T&gt; to a List using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         List<TSource>? source,
@@ -236,7 +206,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to a List using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest> ToList<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -252,7 +222,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to a List using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -271,7 +241,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    /// <summary>Converts a T[] to an ImmutableArray using the specified mapper function.</summary>
+    // Converts a T[] to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         TSource[]? source,
@@ -291,7 +261,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    /// <summary>Converts a List&lt;T&gt; to an ImmutableArray using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         List<TSource>? source,
@@ -311,7 +281,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to an ImmutableArray using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -325,7 +295,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableArray using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -344,7 +314,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    /// <summary>Converts a T[] to an ImmutableList using the specified mapper function.</summary>
+    // Converts a T[] to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         TSource[]? source,
@@ -364,7 +334,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a List&lt;T&gt; to an ImmutableList using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         List<TSource>? source,
@@ -384,7 +354,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to an ImmutableList using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest> ToImmutableList<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -398,7 +368,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableList using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -417,7 +387,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a T[] to a HashSet using the specified mapper function.</summary>
+    // Converts a T[] to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         TSource[]? source,
@@ -437,7 +407,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    /// <summary>Converts a List&lt;T&gt; to a HashSet using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         List<TSource>? source,
@@ -457,7 +427,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to a HashSet using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest> ToHashSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -471,7 +441,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to a HashSet using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -490,7 +460,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    /// <summary>Converts a T[] to an ImmutableHashSet using the specified mapper function.</summary>
+    // Converts a T[] to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         TSource[]? source,
@@ -510,7 +480,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a List&lt;T&gt; to an ImmutableHashSet using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         List<TSource>? source,
@@ -530,7 +500,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to an ImmutableHashSet using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest> ToImmutableHashSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -544,7 +514,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableHashSet using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -563,7 +533,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    /// <summary>Converts a T[] to a FrozenSet using the specified mapper function.</summary>
+    // Converts a T[] to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         TSource[]? source,
@@ -583,7 +553,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    /// <summary>Converts a List&lt;T&gt; to a FrozenSet using the specified mapper function.</summary>
+    // Converts a List&lt;T&gt; to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         List<TSource>? source,
@@ -603,7 +573,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    /// <summary>Converts a ReadOnlySpan&lt;T&gt; to a FrozenSet using the specified mapper function.</summary>
+    // Converts a ReadOnlySpan&lt;T&gt; to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest> ToFrozenSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -617,7 +587,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    /// <summary>Converts an IReadOnlyCollection&lt;T&gt; to a FrozenSet using the specified mapper function.</summary>
+    // Converts an IReadOnlyCollection&lt;T&gt; to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -640,7 +610,7 @@ public static class DefaultCollectionConverter
     // Immutable / Frozen / HashSet collections (Func mapper)
     // ============================================================
 
-    /// <summary>Converts a collection to an ImmutableArray using the specified mapper function.</summary>
+    // Converts a collection to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -654,7 +624,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToImmutableArray();
     }
 
-    /// <summary>Converts a collection to an ImmutableList using the specified mapper function.</summary>
+    // Converts a collection to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -668,7 +638,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToImmutableList();
     }
 
-    /// <summary>Converts a collection to a HashSet using the specified mapper function.</summary>
+    // Converts a collection to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -682,7 +652,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToHashSet();
     }
 
-    /// <summary>Converts a collection to an ImmutableHashSet using the specified mapper function.</summary>
+    // Converts a collection to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -696,7 +666,7 @@ public static class DefaultCollectionConverter
         return source.Select(mapper).ToImmutableHashSet();
     }
 
-    /// <summary>Converts a collection to a FrozenSet using the specified mapper function.</summary>
+    // Converts a collection to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         IEnumerable<TSource>? source,
@@ -714,7 +684,7 @@ public static class DefaultCollectionConverter
     // Immutable / Frozen / HashSet collections (Action mapper)
     // ============================================================
 
-    /// <summary>Converts a collection to an ImmutableArray using the specified void mapper action.</summary>
+    // Converts a collection to an ImmutableArray using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -736,7 +706,7 @@ public static class DefaultCollectionConverter
         }).ToImmutableArray();
     }
 
-    /// <summary>Converts a collection to an ImmutableList using the specified void mapper action.</summary>
+    // Converts a collection to an ImmutableList using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -758,7 +728,7 @@ public static class DefaultCollectionConverter
         }).ToImmutableList();
     }
 
-    /// <summary>Converts a collection to a HashSet using the specified void mapper action.</summary>
+    // Converts a collection to a HashSet using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -780,7 +750,7 @@ public static class DefaultCollectionConverter
         }).ToHashSet();
     }
 
-    /// <summary>Converts a collection to an ImmutableHashSet using the specified void mapper action.</summary>
+    // Converts a collection to an ImmutableHashSet using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
@@ -802,7 +772,7 @@ public static class DefaultCollectionConverter
         }).ToImmutableHashSet();
     }
 
-    /// <summary>Converts a collection to a FrozenSet using the specified void mapper action.</summary>
+    // Converts a collection to a FrozenSet using the specified void mapper action.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [RequiresUnreferencedCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]
     [RequiresDynamicCode("Action-based overloads use new() constraint which may not be AOT-safe. Use generated mapper code instead.")]

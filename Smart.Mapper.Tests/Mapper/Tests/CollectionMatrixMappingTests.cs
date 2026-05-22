@@ -3,9 +3,7 @@ namespace Smart.Mapper.Tests;
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
-/// <summary>
-/// Source-shape × Target-shape matrix tests for C4 inline collection emit.
-/// </summary>
+// Source-shape × Target-shape matrix tests for C4 inline collection emit.
 public class CollectionMatrixMappingTests
 {
     public static TheoryData<int> ElementCounts => [0, 1, 10];

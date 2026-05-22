@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Represents a MapNested mapping (nested object property mapped using a mapper method).
-/// </summary>
+// Represents a MapNested mapping (nested object property mapped using a mapper method).
 internal sealed record MapNestedModel
 {
     public string SourceName { get; set; } = string.Empty;

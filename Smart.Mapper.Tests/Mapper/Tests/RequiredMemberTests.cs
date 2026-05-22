@@ -3,10 +3,8 @@ namespace Smart.Mapper.Tests;
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
-/// <summary>
-/// D2: required メンバー対応のテスト。
-/// required プロパティが自動マッピングで設定されることを確認する。
-/// </summary>
+// D2: required メンバー対応のテスト。
+// required プロパティが自動マッピングで設定されることを確認する。
 public class RequiredMemberTests
 {
     [Fact]

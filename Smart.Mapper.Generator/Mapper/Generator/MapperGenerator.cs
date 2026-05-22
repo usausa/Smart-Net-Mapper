@@ -38,9 +38,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
     private const string DefaultCollectionConverterTypeName = "global::Smart.Mapper.DefaultCollectionConverter";
 
     // ------------------------------------------------------------
-    // Initialize
+    // Initialize / 初期化
     // ------------------------------------------------------------
 
+    // [Mapper] 属性を持つメソッドを検出し、ソース生成パイプラインを登録する。
+    // Discovers methods decorated with [Mapper] and registers the source generation pipeline.
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var methodProvider = context.SyntaxProvider
@@ -56,12 +58,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
     }
 
     // ------------------------------------------------------------
-    // Parser
+    // Parser / 解析
     // ------------------------------------------------------------
 
     private static bool IsMethodSyntax(SyntaxNode syntax) =>
         syntax is MethodDeclarationSyntax;
 
+    // [Mapper] 属性付きメソッドのシンボル情報を検査し、マッピングモデルを構築して返す。
+    // Inspects the symbol of a [Mapper]-decorated method, validates its signature and attributes,
+    // then builds and returns a MapperMethodModel (or a diagnostic error).
     private static Result<MapperMethodModel> GetMapperMethodModel(GeneratorAttributeSyntaxContext context)
     {
         var syntax = (MethodDeclarationSyntax)context.TargetNode;
@@ -302,6 +307,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return Results.Success(model);
     }
 
+    // プロパティ条件メソッド（[MapCondition]）のシグネチャを検証する。
+    // Validates that each [MapCondition] method has an acceptable signature.
     private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
@@ -444,6 +451,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         ReturnTypeMismatch
     }
 
+    // コンバーターメソッド候補の中から、マッピングに適合するものを探して ConverterMatchResult を返す。
+    // Searches the converter method candidates for one whose parameter/return types match the mapping.
     private static ConverterMatchResult FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
     {
         var hasMatchWithCustomParams = false;
@@ -526,11 +535,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return ConverterMatchResult.NoMatch;
     }
 
+    // BeforeMap / AfterMap コールバックメソッドのシグネチャを検証する。
+    // Validates that the BeforeMap and AfterMap callback methods have acceptable signatures.
     private static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
-        // Validate BeforeMap
+        // Validate BeforeMap / BeforeMap の検証
         if (!String.IsNullOrEmpty(model.BeforeMapMethod))
         {
             var beforeMapMethods = containingType.GetMembers(model.BeforeMapMethod!)
@@ -572,6 +583,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         MatchWithCustomParams
     }
 
+    // コールバックメソッド候補の中から、マッピングに適合するものを探して CallbackMatchResult を返す。
+    // Searches the callback method candidates for one whose parameter types match the mapping.
     private static CallbackMatchResult FindMatchingCallbackMethod(List<IMethodSymbol> candidates, MapperMethodModel model)
     {
         var hasMatchWithCustomParams = false;
@@ -630,6 +643,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return CallbackMatchResult.NoMatch;
     }
 
+    // マッパーメソッドに付与されたすべてのマッピング属性（[MapProperty] / [MapIgnore] / [MapConstant] 等）を解析し、
+    // モデルへ格納する。クラスレベルの [MapperProfile] も考慮する。
+    // Parses all mapping attributes on the mapper method ([MapProperty], [MapIgnore], [MapConstant], etc.)
+    // and populates the model. Class-level [MapperProfile] defaults are also applied.
     private static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
         var definitionOrder = 0;
@@ -1032,9 +1049,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         model.MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings]);
     }
 
+    // [ValueConverter] / [CollectionConverter] 属性をメソッドレベルおよびクラスレベルから解析し、
+    // 優先順位（メソッド > クラス）に従ってモデルへ設定する。
+    // Parses [ValueConverter] / [CollectionConverter] attributes at method and class level,
+    // applying them to the model with method-level taking priority over class-level.
     private static void ParseConverterAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
-        // Check method level first (higher priority)
+        // Check method level first (higher priority) / メソッドレベルを先に確認（優先度が高い）
         foreach (var attribute in symbol.GetAttributes())
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
@@ -1126,6 +1147,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // 定数値を C# ソース中の文字列リテラル表現に変換する（null / bool / char / string / 数値 / enum に対応）。
+    // Converts a constant value to its C# source literal representation
+    // (handles null, bool, char, string, numeric types, and enums).
     private static string? FormatConstantValue(object? value)
     {
         if (value is null)
@@ -1148,6 +1172,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         };
     }
 
+    // [MapConstant] で宣言された定数マッピングに、対応する destination プロパティの型名を付与する。
+    // Resolves the destination property type for each [MapConstant] mapping entry.
     private static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
     {
         var destinationProperties = destinationType.GetAllPublicProperties();
@@ -1162,9 +1188,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // 複数のマッピング属性が同一の destination プロパティを指定していないか検証する（SMP0015）。
+    // Validates that no two mapping attributes target the same destination property (SMP0015).
     private static DiagnosticInfo? ValidateDuplicateTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         // Collect all target property names from various mapping attributes
+        // 各マッピング属性から destination プロパティ名を収集する
         var targetMappings = new Dictionary<string, List<string>>();
 
         void AddTarget(string target, string attributeType)
@@ -1234,6 +1263,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // [MapUsing] 属性を検証し、対象の静的メソッドのシグネチャを確認した上でモデルへ組み込む。
+    // Validates [MapUsing] attributes and resolves the target static method signature into the model.
     private static DiagnosticInfo? ValidateAndBuildMapUsingMappings(
         IMethodSymbol mapperMethod,
         MapperMethodModel model,
@@ -1388,6 +1419,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return new MapUsingMatchInfo { Result = MapUsingMatchResult.NoMatch };
     }
 
+    // [MapFrom] 属性を検証し、静的メソッド呼び出しまたはインスタンスメソッド呼び出しのパスをモデルへ組み込む。
+    // Validates [MapFrom] attributes and resolves static or instance method paths into the model.
     private static DiagnosticInfo? ValidateAndBuildMapFromMappings(
         MapperMethodModel model,
         ITypeSymbol sourceType,
@@ -1470,6 +1503,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // [MapCollection] 属性を検証し、コレクションマッピングに必要なマッパーメソッド情報をモデルへ組み込む。
+    // Validates [MapCollection] attributes and resolves the mapper method and collection conversion strategy into the model.
     private static DiagnosticInfo? ValidateAndBuildMapCollectionMappings(
         IMethodSymbol mapperMethod,
         MapperMethodModel model,
@@ -1539,6 +1574,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // [MapNested] 属性を検証し、ネストオブジェクトマッピング用のマッパーメソッド情報をモデルへ組み込む。
+    // Validates [MapNested] attributes and resolves the nested object mapper method into the model.
     private static DiagnosticInfo? ValidateAndBuildMapNestedMappings(
         IMethodSymbol mapperMethod,
         MapperMethodModel model,
@@ -1603,6 +1640,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // 指定された名前の静的マッパーメソッドを含む型から探索する。
+    // 戻り値: null = 見つからない / true = 戻り値あり（returnパターン）/ false = void パターン
+    // Searches the containing type for a static mapper method with the given name.
+    // Returns: null = not found, true = return-type pattern, false = void pattern.
     private static bool? FindMapperMethod(INamedTypeSymbol containingType, string methodName, ITypeSymbol sourceElementType, ITypeSymbol targetElementType)
     {
         var sourceTypeName = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1646,6 +1687,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // 目的コレクション型に応じた DefaultCollectionConverter のメソッド名を決定する（AsArray / AsList 等）。
+    // Determines the DefaultCollectionConverter method name (e.g., AsArray / AsList) based on the target collection type.
     private static string DetermineCollectionMethod(ITypeSymbol targetType)
     {
         if (targetType is IArrayTypeSymbol)
@@ -1674,6 +1717,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return "ToList";
     }
 
+    // in-place コレクションマッピング時に使用する中間変数型名を決定する（List / HashSet 等）。
+    // Determines the concrete intermediate collection type name for in-place collection mapping (List, HashSet, etc.).
     private static string DetermineInPlaceFallbackTypeName(ITypeSymbol targetType, ITypeSymbol elementType)
     {
         var elementTypeName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1694,6 +1739,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return $"global::System.Collections.Generic.List<{elementTypeName}>";
     }
 
+    // source コレクション型の形状（配列・ List ・ ImmutableArray ・ IReadOnlyCollection ・ Enumerable 等）を判定する。
+    // Determines the collection source shape (Array, List, ImmutableArray, ReadOnlyCollection, Enumerable, etc.).
     private static CollectionSourceShape DetermineSourceShape(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol)
@@ -1730,6 +1777,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return CollectionSourceShape.Enumerable;
     }
 
+    // destination コレクション型の形状（配列・ List ・ ImmutableArray ・ HashSet 等）を判定する。
+    // Determines the collection target shape (Array, List, ImmutableArray, HashSet, etc.).
     private static CollectionTargetShape DetermineTargetShape(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol)
@@ -1758,6 +1807,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return CollectionTargetShape.List;
     }
 
+    // Strict モード時に、マッピングされていない destination プロパティに対する SMP0016 警告を倧値する。
+    // Collects SMP0016 warnings for destination properties that have no mapping in strict mode.
     private static List<(DiagnosticDescriptor Descriptor, string Arg)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
     {
         var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
@@ -1820,6 +1871,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return warnings;
     }
 
+    // Culture なしに DateTimeFormat / NumberFormat のみ指定されていないか検証する（SMP0019）。
+    // Validates that DateTimeFormat / NumberFormat are not specified without a Culture (SMP0019).
     private static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         // B4 b案: Format without Culture is invalid at method level
@@ -1841,10 +1894,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // AOT 非対応の汎用型フォールバック Convert<T,U> に到達するプロパティマッピングがないか検証する（SMP0020）。
+    // Validates that no property mapping would fall through to the AOT-unsafe generic Convert<T,U> fallback (SMP0020).
     private static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         // If the user explicitly specified a mapper-level converter type, the generic Convert<T,U>
         // fallback is intentional — skip the entire validation.
+        // メソッドレベルでコンバーター型が明示指定されている場合、汎用型フォールバックは意図的なものなので検証をスキップする。
         if (model.MapConverterTypeName is not null)
         {
             return null;
@@ -1951,6 +2007,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         "MakeGenericMethod"
     ];
 
+    // [MapExpression] の式内に AOT 非対応のリフレクションパターンが含まれる場合に SMP0021 警告を假値する。
+    // Yields SMP0021 warnings when a [MapExpression] expression contains potentially AOT-incompatible reflection patterns.
     private static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg)> CollectMapExpressionReflectionWarnings(MapperMethodModel model)
     {
         foreach (var expression in model.ExpressionMappings.AsArray())
@@ -1966,9 +2024,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // required プロパティがイグノアまたはマッピングされているか検証する（SMP0017）。
+    // Validates that all required destination properties are either mapped or explicitly ignored (SMP0017).
     private static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
     {
         // Build the set of all destination property names that have some mapping configuration (same as CollectStrictModeWarnings)
+        // マッピング設定のある destination プロパティ名のセットを構築（CollectStrictModeWarnings と同様）
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var pm in model.PropertyMappings.AsArray())
@@ -2028,12 +2089,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
-    /// <summary>
-    /// Detects whether the destination type has a primary constructor (record or class with primary ctor),
-    /// selects the constructor with the most parameters, resolves constructor argument source expressions
-    /// using NameComparison and [MapProperty] overrides, and stores the result in the model.
-    /// For void mappers targeting such a destination, reports ML0019.
-    /// </summary>
+    // Detects whether the destination type has a primary constructor (record or class with primary ctor),
+    // selects the constructor with the most parameters, resolves constructor argument source expressions
+    // using NameComparison and [MapProperty] overrides, and stores the result in the model.
+    // For void mappers targeting such a destination, reports ML0019.
+    // destination 型のプライマリコンストラクター（または record）を検出し、コンストラクター呼び出しのパラメーターマッピングを構築する。
+    // Detects the primary constructor (or record constructor) of the destination type
+    // and builds constructor parameter mappings for source generation.
     private static DiagnosticInfo? BuildConstructorParameterMappings(
         MapperMethodModel model,
         ITypeSymbol destinationType,
@@ -2135,6 +2197,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // source / destination 型の公開プロパティを列挙し、名前・型比較および各種属性設定をもとにプロパティマッピングモデルのリストを構築する。
+    // Enumerates public properties of source and destination types, and builds the list of property mapping models
+    // based on name/type matching and attribute configurations.
     private static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
     {
         var sourceProperties = sourceType.GetAllPublicProperties();
@@ -2330,6 +2395,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // enum 関連のマッピング種別（EnumToEnum / EnumToNumeric / NumericToEnum / EnumToString / StringToEnum）を診断して設定する。
+    // Detects the enum conversion kind (EnumToEnum, EnumToNumeric, NumericToEnum, EnumToString, StringToEnum) for a property mapping.
     private static void DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
     {
         var sourceIsEnum = sourceUnderlying.TypeKind == TypeKind.Enum;
@@ -2376,6 +2443,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // ターゲット型が IParsable<T> / ISpanParsable<T> を実装するか調べ、解析可能な場合は Parse/TryParse メソッドを設定する。
+    // Checks whether the target type implements IParsable<T>/ISpanParsable<T> and sets the parse method on the mapping.
     private static void DetectParsableMethodFromSymbol(PropertyMappingModel mapping, ITypeSymbol targetType)
     {
         // Use MetadataName to identify IParsable<T> / ISpanParsable<T> without needing a Compilation reference.
@@ -2411,9 +2480,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // ドット記法のネストパスを解析し、ソース側の null 可能な中間型やデスティネーション側の自動インスタンス化情報をマッピングモデルに設定する。
+    // Resolves dot-notation nested paths and sets nullable guard flags and destination auto-instantiation info on the mapping.
     private static void ResolveNestedMapping(PropertyMappingModel mapping, ITypeSymbol sourceType, ITypeSymbol destinationType)
     {
         // Resolve source path segments and check for nullable intermediate types
+        // ソースパスの各セグメントを解決し、null 可能な中間型をチェック
         var sourceParts = mapping.SourcePath.Split('.');
         if (sourceParts.Length > 1)
         {
@@ -2537,9 +2609,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
     }
 
     // ------------------------------------------------------------
-    // Generator
+    // Generator / コード生成
     // ------------------------------------------------------------
 
+    // パーサーから受け取ったモデルをクラスごとにグループ化し、ソースファイルを生成する。診断も発行する。
+    // Groups parsed mapper models by class, generates one source file per class, and reports diagnostics.
     private static void Execute(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods)
     {
         foreach (var info in methods.SelectError())
@@ -2570,6 +2644,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // 指定クラスのマッパーメソッド一覧から、ネームスペース・クラス宣言を含むソースファイル全体を構築する。
+    // Builds the entire generated source file for a single class, including namespace and class declaration.
     private static void BuildSource(SourceBuilder builder, List<MapperMethodModel> methods)
     {
         var ns = methods[0].Namespace;
@@ -2644,10 +2720,12 @@ public sealed class MapperGenerator : IIncrementalGenerator
         builder.EndScope();
     }
 
-    /// <summary>Returns the static field name for a CultureInfo instance (e.g. "fr-FR" → "__culture_fr_FR").</summary>
+    // Returns the static field name for a CultureInfo instance (e.g. "fr-FR" → "__culture_fr_FR").
     private static string GetCultureFieldName(string cultureName) =>
         "__culture_" + cultureName.Replace('-', '_').Replace('.', '_');
 
+    // 1つのマッパーメソッドの実装コード（プロパティコピー・小数コンバーター・コレクション・ネスト・コンストラクター呼び出しなど）をビルダーへ出力する。
+    // Emits the implementation body of one mapper method (property copies, converters, collections, constructors, etc.).
     private static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3949,6 +4027,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // 各プロパティマッピングについて IParsable<T> / ISpanParsable<T> の Parse メソッドを検出する。
+    // Detects IParsable<T>/ISpanParsable<T> parse methods for each property mapping.
     private static void DetectParsableMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
         // If a custom converter type is specified, B3 parse methods should not be applied
@@ -4037,11 +4117,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
-    /// <summary>
-    /// Detects user-defined implicit/explicit conversion operators between source and target underlying types.
-    /// Sets <see cref="PropertyMappingModel.UserDefinedConversion"/> and adjusts
-    /// <see cref="PropertyMappingModel.RequiresConversion"/> accordingly.
-    /// </summary>
+    // Detects user-defined implicit/explicit conversion operators between source and target underlying types.
+    // Sets PropertyMappingModel.UserDefinedConversion and adjusts
+    // PropertyMappingModel.RequiresConversion accordingly.
+    // 各プロパティマッピングについて、ユーザー定義の暗默・明示変換演算子（op_Implicit / op_Explicit）を検出する。
+    // Detects user-defined implicit/explicit conversion operators (op_Implicit/op_Explicit) for each property mapping.
     private static void DetectUserDefinedConversions(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType, ITypeSymbol destinationType)
     {
         // If a custom converter type is specified, user-defined operators should not be auto-applied.
@@ -4107,10 +4187,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
-    /// <summary>
-    /// Detects whether IFormattable.ToString(format, culture) should be used for T -> string conversion
-    /// when Culture or a format string is specified on the mapping.
-    /// </summary>
+    // Detects whether IFormattable.ToString(format, culture) should be used for T -> string conversion
+    // when Culture or a format string is specified on the mapping.
+    // source 型が IFormattable を実装し、destination 型が string の場合に ToString フォーマット変換を有効にする。
+    // Enables IFormattable-based ToString conversion when source implements IFormattable and destination is string.
     private static void DetectFormattableMethod(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType)
     {
         // If a custom converter type is specified, IFormattable path should not be auto-applied.
@@ -4199,6 +4279,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // DefaultValueConverter やカスタムコンバーター内の ConvertTo{TargetType} スペシャライズドメソッドを各プロパティマッピングに対して検出する。
+    // Detects specialized ConvertTo{TargetType} methods in DefaultValueConverter or custom converters for each property mapping.
     private static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
         // Get the converter type to check for specialized methods
@@ -4248,6 +4330,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         }
     }
 
+    // コンバーター型名からコンパイラシンボルを取得する。見つからない場合は null を返す。
+    // Resolves a converter type name to its ITypeSymbol. Returns null if not found.
     private static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string converterTypeName)
     {
         // Remove "global::" prefix if present
@@ -4277,6 +4361,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
+    // コンバーター型内から指定された名前・引数型・戻り値型に一致するスペシャライズドメソッドを探す。
+    // Finds a specialized method with the given name, parameter types, and return type within the converter type.
     private static IMethodSymbol? FindSpecializedMethod(
         ITypeSymbol converterType,
         string methodName,
@@ -4305,9 +4391,11 @@ public sealed class MapperGenerator : IIncrementalGenerator
     }
 
     // ------------------------------------------------------------
-    // Helper
+    // Helper / ヘルパー
     // ------------------------------------------------------------
 
+    // 名前空間とクラス名から生成ファイル名（.g.cs ファイル名）を生成する。
+    // Generates the output file name (e.g., "MyNamespace_MyClass.g.cs") from namespace and class name.
     private static string MakeFilename(string ns, string className)
     {
         var buffer = new StringBuilder();

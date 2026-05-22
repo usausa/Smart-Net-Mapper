@@ -13,7 +13,7 @@ It automatically generates property-copying code at compile time for `static par
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
 - **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 21 compiler-time diagnostics (SMP0001-SMP0021)
+- **Rich diagnostics** - 21 compiler-time diagnostics (SMP0001–SMP0021)
 
 ## Installation
 
@@ -479,10 +479,10 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 | SMP0006 | Converter method signature mismatch | Error |
 | SMP0007 | Converter return type does not match destination property type | Error |
 | SMP0008 | Property-condition method signature mismatch | Error |
-| SMP0009 | `MapUsing` method signature mismatch | Error |
-| SMP0010 | `MapUsing` return type does not match destination property type | Error |
-| SMP0011 | `MapFrom` target must be a no-argument instance method | Error |
-| SMP0012 | `MapFrom` method return type does not match destination property type | Error |
+| SMP0009 | `MapFrom` method signature mismatch | Error |
+| SMP0010 | `MapFrom` method return type does not match destination property type | Error |
+| SMP0011 | `MapFrom` target must be a parameterless instance method on the source type | Error |
+| SMP0012 | `MapFrom` instance method return type does not match destination property type | Error |
 | SMP0013 | `MapCollection` mapper method not found or signature mismatch | Error |
 | SMP0014 | `MapNested` mapper method not found or signature mismatch | Error |
 | SMP0015 | Duplicate mapping to the same destination property | Error |

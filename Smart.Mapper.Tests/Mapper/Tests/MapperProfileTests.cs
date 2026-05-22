@@ -3,10 +3,8 @@ namespace Smart.Mapper.Tests;
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
-/// <summary>
-/// E3: MapperProfile 集約のテスト。
-/// クラス属性の設定がメソッドに継承されること、およびメソッドレベルで上書きできることを確認する。
-/// </summary>
+// E3: MapperProfile 集約のテスト。
+// クラス属性の設定がメソッドに継承されること、およびメソッドレベルで上書きできることを確認する。
 public class MapperProfileTests
 {
     [Fact]

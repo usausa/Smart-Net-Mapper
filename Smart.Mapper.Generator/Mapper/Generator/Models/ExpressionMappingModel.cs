@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Represents an expression mapping configuration.
-/// </summary>
+// Represents an expression mapping configuration.
 internal sealed record ExpressionMappingModel
 {
     public string TargetName { get; set; } = string.Empty;

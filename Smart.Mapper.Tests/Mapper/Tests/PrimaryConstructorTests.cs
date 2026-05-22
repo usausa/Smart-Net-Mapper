@@ -3,9 +3,7 @@ namespace Smart.Mapper.Tests;
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
-/// <summary>
-/// D1/D3: record・プライマリコンストラクタ対応のテスト。
-/// </summary>
+// D1/D3: record・プライマリコンストラクタ対応のテスト。
 public class PrimaryConstructorTests
 {
     // D1: record → record (全パラメータ)

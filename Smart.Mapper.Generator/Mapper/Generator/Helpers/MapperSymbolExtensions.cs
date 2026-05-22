@@ -4,19 +4,15 @@ using System.Linq;
 
 using Microsoft.CodeAnalysis;
 
-/// <summary>
-/// Mapper-domain Roslyn extension methods that are not candidates for SourceGenerateHelper promotion.
-/// </summary>
+// Mapper-domain Roslyn extension methods that are not candidates for SourceGenerateHelper promotion.
 internal static class MapperSymbolExtensions
 {
     // -------------------------------------------------------
     // Type resolution
     // -------------------------------------------------------
 
-    /// <summary>
-    /// Resolves a <see cref="INamedTypeSymbol"/> from a fully-qualified name by searching
-    /// the containing assembly and all referenced assemblies of <paramref name="mapperMethod"/>.
-    /// </summary>
+    // Resolves a INamedTypeSymbol from a fully-qualified name by searching
+    // the containing assembly and all referenced assemblies of .
     public static ITypeSymbol? FindTypeByFullyQualifiedName(this IMethodSymbol mapperMethod, string fullyQualifiedName)
     {
         var typeName = fullyQualifiedName.StartsWith("global::", System.StringComparison.Ordinal)
@@ -45,11 +41,9 @@ internal static class MapperSymbolExtensions
     // User-defined conversion operators
     // -------------------------------------------------------
 
-    /// <summary>
-    /// Returns true when a user-defined implicit (<paramref name="isImplicit"/>=true) or explicit
-    /// conversion operator exists between <paramref name="sourceType"/> and <paramref name="targetType"/>.
-    /// Both source-declared and target-declared operators are checked.
-    /// </summary>
+    // Returns true when a user-defined implicit (=true) or explicit
+    // conversion operator exists between  and .
+    // Both source-declared and target-declared operators are checked.
     public static bool HasUserDefinedConversion(ITypeSymbol sourceType, ITypeSymbol targetType, bool isImplicit)
     {
         var operatorName = isImplicit

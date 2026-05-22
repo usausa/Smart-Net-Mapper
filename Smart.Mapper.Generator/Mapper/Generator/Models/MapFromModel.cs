@@ -1,8 +1,6 @@
 namespace Smart.Mapper.Generator.Models;
 
-/// <summary>
-/// Represents a MapFrom mapping (target property set from source expression - method call or property path).
-/// </summary>
+// Represents a MapFrom mapping (target property set from source expression - method call or property path).
 internal sealed record MapFromModel
 {
     public string TargetName { get; set; } = string.Empty;

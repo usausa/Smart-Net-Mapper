@@ -8,17 +8,13 @@ using Microsoft.CodeAnalysis;
 
 using SourceGenerateHelper;
 
-/// <summary>
-/// Utilities for resolving property paths (dot-separated member access expressions)
-/// against Roslyn <see cref="ITypeSymbol"/> instances.
-/// </summary>
+// Utilities for resolving property paths (dot-separated member access expressions)
+// against Roslyn ITypeSymbol instances.
 internal static class PropertyPathHelper
 {
-    /// <summary>
-    /// Walks <paramref name="path"/> (dot-separated property names) starting from
-    /// <paramref name="rootType"/> and returns the resulting type and whether the path is valid.
-    /// Supports <c>Length</c> on arrays and <c>Length</c>/<c>Count</c> on named types.
-    /// </summary>
+    // Walks  (dot-separated property names) starting from
+    //  and returns the resulting type and whether the path is valid.
+    // Supports Length on arrays and Length/Count on named types.
     public static (ITypeSymbol? Type, bool IsValid) ResolvePropertyPath(ITypeSymbol rootType, string path)
     {
         var parts = path.Split('.');
@@ -55,10 +51,8 @@ internal static class PropertyPathHelper
         return (currentType, true);
     }
 
-    /// <summary>
-    /// Resolves the <see cref="IPropertySymbol"/> at the end of a pre-split property path,
-    /// returning <c>null</c> when any segment cannot be found.
-    /// </summary>
+    // Resolves the IPropertySymbol at the end of a pre-split property path,
+    // returning null when any segment cannot be found.
     public static IPropertySymbol? ResolvePropertySymbol(ITypeSymbol rootType, string[] parts)
     {
         var current = rootType;
@@ -75,10 +69,8 @@ internal static class PropertyPathHelper
         return prop;
     }
 
-    /// <summary>
-    /// Returns the <see cref="ITypeSymbol"/> at the end of a dot-separated <paramref name="path"/>
-    /// starting from <paramref name="type"/>, or <c>null</c> when the path cannot be resolved.
-    /// </summary>
+    // Returns the ITypeSymbol at the end of a dot-separated 
+    // starting from , or null when the path cannot be resolved.
     public static ITypeSymbol? ResolvePropertyType(ITypeSymbol type, string path)
     {
         var parts = path.Split('.');

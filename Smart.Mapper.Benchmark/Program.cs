@@ -22,6 +22,7 @@ public static class Program
                 case "nested": BenchmarkRunner.Run<NestedMapBenchmark>(); return;
                 case "collection": BenchmarkRunner.Run<CollectionMapBenchmark>(); return;
                 case "conversion": BenchmarkRunner.Run<ConversionMapBenchmark>(); return;
+                case "voidnested": BenchmarkRunner.Run<VoidNestedMapBenchmark>(); return;
             }
         }
 
@@ -230,7 +231,86 @@ public class CollectionMapBenchmark
 }
 
 // ==========================================================================
-// Scenario 4: Type conversion mapping (numeric -> string)
+// Scenario 5: Void-pattern nested mapping (lambda elimination)
+// Comparison: Direct / SmartMapper (fixed, no lambda) / Legacy lambda (old behavior)
+// ==========================================================================
+
+[Config(typeof(BenchmarkConfig))]
+[BenchmarkCategory("VoidNested")]
+public class VoidNestedMapBenchmark
+{
+    private const int N = 1000;
+
+    private NestedSource source = default!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        source = new()
+        {
+            Id = 1,
+            Name = "Test",
+            Address = new() { City = "Tokyo", ZipCode = "100-0001" }
+        };
+    }
+
+    [Benchmark(Baseline = true, OperationsPerInvoke = N)]
+    public NestedDestination Direct()
+    {
+        var src = source;
+        NestedDestination ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            ret = new()
+            {
+                Id = src.Id,
+                Name = src.Name,
+                Address = src.Address is null ? null : new AddressDestination
+                {
+                    City = src.Address.City,
+                    ZipCode = src.Address.ZipCode
+                }
+            };
+        }
+        return ret;
+    }
+
+    // 旧コード: Func<T> ラムダを毎回アロケーション
+    [Benchmark(OperationsPerInvoke = N)]
+    public NestedDestination LegacyLambda()
+    {
+        var src = source;
+        NestedDestination ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+#pragma warning disable IDE0017
+            ret = new() { Id = src.Id, Name = src.Name };
+            ret.Address = src.Address is not null
+                ? ((Func<AddressDestination>)(() =>
+                {
+                    var a = new AddressDestination();
+                    BenchmarkMappers.MapAddressVoid(src.Address!, a);
+                    return a;
+                }))()
+                : default!;
+#pragma warning restore IDE0017
+        }
+        return ret;
+    }
+
+    // 新コード: ラムダなしの多文展開（Generator 修正後）
+    [Benchmark(OperationsPerInvoke = N)]
+    public NestedDestination SmartMapperVoidNested()
+    {
+        var src = source;
+        NestedDestination ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            ret = BenchmarkMappers.MapNestedVoid(src);
+        }
+        return ret;
+    }
+}
 // Comparison: Direct .ToString() vs Smart.Mapper specialized converter
 // ==========================================================================
 

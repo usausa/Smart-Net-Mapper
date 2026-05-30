@@ -2972,44 +2972,51 @@ public sealed class MapperGenerator : IIncrementalGenerator
         {
             var sourceAccess = $"{method.SourceParameterName}.{mapNested.SourceName}";
 
-            builder.Indent();
-            builder.Append(destVarName).Append(".").Append(mapNested.TargetName).Append(" = ");
-
-            if (mapNested.IsSourceNullable)
-            {
-                // source.Child is not null ? MapChild(source.Child) : default!
-                builder.Append(sourceAccess).Append(" is not null ? ");
-            }
-
             if (mapNested.MapperReturnsValue)
             {
-                // Return value pattern: MapChild(source.Child)
+                // Return value pattern: single-expression assignment
+                builder.Indent();
+                builder.Append(destVarName).Append(".").Append(mapNested.TargetName).Append(" = ");
+                if (mapNested.IsSourceNullable)
+                {
+                    builder.Append(sourceAccess).Append(" is not null ? ");
+                }
                 builder.Append(mapNested.Mapper).Append("(").Append(sourceAccess);
                 if (mapNested.IsSourceNullable)
                 {
                     builder.Append("!");
                 }
                 builder.Append(")");
+                if (mapNested.IsSourceNullable)
+                {
+                    builder.Append(" : default!");
+                }
+                builder.Append(";").NewLine();
             }
             else
             {
-                // Void pattern: create new instance, call mapper, return instance
-                // Using inline lambda for simplicity
-                builder.Append("((global::System.Func<").Append(mapNested.TargetType).Append(">)(() => { var __nested = new ").Append(mapNested.TargetType).Append("(); ");
-                builder.Append(mapNested.Mapper).Append("(").Append(sourceAccess);
+                // Void pattern: multi-statement to avoid Func<T> closure allocation
+                var nestedVarName = "__nested_" + mapNested.TargetName.Replace(".", "_");
                 if (mapNested.IsSourceNullable)
                 {
-                    builder.Append("!");
+                    builder.Indent().Append("if (").Append(sourceAccess).Append(" is not null)").NewLine();
+                    builder.BeginScope();
+                    builder.Indent().Append("var ").Append(nestedVarName).Append(" = new ").Append(mapNested.TargetType).Append("();").NewLine();
+                    builder.Indent().Append(mapNested.Mapper).Append("(").Append(sourceAccess).Append("!, ").Append(nestedVarName).Append(");").NewLine();
+                    builder.Indent().Append(destVarName).Append(".").Append(mapNested.TargetName).Append(" = ").Append(nestedVarName).Append(";").NewLine();
+                    builder.EndScope();
+                    builder.Indent().Append("else").NewLine();
+                    builder.BeginScope();
+                    builder.Indent().Append(destVarName).Append(".").Append(mapNested.TargetName).Append(" = default!;").NewLine();
+                    builder.EndScope();
                 }
-                builder.Append(", __nested); return __nested; }))()");
+                else
+                {
+                    builder.Indent().Append("var ").Append(nestedVarName).Append(" = new ").Append(mapNested.TargetType).Append("();").NewLine();
+                    builder.Indent().Append(mapNested.Mapper).Append("(").Append(sourceAccess).Append(", ").Append(nestedVarName).Append(");").NewLine();
+                    builder.Indent().Append(destVarName).Append(".").Append(mapNested.TargetName).Append(" = ").Append(nestedVarName).Append(";").NewLine();
+                }
             }
-
-            if (mapNested.IsSourceNullable)
-            {
-                builder.Append(" : default!");
-            }
-
-            builder.Append(";").NewLine();
         }
 
         // Generate MapCollection mappings using collection converter (sorted by Order, then DefinitionOrder)

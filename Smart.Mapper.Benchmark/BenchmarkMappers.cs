@@ -27,4 +27,12 @@ internal static partial class BenchmarkMappers
     // Scenario 4: Type conversion (numeric -> string)
     [Mapper]
     public static partial ConversionDestination MapConversion(ConversionSource source);
+
+    // Scenario 5: Void-pattern nested (lambda-free after fix)
+    [Mapper]
+    public static partial void MapAddressVoid(AddressSource source, AddressDestination destination);
+
+    [Mapper]
+    [MapNested(nameof(NestedDestination.Address), nameof(NestedSource.Address), Mapper = nameof(MapAddressVoid))]
+    public static partial NestedDestination MapNestedVoid(NestedSource source);
 }

@@ -207,7 +207,7 @@ internal static partial class TestMappers
 
     private static bool ShouldMapName(string? name)
     {
-        return !string.IsNullOrEmpty(name);
+        return !String.IsNullOrEmpty(name);
     }
 
     // MapUsing: basic usage

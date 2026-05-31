@@ -80,7 +80,7 @@ internal static class GeneratorTestHelper
 
         foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
         {
-            if (!string.IsNullOrEmpty(path))
+            if (!String.IsNullOrEmpty(path))
             {
                 yield return MetadataReference.CreateFromFile(path);
             }

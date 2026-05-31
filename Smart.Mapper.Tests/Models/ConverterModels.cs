@@ -39,9 +39,9 @@ public static class TestCustomConverter
             var value = (string)(object)source!;
             if (value.StartsWith("NUM_", StringComparison.Ordinal))
             {
-                return (TDestination)(object)int.Parse(value[4..], System.Globalization.CultureInfo.InvariantCulture);
+                return (TDestination)(object)Int32.Parse(value[4..], System.Globalization.CultureInfo.InvariantCulture);
             }
-            return (TDestination)(object)int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+            return (TDestination)(object)Int32.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
         }
 
         return DefaultValueConverter.Convert<TSource, TDestination>(source);
@@ -66,7 +66,7 @@ public static class SpecializedConverter
 {
     public static int ConvertToInt32(string source)
     {
-        return int.Parse(source, System.Globalization.CultureInfo.InvariantCulture) + 1000;
+        return Int32.Parse(source, System.Globalization.CultureInfo.InvariantCulture) + 1000;
     }
 
     public static string ConvertToString(int source)

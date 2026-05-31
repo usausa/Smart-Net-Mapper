@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Tests;
+namespace Smart.Mapper;
 
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
@@ -86,8 +86,8 @@ public class DateTimeTypeConversionTests
 
         Assert.Equal(date.ToString("O", System.Globalization.CultureInfo.InvariantCulture), destination.DateOnlyValue);
         Assert.Equal(time.ToString("O", System.Globalization.CultureInfo.InvariantCulture), destination.TimeOnlyValue);
-        Assert.False(string.IsNullOrEmpty(destination.DateTimeOffsetValue));
-        Assert.False(string.IsNullOrEmpty(destination.TimeSpanValue));
+        Assert.False(String.IsNullOrEmpty(destination.DateTimeOffsetValue));
+        Assert.False(String.IsNullOrEmpty(destination.TimeSpanValue));
     }
 }
 
@@ -101,7 +101,7 @@ public class ModernNumericConversionTests
 
         TestMappers.MapModernNumericTypes(source, destination);
 
-        Assert.False(string.IsNullOrEmpty(destination.HalfValue));
+        Assert.False(String.IsNullOrEmpty(destination.HalfValue));
         Assert.Equal((Half)42, destination.IntValue);
     }
 }

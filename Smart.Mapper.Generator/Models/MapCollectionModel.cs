@@ -50,5 +50,5 @@ internal sealed record MapCollectionModel
 
 internal static class MapCollectionModelExtensions
 {
-    public static bool HasCustomConverter(this MapCollectionModel m) => !string.IsNullOrEmpty(m.Converter);
+    public static bool HasCustomConverter(this MapCollectionModel m) => !String.IsNullOrEmpty(m.Converter);
 }

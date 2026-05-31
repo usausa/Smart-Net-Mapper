@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Tests;
+namespace Smart.Mapper;
 
 using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;

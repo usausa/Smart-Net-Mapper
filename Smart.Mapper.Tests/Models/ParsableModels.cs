@@ -13,11 +13,11 @@ public readonly struct TestParsableId : IParsable<TestParsableId>, IEquatable<Te
     public TestParsableId(int value) => Value = value;
 
     public static TestParsableId Parse(string s, IFormatProvider? provider)
-        => new(int.Parse(s, provider ?? CultureInfo.InvariantCulture));
+        => new(Int32.Parse(s, provider ?? CultureInfo.InvariantCulture));
 
     public static bool TryParse(string? s, IFormatProvider? provider, out TestParsableId result)
     {
-        if (int.TryParse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture, out var v))
+        if (Int32.TryParse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture, out var v))
         {
             result = new(v);
             return true;
@@ -39,14 +39,14 @@ public readonly struct TestSpanParsableId : ISpanParsable<TestSpanParsableId>, I
     public TestSpanParsableId(int value) => Value = value;
 
     public static TestSpanParsableId Parse(ReadOnlySpan<char> s, IFormatProvider? provider)
-        => new(int.Parse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture));
+        => new(Int32.Parse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture));
 
     public static TestSpanParsableId Parse(string s, IFormatProvider? provider)
         => Parse(s.AsSpan(), provider);
 
     public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out TestSpanParsableId result)
     {
-        if (int.TryParse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture, out var v))
+        if (Int32.TryParse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture, out var v))
         {
             result = new(v);
             return true;

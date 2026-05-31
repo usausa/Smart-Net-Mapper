@@ -1,4 +1,4 @@
-namespace Smart.Mapper;
+﻿namespace Smart.Mapper;
 
 using System;
 using System.Globalization;
@@ -17,96 +17,96 @@ public static class DefaultValueConverter
 
     // Converts string to Int32.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ConvertToInt32(string source) => int.Parse(source, CultureInfo.InvariantCulture);
+    public static int ConvertToInt32(string source) => Int32.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Int32 using specified culture and optional format.
     // The format parameter is part of the unified 3-argument lookup signature used by the generator; numeric Parse does not support format strings.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ConvertToInt32(string source, IFormatProvider culture, string? format) => int.Parse(source, culture);
+    public static int ConvertToInt32(string source, IFormatProvider culture, string? format) => Int32.Parse(source, culture);
 
     // Converts string to Int64.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long ConvertToInt64(string source) => long.Parse(source, CultureInfo.InvariantCulture);
+    public static long ConvertToInt64(string source) => Int64.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Int64 using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long ConvertToInt64(string source, IFormatProvider culture, string? format) => long.Parse(source, culture);
+    public static long ConvertToInt64(string source, IFormatProvider culture, string? format) => Int64.Parse(source, culture);
 
     // Converts string to Int16.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static short ConvertToInt16(string source) => short.Parse(source, CultureInfo.InvariantCulture);
+    public static short ConvertToInt16(string source) => Int16.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Int16 using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static short ConvertToInt16(string source, IFormatProvider culture, string? format) => short.Parse(source, culture);
+    public static short ConvertToInt16(string source, IFormatProvider culture, string? format) => Int16.Parse(source, culture);
 
     // Converts string to Byte.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ConvertToByte(string source) => byte.Parse(source, CultureInfo.InvariantCulture);
+    public static byte ConvertToByte(string source) => Byte.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Byte using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ConvertToByte(string source, IFormatProvider culture, string? format) => byte.Parse(source, culture);
+    public static byte ConvertToByte(string source, IFormatProvider culture, string? format) => Byte.Parse(source, culture);
 
     // Converts string to SByte.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static sbyte ConvertToSByte(string source) => sbyte.Parse(source, CultureInfo.InvariantCulture);
+    public static sbyte ConvertToSByte(string source) => SByte.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to SByte using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static sbyte ConvertToSByte(string source, IFormatProvider culture, string? format) => sbyte.Parse(source, culture);
+    public static sbyte ConvertToSByte(string source, IFormatProvider culture, string? format) => SByte.Parse(source, culture);
 
     // Converts string to UInt32.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint ConvertToUInt32(string source) => uint.Parse(source, CultureInfo.InvariantCulture);
+    public static uint ConvertToUInt32(string source) => UInt32.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to UInt32 using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint ConvertToUInt32(string source, IFormatProvider culture, string? format) => uint.Parse(source, culture);
+    public static uint ConvertToUInt32(string source, IFormatProvider culture, string? format) => UInt32.Parse(source, culture);
 
     // Converts string to UInt64.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong ConvertToUInt64(string source) => ulong.Parse(source, CultureInfo.InvariantCulture);
+    public static ulong ConvertToUInt64(string source) => UInt64.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to UInt64 using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong ConvertToUInt64(string source, IFormatProvider culture, string? format) => ulong.Parse(source, culture);
+    public static ulong ConvertToUInt64(string source, IFormatProvider culture, string? format) => UInt64.Parse(source, culture);
 
     // Converts string to UInt16.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ushort ConvertToUInt16(string source) => ushort.Parse(source, CultureInfo.InvariantCulture);
+    public static ushort ConvertToUInt16(string source) => UInt16.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to UInt16 using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ushort ConvertToUInt16(string source, IFormatProvider culture, string? format) => ushort.Parse(source, culture);
+    public static ushort ConvertToUInt16(string source, IFormatProvider culture, string? format) => UInt16.Parse(source, culture);
 
     // Converts string to Single.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float ConvertToSingle(string source) => float.Parse(source, CultureInfo.InvariantCulture);
+    public static float ConvertToSingle(string source) => Single.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Single using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float ConvertToSingle(string source, IFormatProvider culture, string? format) => float.Parse(source, culture);
+    public static float ConvertToSingle(string source, IFormatProvider culture, string? format) => Single.Parse(source, culture);
 
     // Converts string to Double.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double ConvertToDouble(string source) => double.Parse(source, CultureInfo.InvariantCulture);
+    public static double ConvertToDouble(string source) => Double.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Double using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double ConvertToDouble(string source, IFormatProvider culture, string? format) => double.Parse(source, culture);
+    public static double ConvertToDouble(string source, IFormatProvider culture, string? format) => Double.Parse(source, culture);
 
     // Converts string to Decimal.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static decimal ConvertToDecimal(string source) => decimal.Parse(source, CultureInfo.InvariantCulture);
+    public static decimal ConvertToDecimal(string source) => Decimal.Parse(source, CultureInfo.InvariantCulture);
 
     // Converts string to Decimal using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static decimal ConvertToDecimal(string source, IFormatProvider culture, string? format) => decimal.Parse(source, culture);
+    public static decimal ConvertToDecimal(string source, IFormatProvider culture, string? format) => Decimal.Parse(source, culture);
 
     // Converts string to Boolean.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool ConvertToBoolean(string source) => bool.Parse(source);
+    public static bool ConvertToBoolean(string source) => Boolean.Parse(source);
 
     // Converts string to DateTime.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -499,18 +499,18 @@ public static class DefaultValueConverter
         if (typeof(TSource) == typeof(string))
         {
             var value = (string)(object)source!;
-            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)int.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)long.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)short.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)byte.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)sbyte.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)uint.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)ulong.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)ushort.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)float.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)double.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)decimal.Parse(value, CultureInfo.InvariantCulture);
-            if (typeof(TDestination) == typeof(bool)) return (TDestination)(object)bool.Parse(value);
+            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)Int32.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)Int64.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)Int16.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)Byte.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)SByte.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)UInt32.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)UInt64.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)UInt16.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)Single.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)Double.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)Decimal.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(bool)) return (TDestination)(object)Boolean.Parse(value);
             if (typeof(TDestination) == typeof(DateTime)) return (TDestination)(object)DateTime.Parse(value, CultureInfo.InvariantCulture);
             if (typeof(TDestination) == typeof(Guid)) return (TDestination)(object)Guid.Parse(value);
         }

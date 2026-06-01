@@ -1031,7 +1031,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Associate property conditions with mappings from MapProperty attributes
         foreach (var mapping in propertyMappings)
         {
-            var condition = propertyConditions.FirstOrDefault(c => string.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            var condition = propertyConditions.FirstOrDefault(c => String.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
             if (condition is not null)
             {
                 mapping.ConditionMethod = condition.ConditionMethod;
@@ -1256,7 +1256,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 return new DiagnosticInfo(
                     Diagnostics.DuplicateTargetMapping,
                     syntax.GetLocation(),
-                    $"{kvp.Key}: {string.Join(", ", kvp.Value)}");
+                    $"{kvp.Key}: {String.Join(", ", kvp.Value)}");
             }
         }
 
@@ -2129,7 +2129,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var hasConstructorOnlyParams = bestCtor.Parameters.Any(p =>
         {
             var nc = (StringComparison)model.NameComparison;
-            var matchingProp = allDestProps.FirstOrDefault(prop => string.Equals(prop.Name, p.Name, nc));
+            var matchingProp = allDestProps.FirstOrDefault(prop => String.Equals(prop.Name, p.Name, nc));
             return (matchingProp?.SetMethod is null) || matchingProp.SetMethod.IsInitOnly;
         });
 
@@ -2173,8 +2173,8 @@ public sealed class MapperGenerator : IIncrementalGenerator
             {
                 // Match by NameComparison first, then fall back to OrdinalIgnoreCase
                 // (handles camelCase constructor params matching PascalCase source properties)
-                var srcProp = sourceProperties.FirstOrDefault(p => string.Equals(p.Name, param.Name, nameComparison))
-                           ?? sourceProperties.FirstOrDefault(p => string.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
+                var srcProp = sourceProperties.FirstOrDefault(p => String.Equals(p.Name, param.Name, nameComparison))
+                           ?? sourceProperties.FirstOrDefault(p => String.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
                 sourceExpression = srcProp is not null
                     ? $"source.{srcProp.Name}"
                     : $"default({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
@@ -2192,7 +2192,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Also remove properties that correspond to constructor params
         model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings.AsArray()
             .Where(pm => !bestCtor.Parameters.Any(p =>
-                string.Equals(p.Name, pm.TargetPath, nameComparison)))]);
+                String.Equals(p.Name, pm.TargetPath, nameComparison)))]);
 
         return null;
     }
@@ -2275,7 +2275,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 if (model.AutoMap)
                 {
                     var nameComparison = (StringComparison)model.NameComparison;
-                    var sourceProp = sourceProperties.FirstOrDefault(p => string.Equals(p.Name, destProp.Name, nameComparison));
+                    var sourceProp = sourceProperties.FirstOrDefault(p => String.Equals(p.Name, destProp.Name, nameComparison));
                     if (sourceProp is not null)
                     {
                         sourcePropPath = sourceProp.Name;
@@ -2387,7 +2387,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Apply property conditions from MapPropertyCondition attributes
         foreach (var mapping in model.PropertyMappings.AsArray())
         {
-            var condition = model.PropertyConditions.AsArray().FirstOrDefault(c => string.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            var condition = model.PropertyConditions.AsArray().FirstOrDefault(c => String.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
             if (condition is not null)
             {
                 mapping.ConditionMethod = condition.ConditionMethod;
@@ -2505,7 +2505,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                     var isNullable = prop.Type.IsNullableType();
                     sourceSegments.Add(new NestedPathSegment
                     {
-                        Path = string.Join(".", pathBuilder),
+                        Path = String.Join(".", pathBuilder),
                         TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         IsNullable = isNullable
                     });
@@ -2556,7 +2556,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 {
                     targetSegments.Add(new NestedPathSegment
                     {
-                        Path = string.Join(".", pathBuilder),
+                        Path = String.Join(".", pathBuilder),
                         TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
                     });
                     currentTargetType = prop.Type;
@@ -3848,7 +3848,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
         // Note: Terminal nullable to non-nullable is handled by RequiresNullCoalescing, not here
 
-        return string.Join(" && ", conditions);
+        return String.Join(" && ", conditions);
     }
 
     private static string BuildSourceAccessor(string sourcePath, string sourceParamName, bool nullChecked = false)

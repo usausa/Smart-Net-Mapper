@@ -29,15 +29,19 @@ internal static class GeneratorTestHelper
 
     // 指定ソースコードに対してジェネレーターを実行し、SMP 診断を返す。
     public static IReadOnlyList<Diagnostic> GetDiagnostics(string source) =>
-        RunGenerator(source)
+        RunGenerator(source).Diagnostics
             .Where(d => d.Id.StartsWith("SMP", StringComparison.Ordinal))
             .ToList();
 
     // SMP 以外の診断も含め全診断を返す（デバッグ用）。
     public static IReadOnlyList<Diagnostic> GetDiagnosticsAll(string source) =>
-        RunGenerator(source).ToList();
+        RunGenerator(source).Diagnostics.ToList();
 
-    private static IEnumerable<Diagnostic> RunGenerator(string source)
+    // 最初の生成ファイルのソーステキストを返す。
+    public static string GetGeneratedSource(string source) =>
+        RunGenerator(source).GeneratedSource;
+
+    private static (IEnumerable<Diagnostic> Diagnostics, string GeneratedSource) RunGenerator(string source)
     {
         _ = EnsureDeps.Value;
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -65,10 +69,17 @@ internal static class GeneratorTestHelper
 
         var driverResult = driver.GetRunResult();
 
-        return driverResult.Results
+        var diagnostics = driverResult.Results
             .SelectMany(r => r.Diagnostics)
             .Concat(generatorDiagnostics)
             .Concat(outputCompilation.GetDiagnostics());
+
+        var generatedSource = driverResult.Results
+            .SelectMany(r => r.GeneratedSources)
+            .Select(s => s.SourceText.ToString())
+            .FirstOrDefault() ?? string.Empty;
+
+        return (diagnostics, generatedSource);
     }
 
     private static IEnumerable<MetadataReference> GetRuntimeReferences()

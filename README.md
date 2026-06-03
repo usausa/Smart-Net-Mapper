@@ -13,7 +13,7 @@ It automatically generates property-copying code at compile time for `static par
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
 - **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 21 compiler-time diagnostics (SMP0001–SMP0021)
+- **Rich diagnostics** - 27 compiler-time diagnostics (SMP0001–SMP0027)
 
 ## Installation
 
@@ -294,7 +294,7 @@ internal static partial class ObjectMapper
     public static partial DestinationChild MapChild(SourceChild source);
 
     [Mapper]
-    [MapCollection(nameof(Destination.Children), nameof(Source.Children), MapperMethod = nameof(MapChild))]
+    [MapCollection(nameof(Destination.Children), nameof(Source.Children), Mapper = nameof(MapChild))]
     public static partial void Map(Source source, Destination destination);
 }
 ```
@@ -425,7 +425,7 @@ public static class CustomCollectionConverter
 
 [Mapper]
 [CollectionConverter(typeof(CustomCollectionConverter))]
-[MapCollection(nameof(Source.Items), nameof(Destination.Items), MapperMethod = nameof(MapItem))]
+[MapCollection(nameof(Destination.Items), nameof(Source.Items), Mapper = nameof(MapItem))]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -542,20 +542,33 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 | LegacyLambda | 9.341 ns | 0.283 ns | 0.424 ns | 1.03 | 72 B |
 | SmartMapper | 9.160 ns | 0.395 ns | 0.591 ns | 1.01 | 72 B |
 
-### Collection mapping
+### Collection mapping — item level (both return `List<T>`)
+
+Caller manages list; SmartMapper is used only for per-element mapping.
 
 | Method | ItemCount | Mean | Error | StdDev | Ratio | Allocated |
 |--------|----------:|-----:|------:|-------:|------:|----------:|
-| Direct | 10 | 98.02 ns | 2.314 ns | 3.464 ns | 1.00 | 456 B |
-| SmartMapper | 10 | 105.97 ns | 5.286 ns | 7.912 ns | 1.08 | 512 B |
-| Direct | 100 | 821.20 ns | 46.035 ns | 68.903 ns | 1.01 | 4056 B |
-| SmartMapper | 100 | 781.61 ns | 70.159 ns | 102.839 ns | 0.96 | 4112 B |
+| Direct | 10 | 101.1 ns | 2.02 ns | 3.98 ns | 1.00 | 456 B |
+| SmartMapper | 10 | 107.6 ns | 2.22 ns | 6.40 ns | 1.07 | 456 B |
+| Direct | 100 | 812.7 ns | 29.30 ns | 86.40 ns | 1.01 | 4,056 B |
+| SmartMapper | 100 | 745.7 ns | 26.04 ns | 75.96 ns | 0.93 | 4,056 B |
+
+### Collection mapping — wrapper level (both return `CollectionWrapper`)
+
+Both Direct and SmartMapper create `CollectionWrapper { Items = List<T> }`.
+
+| Method | ItemCount | Mean | Error | StdDev | Ratio | Allocated |
+|--------|----------:|-----:|------:|-------:|------:|----------:|
+| Direct | 10 | 114.6 ns | 2.38 ns | 7.02 ns | 1.00 | 512 B |
+| SmartMapper | 10 | 112.2 ns | 3.18 ns | 9.39 ns | 0.98 | 512 B |
+| Direct | 100 | 891.4 ns | 25.95 ns | 76.51 ns | 1.01 | 4,112 B |
+| SmartMapper | 100 | 916.5 ns | 27.90 ns | 82.27 ns | 1.04 | 4,112 B |
 
 > **JIT analysis:**
 > - **Simple / Conversion**: Disassembly confirms JIT generates identical or equivalent instructions. SmartMapper's conversion is faster because the specialized `ConvertToString(InvariantCulture)` path avoids boxing.
 > - **Nested (1.24x)**: Disassembly shows both Direct and SmartMapper compile to equivalent code (155 vs 157 bytes) after full inlining of `MapNested` + `MapAddress`. The reported ratio has high variance (StdDev 1.77 ns vs 0.58 ns for Direct, P90 = 15.84 ns vs 11.75 ns), pointing to loop-back branch prediction noise rather than a code quality difference.
 > - **Void nested**: The lambda-free multi-statement pattern (LegacyLambda 1.03x → SmartMapper 1.01x) confirms elimination of the closure allocation overhead.
-> - **Collection (+56 B)**: SmartMapper allocates a `CollectionWrapper` object — a benchmark design artifact of `[MapCollection]` being property-scoped. The inner loop uses `CHECKED_ASSIGN_REF` vs `ASSIGN_REF`; at ItemCount=100 SmartMapper is faster (0.96x) due to `CollectionsMarshal` span-based copy.
+> - **Collection**: Both scenarios (item-level and wrapper-level) show SmartMapper within statistical noise of Direct (ratio 0.93–1.07). Allocation is identical in each scenario. The element mapper (`MapItem`) is fully inlined by JIT.
 
 ---
 

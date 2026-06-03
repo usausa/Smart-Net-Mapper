@@ -1,6 +1,7 @@
 namespace Smart.Mapper.Benchmark;
 
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
@@ -21,6 +22,8 @@ public static class Program
                 case "simple": BenchmarkRunner.Run<SimpleMapBenchmark>(); return;
                 case "nested": BenchmarkRunner.Run<NestedMapBenchmark>(); return;
                 case "collection": BenchmarkRunner.Run<CollectionMapBenchmark>(); return;
+                case "collection-list": BenchmarkRunner.Run<CollectionListMapBenchmark>(); return;
+                case "collection-wrapper": BenchmarkRunner.Run<CollectionWrapperMapBenchmark>(); return;
                 case "conversion": BenchmarkRunner.Run<ConversionMapBenchmark>(); return;
                 case "voidnested": BenchmarkRunner.Run<VoidNestedMapBenchmark>(); return;
             }
@@ -30,7 +33,8 @@ public static class Program
         [
             BenchmarkConverter.TypeToBenchmarks(typeof(SimpleMapBenchmark)),
             BenchmarkConverter.TypeToBenchmarks(typeof(NestedMapBenchmark)),
-            BenchmarkConverter.TypeToBenchmarks(typeof(CollectionMapBenchmark)),
+            BenchmarkConverter.TypeToBenchmarks(typeof(CollectionListMapBenchmark)),
+            BenchmarkConverter.TypeToBenchmarks(typeof(CollectionWrapperMapBenchmark)),
             BenchmarkConverter.TypeToBenchmarks(typeof(ConversionMapBenchmark))
         ]);
     }
@@ -217,6 +221,128 @@ public class CollectionMapBenchmark
         return ret;
     }
 
+    [Benchmark(OperationsPerInvoke = N)]
+    public CollectionWrapper SmartMapper()
+    {
+        var src = source;
+        CollectionWrapper ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            ret = BenchmarkMappers.MapWrapper(src);
+        }
+        return ret;
+    }
+}
+
+// ==========================================================================
+// Scenario 3-A: Collection mapping — List-level (fair comparison)
+// Both Direct and SmartMapper return List<CollectionItemDestination>.
+// List management is identical; only item mapping differs.
+// ==========================================================================
+
+[MemoryDiagnoser]
+[BenchmarkCategory("Collection.List")]
+public class CollectionListMapBenchmark
+{
+    private const int N = 100;
+
+    [Params(10, 100)]
+    public int ItemCount { get; set; }
+
+    private List<CollectionItemSource> sourceItems = default!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        sourceItems = Enumerable.Range(1, ItemCount)
+            .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
+            .ToList();
+    }
+
+    // 手書き代入（インライン）— 呼び出し側でリスト管理
+    [Benchmark(Baseline = true, OperationsPerInvoke = N)]
+    public List<CollectionItemDestination> Direct()
+    {
+        var items = sourceItems;
+        List<CollectionItemDestination> ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            var list = new List<CollectionItemDestination>(items.Count);
+            foreach (var s in items)
+            {
+                list.Add(new CollectionItemDestination { Id = s.Id, Label = s.Label });
+            }
+            ret = list;
+        }
+        return ret;
+    }
+
+    // MapItem 呼び出し — 同一のリスト管理コード、アイテムマッピングのみ異なる
+    [Benchmark(OperationsPerInvoke = N)]
+    public List<CollectionItemDestination> SmartMapper()
+    {
+        var items = sourceItems;
+        List<CollectionItemDestination> ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            var list = new List<CollectionItemDestination>(items.Count);
+            foreach (var s in items)
+            {
+                list.Add(BenchmarkMappers.MapItem(s));
+            }
+            ret = list;
+        }
+        return ret;
+    }
+}
+
+// ==========================================================================
+// Scenario 3-B: Collection mapping — Wrapper-level (fair comparison)
+// Both Direct and SmartMapper take CollectionSource and return CollectionWrapper.
+// Direct manually mirrors what SmartMapper generates.
+// ==========================================================================
+
+[MemoryDiagnoser]
+[BenchmarkCategory("Collection.Wrapper")]
+public class CollectionWrapperMapBenchmark
+{
+    private const int N = 100;
+
+    [Params(10, 100)]
+    public int ItemCount { get; set; }
+
+    private CollectionSource source = default!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        source = new()
+        {
+            Items = Enumerable.Range(1, ItemCount)
+                .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
+                .ToList()
+        };
+    }
+
+    // 手書き代入（インライン）+ CollectionWrapper 生成
+    [Benchmark(Baseline = true, OperationsPerInvoke = N)]
+    public CollectionWrapper Direct()
+    {
+        var src = source;
+        CollectionWrapper ret = default!;
+        for (var i = 0; i < N; i++)
+        {
+            var list = new List<CollectionItemDestination>(src.Items.Count);
+            foreach (var s in src.Items)
+            {
+                list.Add(new CollectionItemDestination { Id = s.Id, Label = s.Label });
+            }
+            ret = new CollectionWrapper { Items = list };
+        }
+        return ret;
+    }
+
+    // Smart.Mapper 生成コード（MapWrapper = MapItem を内部で展開）
     [Benchmark(OperationsPerInvoke = N)]
     public CollectionWrapper SmartMapper()
     {

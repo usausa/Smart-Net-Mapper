@@ -547,21 +547,19 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 Uses xUnit v3 with Microsoft Testing Platform.
 
 ```powershell
-# Run all unit tests
-dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
-
-# Run with code coverage
-dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj --settings CodeCoverage.runsettings
+dotnet run --project Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
 ```
 
 You can also run tests from Visual Studio Test Explorer.
+
+> **Note:** `dotnet test` is not supported on .NET 10 SDK due to a Microsoft Testing Platform / VSTest incompatibility. Use `dotnet run --project` instead.
 
 ### Source Generator Tests (`Smart.Mapper.Generator.Tests`)
 
 Verifies that the Roslyn source generator produces correct output and emits the correct diagnostics.
 
 ```powershell
-dotnet test Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj
+dotnet run --project Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj
 ```
 
 ### NativeAOT Smoke Tests (`Smart.Mapper.AotTests`)

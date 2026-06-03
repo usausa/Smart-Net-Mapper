@@ -1435,7 +1435,10 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapFrom.TargetName);
             if (destProp is null)
             {
-                continue; // Property not found, will be handled elsewhere
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapFromTargetProperty,
+                    syntax.GetLocation(),
+                    mapFrom.TargetName);
             }
 
             mapFrom.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1522,14 +1525,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapCollection.SourceName);
             if (sourceProp is null)
             {
-                continue;
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapCollectionSourceProperty,
+                    syntax.GetLocation(),
+                    mapCollection.SourceName);
             }
 
             // Find target property
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapCollection.TargetName);
             if (destProp is null)
             {
-                continue;
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapCollectionTargetProperty,
+                    syntax.GetLocation(),
+                    mapCollection.TargetName);
             }
 
             // Get element types
@@ -1593,14 +1602,20 @@ public sealed class MapperGenerator : IIncrementalGenerator
             var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapNested.SourceName);
             if (sourceProp is null)
             {
-                continue;
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapCollectionSourceProperty,
+                    syntax.GetLocation(),
+                    mapNested.SourceName);
             }
 
             // Find target property
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapNested.TargetName);
             if (destProp is null)
             {
-                continue;
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapCollectionTargetProperty,
+                    syntax.GetLocation(),
+                    mapNested.TargetName);
             }
 
             mapNested.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -2167,7 +2182,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
             if (customMappings.TryGetValue(param.Name, out var customSource) ||
                 customMappings.TryGetValue(pascalParamName, out customSource))
             {
-                sourceExpression = $"source.{customSource}";
+                sourceExpression = $"{model.SourceParameterName}.{customSource}";
             }
             else
             {
@@ -2175,9 +2190,16 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 // (handles camelCase constructor params matching PascalCase source properties)
                 var srcProp = sourceProperties.FirstOrDefault(p => String.Equals(p.Name, param.Name, nameComparison))
                            ?? sourceProperties.FirstOrDefault(p => String.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
-                sourceExpression = srcProp is not null
-                    ? $"source.{srcProp.Name}"
-                    : $"default({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
+                if (srcProp is null)
+                {
+                    return new DiagnosticInfo(
+                        Diagnostics.UnresolvedConstructorParameter,
+                        syntax.GetLocation(),
+                        param.Name,
+                        destinationType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+                }
+
+                sourceExpression = $"{model.SourceParameterName}.{srcProp.Name}";
             }
 
             ctorParams.Add((param.Name, sourceExpression));

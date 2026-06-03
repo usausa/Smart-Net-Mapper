@@ -195,4 +195,40 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    // SMP0022: Constructor parameter cannot be resolved from source
+
+    public static DiagnosticDescriptor UnresolvedConstructorParameter { get; } = new(
+        id: "SMP0022",
+        title: "Unresolved constructor parameter",
+        messageFormat: "Constructor parameter '{0}' of '{1}' has no matching source property. Add a [MapProperty] attribute to specify the source, or ensure a source property with a matching name exists.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // SMP0023-SMP0025: Explicit attribute member resolution failures
+
+    public static DiagnosticDescriptor UnresolvedMapCollectionSourceProperty { get; } = new(
+        id: "SMP0023",
+        title: "Unresolved MapCollection source property",
+        messageFormat: "MapCollection source property '{0}' was not found on the source type. Check the property name for typos.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnresolvedMapCollectionTargetProperty { get; } = new(
+        id: "SMP0024",
+        title: "Unresolved MapCollection/MapNested target property",
+        messageFormat: "MapCollection/MapNested target property '{0}' was not found on the destination type. Check the property name for typos.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnresolvedMapFromTargetProperty { get; } = new(
+        id: "SMP0025",
+        title: "Unresolved MapFrom target property",
+        messageFormat: "MapFrom target property '{0}' was not found on the destination type. Check the property name for typos.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

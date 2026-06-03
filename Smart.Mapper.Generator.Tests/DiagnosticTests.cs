@@ -390,4 +390,221 @@ public class DiagnosticTests
         // 実際に発火される診断 ID を確認（SMP0009 または SMP0011）
         Assert.Contains(diagnostics, d => d.Id is "SMP0009" or "SMP0011");
     }
+
+    // -----------------------------------------------------------------------
+    // SMP0022 — コンストラクタパラメーターがソースプロパティに解決できない
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0022_UnresolvedConstructorParameter_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                public static partial Dest Map(Src src);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public record Dest(int Value, string Name);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d =>
+            d.Id == "SMP0022" &&
+            d.GetMessage(CultureInfo.InvariantCulture).Contains("Name", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SMP0022_AllConstructorParametersResolved_NoDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                public static partial Dest Map(Src src);
+            }
+
+            public class Src { public int Value { get; set; } public string Name { get; set; } = ""; }
+            public record Dest(int Value, string Name);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0022");
+    }
+
+    // コンストラクタパラメーター名が source 以外 (src / input) でも正しく生成されることを確認
+    [Fact]
+    public void ConstructorMapping_NonDefaultParameterName_CompilesWithoutError()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                public static partial Dest Map(Src src);
+
+                [Mapper]
+                public static partial Dest MapFromInput(Src input);
+            }
+
+            public class Src { public int Value { get; set; } public string Name { get; set; } = ""; }
+            public record Dest(int Value, string Name);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0023 — [MapCollection]/[MapNested] のソースプロパティ名が typo
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0023_MapCollection_UnresolvedSourceProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+            using System.Collections.Generic;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCollection("Items", "ItemsTypo", Mapper = nameof(MapItem))]
+                public static partial Dest Map(Src src);
+
+                private static DestItem MapItem(SrcItem item) => new DestItem { Value = item.Value };
+            }
+
+            public class SrcItem { public int Value { get; set; } }
+            public class DestItem { public int Value { get; set; } }
+            public class Src { public List<SrcItem> Items { get; set; } = new(); }
+            public class Dest { public List<DestItem> Items { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0023");
+    }
+
+    [Fact]
+    public void SMP0023_MapNested_UnresolvedSourceProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapNested("Child", "ChildTypo", Mapper = nameof(MapChild))]
+                public static partial Dest Map(Src src);
+
+                private static DestChild MapChild(SrcChild c) => new DestChild { Value = c.Value };
+            }
+
+            public class SrcChild { public int Value { get; set; } }
+            public class DestChild { public int Value { get; set; } }
+            public class Src { public SrcChild Child { get; set; } = new(); }
+            public class Dest { public DestChild Child { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0023");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0024 — [MapCollection]/[MapNested] のターゲットプロパティ名が typo
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0024_MapCollection_UnresolvedTargetProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+            using System.Collections.Generic;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCollection("ItemsTypo", "Items", Mapper = nameof(MapItem))]
+                public static partial Dest Map(Src src);
+
+                private static DestItem MapItem(SrcItem item) => new DestItem { Value = item.Value };
+            }
+
+            public class SrcItem { public int Value { get; set; } }
+            public class DestItem { public int Value { get; set; } }
+            public class Src { public List<SrcItem> Items { get; set; } = new(); }
+            public class Dest { public List<DestItem> Items { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0024");
+    }
+
+    [Fact]
+    public void SMP0024_MapNested_UnresolvedTargetProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapNested("ChildTypo", "Child", Mapper = nameof(MapChild))]
+                public static partial Dest Map(Src src);
+
+                private static DestChild MapChild(SrcChild c) => new DestChild { Value = c.Value };
+            }
+
+            public class SrcChild { public int Value { get; set; } }
+            public class DestChild { public int Value { get; set; } }
+            public class Src { public SrcChild Child { get; set; } = new(); }
+            public class Dest { public DestChild Child { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0024");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0025 — [MapFrom] のターゲットプロパティ名が typo
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0025_MapFrom_UnresolvedTargetProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapFrom("NameTypo", nameof(Build))]
+                public static partial void Map(Src src, Dest dst);
+
+                private static string Build(Src s) => s.Name;
+            }
+
+            public class Src { public string Name { get; set; } = ""; }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d =>
+            d.Id == "SMP0025" &&
+            d.GetMessage(CultureInfo.InvariantCulture).Contains("NameTypo", StringComparison.Ordinal));
+    }
 }

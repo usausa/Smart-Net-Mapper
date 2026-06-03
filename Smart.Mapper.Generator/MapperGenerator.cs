@@ -1543,11 +1543,21 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
             // Get element types
             var sourceElementType = sourceProp.Type.GetCollectionElementType();
-            var targetElementType = destProp.Type.GetCollectionElementType();
-
-            if ((sourceElementType is null) || (targetElementType is null))
+            if (sourceElementType is null)
             {
-                continue;
+                return new DiagnosticInfo(
+                    Diagnostics.MapCollectionSourceNotCollection,
+                    syntax.GetLocation(),
+                    mapCollection.SourceName);
+            }
+
+            var targetElementType = destProp.Type.GetCollectionElementType();
+            if (targetElementType is null)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.MapCollectionTargetNotCollection,
+                    syntax.GetLocation(),
+                    mapCollection.TargetName);
             }
 
             mapCollection.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1702,13 +1712,13 @@ public sealed class MapperGenerator : IIncrementalGenerator
         return null;
     }
 
-    // 目的コレクション型に応じた DefaultCollectionConverter のメソッド名を決定する（AsArray / AsList 等）。
-    // Determines the DefaultCollectionConverter method name (e.g., AsArray / AsList) based on the target collection type.
+    // 目的コレクション型に応じた DefaultCollectionConverter のメソッド名を決定する（ToArray / ToList 等）。
+    // Determines the DefaultCollectionConverter method name (e.g., ToArray / ToList) based on the target collection type.
     private static string DetermineCollectionMethod(ITypeSymbol targetType)
     {
         if (targetType is IArrayTypeSymbol)
         {
-            return "AsArray";
+            return "ToArray";
         }
 
         if (targetType is INamedTypeSymbol named)
@@ -3411,7 +3421,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 builder.BeginScope();
                 EmitForEachAddToList(builder, mapCollection, "__list");
                 builder.EndScope();
-                builder.Indent().Append(destProp).Append(" = __list;").NewLine();
+                builder.Indent().Append(destProp).Append(" = __list.ToArray();").NewLine();
                 break;
             case CollectionTargetShape.ImmutableArray:
                 builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableArray.CreateBuilder<").Append(dstElem).Append(">();").NewLine();

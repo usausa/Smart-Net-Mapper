@@ -607,4 +607,334 @@ public class DiagnosticTests
             d.Id == "SMP0025" &&
             d.GetMessage(CultureInfo.InvariantCulture).Contains("NameTypo", StringComparison.Ordinal));
     }
+
+    // -----------------------------------------------------------------------
+    // SMP0026 — [MapCollection] のソースプロパティがコレクション型でない
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0026_MapCollection_SourceNotCollection_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCollection("Items", "Name", Mapper = nameof(MapItem))]
+                public static partial Dest Map(Src src);
+
+                private static DestItem MapItem(string s) => new DestItem { Value = s };
+            }
+
+            public class Src { public string Name { get; set; } = ""; }
+            public class DestItem { public string Value { get; set; } = ""; }
+            public class Dest { public System.Collections.Generic.List<DestItem> Items { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0026");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0027 — [MapCollection] のターゲットプロパティがコレクション型でない
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0027_MapCollection_TargetNotCollection_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+            using System.Collections.Generic;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCollection("Name", "Items", Mapper = nameof(MapItem))]
+                public static partial Dest Map(Src src);
+
+                private static string MapItem(SrcItem s) => s.Value;
+            }
+
+            public class SrcItem { public string Value { get; set; } = ""; }
+            public class Src { public List<SrcItem> Items { get; set; } = new(); }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0027");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0004 / SMP0005 — BeforeMap / AfterMap シグネチャ不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0004_InvalidBeforeMapSignature_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [BeforeMap(nameof(Before))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数の型が不一致
+                private static void Before(int x, Dest dst) { }
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public int Value { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0004");
+    }
+
+    [Fact]
+    public void SMP0005_InvalidAfterMapSignature_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [AfterMap(nameof(After))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数の型が不一致
+                private static void After(int x, Dest dst) { }
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public int Value { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0005");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0007 — Converter 戻り値型不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0007_ConverterReturnTypeMismatch_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty(nameof(Dest.Name), nameof(Src.Name), Converter = nameof(Convert))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数型は合うが戻り値が int（target は string）
+                private static int Convert(string value) => value.Length;
+            }
+
+            public class Src { public string Name { get; set; } = ""; }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0007");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0008 — MapCondition シグネチャ不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0008_InvalidPropertyConditionSignature_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCondition(nameof(Dest.Name), nameof(ShouldMap))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数の型が不一致（string ではなく int を受け取る）
+                private static bool ShouldMap(int value) => value > 0;
+            }
+
+            public class Src { public string Name { get; set; } = ""; }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0008");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0010 — MapUsing の静的メソッド戻り値型不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0010_MapUsingReturnTypeMismatch_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapUsing(nameof(Dest.Name), nameof(Build))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数型は合うが戻り値が int（target は string）
+                private static int Build(Src s) => s.Value;
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0010");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0011 / SMP0012 — MapFrom のソースメソッド未解決・戻り値型不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0011_MapFrom_SourceMethodNotFound_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapFrom(nameof(Dest.Count), "NonExistentMethod")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { }
+            public class Dest { public int Count { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0011");
+    }
+
+    [Fact]
+    public void SMP0012_MapFrom_SourceMethodReturnTypeMismatch_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapFrom(nameof(Dest.Count), "GetName")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            // GetName() は string を返すが target は int
+            public class Src { public string GetName() => "name"; }
+            public class Dest { public int Count { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0012");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0013 / SMP0014 — MapCollection / MapNested のマッパーメソッド不一致
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0013_MapCollection_InvalidMapperMethod_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+            using System.Collections.Generic;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCollection("Items", "Items", Mapper = "NonExistentMapper")]
+                public static partial Dest Map(Src src);
+            }
+
+            public class SrcItem { public int Value { get; set; } }
+            public class DestItem { public int Value { get; set; } }
+            public class Src { public List<SrcItem> Items { get; set; } = new(); }
+            public class Dest { public List<DestItem> Items { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0013");
+    }
+
+    [Fact]
+    public void SMP0014_MapNested_InvalidMapperMethod_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapNested("Child", "Child", Mapper = "NonExistentMapper")]
+                public static partial Dest Map(Src src);
+            }
+
+            public class SrcChild { public int Value { get; set; } }
+            public class DestChild { public int Value { get; set; } }
+            public class Src { public SrcChild Child { get; set; } = new(); }
+            public class Dest { public DestChild Child { get; set; } = new(); }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0014");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0021 — MapExpression 内のリフレクション使用
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0021_MapExpressionWithReflection_EmitsWarning()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapExpression("Name", "System.Activator.CreateInstance(typeof(string))?.ToString()")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string? Name { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d =>
+            d.Id == "SMP0021" &&
+            d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
+    }
 }

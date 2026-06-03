@@ -479,9 +479,9 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 | SMP0006 | Converter method signature mismatch | Error |
 | SMP0007 | Converter return type does not match destination property type | Error |
 | SMP0008 | Property-condition method signature mismatch | Error |
-| SMP0009 | `MapFrom` method signature mismatch | Error |
-| SMP0010 | `MapFrom` method return type does not match destination property type | Error |
-| SMP0011 | `MapFrom` target must be a parameterless instance method on the source type | Error |
+| SMP0009 | `MapUsing` static method signature mismatch | Error |
+| SMP0010 | `MapUsing` static method return type does not match destination property type | Error |
+| SMP0011 | `MapFrom` member is not a valid parameterless instance method or property path on the source type | Error |
 | SMP0012 | `MapFrom` instance method return type does not match destination property type | Error |
 | SMP0013 | `MapCollection` mapper method not found or signature mismatch | Error |
 | SMP0014 | `MapNested` mapper method not found or signature mismatch | Error |
@@ -492,6 +492,12 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 | SMP0019 | `DateTimeFormat` / `NumberFormat` specified without `Culture` | Error |
 | SMP0020 | AOT incompatible: generic fallback `Convert<TSource,TDest>` is reachable | Error |
 | SMP0021 | AOT warning: possible reflection pattern in `MapExpression` | Warning |
+| SMP0022 | Constructor parameter has no matching source property | Error |
+| SMP0023 | `[MapCollection]` / `[MapNested]` source property not found on source type | Error |
+| SMP0024 | `[MapCollection]` / `[MapNested]` target property not found on destination type | Error |
+| SMP0025 | `[MapFrom]` target property not found on destination type | Error |
+| SMP0026 | `[MapCollection]` source property is not a collection type | Error |
+| SMP0027 | `[MapCollection]` target property is not a collection type | Error |
 
 ---
 
@@ -500,9 +506,10 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 Measured with [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) on .NET 10.
 
 ```
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8457/25H2)
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8524/25H2/2025Update/HudsonValley2)
 AMD Ryzen 9 5900X 3.70GHz, 1 CPU, 24 logical and 12 physical cores
-.NET SDK 10.0.300  [Host / MediumRun] : .NET 10.0.8, X64 RyuJIT x86-64-v3
+.NET SDK 10.0.300
+  [Host] / MediumRun : .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 ```
 
@@ -510,33 +517,45 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 7.760 ns | 0.238 ns | 0.356 ns | 1.00 | 64 B |
-| SmartMapper | 8.736 ns | 0.334 ns | 0.499 ns | 1.13 | 64 B |
+| Direct | 9.391 ns | 0.478 ns | 0.715 ns | 1.01 | 64 B |
+| SmartMapper | 9.171 ns | 0.361 ns | 0.529 ns | 0.98 | 64 B |
 
 ### Type conversion mapping
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 77.36 ns | 1.149 ns | 1.684 ns | 1.00 | 128 B |
-| SmartMapper | 77.96 ns | 1.183 ns | 1.771 ns | 1.01 | 128 B |
+| Direct | 93.17 ns | 4.364 ns | 6.531 ns | 1.00 | 128 B |
+| SmartMapper | 88.73 ns | 3.195 ns | 4.782 ns | 0.96 | 128 B |
 
 ### Nested mapping
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 8.993 ns | 0.254 ns | 0.380 ns | 1.00 | 72 B |
-| SmartMapper | 8.887 ns | 0.263 ns | 0.385 ns | 0.99 | 72 B |
+| Direct | 11.08 ns | 0.390 ns | 0.584 ns | 1.00 | 72 B |
+| SmartMapper | 13.68 ns | 1.184 ns | 1.772 ns | 1.24 | 72 B |
+
+### Void nested mapping (lambda elimination)
+
+| Method | Mean | Error | StdDev | Ratio | Allocated |
+|--------|-----:|------:|-------:|------:|----------:|
+| Direct | 9.038 ns | 0.154 ns | 0.231 ns | 1.00 | 72 B |
+| LegacyLambda | 9.341 ns | 0.283 ns | 0.424 ns | 1.03 | 72 B |
+| SmartMapper | 9.160 ns | 0.395 ns | 0.591 ns | 1.01 | 72 B |
 
 ### Collection mapping
 
-| Method | ItemCount | Mean | Ratio | Allocated |
-|--------|----------:|-----:|------:|----------:|
-| Direct | 10 | 77.90 ns | 1.00 | 456 B |
-| SmartMapper | 10 | 70.76 ns | 0.91 | 512 B |
-| Direct | 100 | 623.78 ns | 1.00 | 4056 B |
-| SmartMapper | 100 | 561.97 ns | 0.90 | 4112 B |
+| Method | ItemCount | Mean | Error | StdDev | Ratio | Allocated |
+|--------|----------:|-----:|------:|-------:|------:|----------:|
+| Direct | 10 | 98.02 ns | 2.314 ns | 3.464 ns | 1.00 | 456 B |
+| SmartMapper | 10 | 105.97 ns | 5.286 ns | 7.912 ns | 1.08 | 512 B |
+| Direct | 100 | 821.20 ns | 46.035 ns | 68.903 ns | 1.01 | 4056 B |
+| SmartMapper | 100 | 781.61 ns | 70.159 ns | 102.839 ns | 0.96 | 4112 B |
 
-> Smart.Mapper's generated code compiles to essentially the same instructions as hand-written code. The small overhead in simple mapping is due to a method-call boundary that JIT inlining typically eliminates.
+> **JIT analysis:**
+> - **Simple / Conversion**: Disassembly confirms JIT generates identical or equivalent instructions. SmartMapper's conversion is faster because the specialized `ConvertToString(InvariantCulture)` path avoids boxing.
+> - **Nested (1.24x)**: Disassembly shows both Direct and SmartMapper compile to equivalent code (155 vs 157 bytes) after full inlining of `MapNested` + `MapAddress`. The reported ratio has high variance (StdDev 1.77 ns vs 0.58 ns for Direct, P90 = 15.84 ns vs 11.75 ns), pointing to loop-back branch prediction noise rather than a code quality difference.
+> - **Void nested**: The lambda-free multi-statement pattern (LegacyLambda 1.03x → SmartMapper 1.01x) confirms elimination of the closure allocation overhead.
+> - **Collection (+56 B)**: SmartMapper allocates a `CollectionWrapper` object — a benchmark design artifact of `[MapCollection]` being property-scoped. The inner loop uses `CHECKED_ASSIGN_REF` vs `ASSIGN_REF`; at ItemCount=100 SmartMapper is faster (0.96x) due to `CollectionsMarshal` span-based copy.
 
 ---
 

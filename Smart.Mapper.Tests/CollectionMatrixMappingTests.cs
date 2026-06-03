@@ -128,6 +128,101 @@ public class CollectionMatrixMappingTests
         Assert.Equal(count, dst.Items.Count);
     }
 
+    // ── IEnumerable source (EmitInlineTargetBuildFromEnumerable) ────────────
+
+    private static IEnumerable<MatrixSrcItem> MakeEnumerable(int count) =>
+        Enumerable.Range(1, count).Select(i => new MatrixSrcItem { Value = i });
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_EnumerableToArray_PreservesElements(int count)
+    {
+        var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
+        var dst = new MatrixToArrayDst();
+        TestMappers.MapEnumerableToArray(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Length);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_EnumerableToList_PreservesElements(int count)
+    {
+        var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
+        var dst = new MatrixToListDst();
+        TestMappers.MapEnumerableToList(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_EnumerableToImmutableArray_PreservesElements(int count)
+    {
+        var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
+        var dst = new MatrixToImmutableArrayDst();
+        TestMappers.MapEnumerableToImmutableArray(src, dst);
+        Assert.Equal(count, dst.Items.Length);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_EnumerableToHashSet_PreservesElements(int count)
+    {
+        var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
+        var dst = new MatrixToHashSetDst();
+        TestMappers.MapEnumerableToHashSet(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+    }
+
+    [Fact]
+    public void Map_NullEnumerableToArray_SetsDefault()
+    {
+        var src = new MatrixEnumerableSource { Items = null };
+        var dst = new MatrixToArrayDst();
+        TestMappers.MapEnumerableToArray(src, dst);
+        Assert.Null(dst.Items);
+    }
+
+    // ── Custom CollectionConverter + array destination (helper path) ─────────
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_ListToArrayWithConverter_PreservesElements(int count)
+    {
+        var src = new MatrixListSource { Items = MakeList(count) };
+        var dst = new MatrixConverterArrayDst();
+        TestMappers.MapListToArrayWithConverter(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Length);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Fact]
+    public void Map_NullListToArrayWithConverter_SetsDefault()
+    {
+        var src = new MatrixListSource { Items = null };
+        var dst = new MatrixConverterArrayDst();
+        TestMappers.MapListToArrayWithConverter(src, dst);
+        Assert.Null(dst.Items);
+    }
+
     // ── Null source ──────────────────────────────────────────────────────────
 
     [Fact]

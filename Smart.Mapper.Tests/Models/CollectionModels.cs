@@ -202,6 +202,12 @@ public class ReadOnlyStructDestination
     public string Name { get; set; } = default!;
 }
 
+// C4-δ: Custom CollectionConverter + array destination
+public class MatrixConverterArrayDst
+{
+    public MatrixDstItem[]? Items { get; set; }
+}
+
 // C4-β/γ: Collection matrix test models
 public class MatrixSrcItem
 {
@@ -222,6 +228,11 @@ public class MatrixArraySource
 public class MatrixListSource
 {
     public List<MatrixSrcItem>? Items { get; set; }
+}
+
+public class MatrixEnumerableSource
+{
+    public IEnumerable<MatrixSrcItem>? Items { get; set; }
 }
 
 public class MatrixToListDst

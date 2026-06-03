@@ -210,8 +210,8 @@ internal static class Diagnostics
 
     public static DiagnosticDescriptor UnresolvedMapCollectionSourceProperty { get; } = new(
         id: "SMP0023",
-        title: "Unresolved MapCollection source property",
-        messageFormat: "MapCollection source property '{0}' was not found on the source type. Check the property name for typos.",
+        title: "Unresolved MapCollection/MapNested source property",
+        messageFormat: "Source property '{0}' specified in [MapCollection]/[MapNested] was not found on the source type. Check the property name for typos.",
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -219,7 +219,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor UnresolvedMapCollectionTargetProperty { get; } = new(
         id: "SMP0024",
         title: "Unresolved MapCollection/MapNested target property",
-        messageFormat: "MapCollection/MapNested target property '{0}' was not found on the destination type. Check the property name for typos.",
+        messageFormat: "Target property '{0}' specified in [MapCollection]/[MapNested] was not found on the destination type. Check the property name for typos.",
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -228,6 +228,24 @@ internal static class Diagnostics
         id: "SMP0025",
         title: "Unresolved MapFrom target property",
         messageFormat: "MapFrom target property '{0}' was not found on the destination type. Check the property name for typos.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // SMP0026-SMP0027: MapCollection non-collection type validation
+
+    public static DiagnosticDescriptor MapCollectionSourceNotCollection { get; } = new(
+        id: "SMP0026",
+        title: "MapCollection source property is not a collection",
+        messageFormat: "[MapCollection] source property '{0}' is not a collection type. Only IEnumerable<T> and its implementations are supported.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor MapCollectionTargetNotCollection { get; } = new(
+        id: "SMP0027",
+        title: "MapCollection target property is not a collection",
+        messageFormat: "[MapCollection] target property '{0}' is not a collection type. Only IEnumerable<T> and its implementations are supported.",
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);

@@ -531,6 +531,29 @@ internal static partial class TestMappers
     [Mapper]
     [MapCollection(nameof(MatrixVoidDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItemVoid))]
     public static partial void MapListToListVoid(MatrixListSource source, MatrixVoidDst destination);
+
+    // IEnumerable source (EmitInlineTargetBuildFromEnumerable path)
+    [Mapper]
+    [MapCollection(nameof(MatrixToArrayDst.Items), nameof(MatrixEnumerableSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapEnumerableToArray(MatrixEnumerableSource source, MatrixToArrayDst destination);
+
+    [Mapper]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixEnumerableSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapEnumerableToList(MatrixEnumerableSource source, MatrixToListDst destination);
+
+    [Mapper]
+    [MapCollection(nameof(MatrixToImmutableArrayDst.Items), nameof(MatrixEnumerableSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapEnumerableToImmutableArray(MatrixEnumerableSource source, MatrixToImmutableArrayDst destination);
+
+    [Mapper]
+    [MapCollection(nameof(MatrixToHashSetDst.Items), nameof(MatrixEnumerableSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapEnumerableToHashSet(MatrixEnumerableSource source, MatrixToHashSetDst destination);
+
+    // Custom CollectionConverter + array destination (DetermineCollectionMethod helper path)
+    [Mapper]
+    [CollectionConverter(typeof(TestCollectionConverter))]
+    [MapCollection(nameof(MatrixConverterArrayDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapListToArrayWithConverter(MatrixListSource source, MatrixConverterArrayDst destination);
 }
 
 // E3: MapperProfile – class-level defaults applied to all methods

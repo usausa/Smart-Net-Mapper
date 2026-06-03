@@ -100,7 +100,7 @@ internal static class PropertyMappingModelExtensions
     public static bool HasCulture(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.EffectiveCulture);
 
     public static bool RequiresNullCheck(this PropertyMappingModel m) =>
-        m.SourcePathSegments.AsArray().Any(s => s.IsNullable);
+        m.SourcePathSegments.Any(s => s.IsNullable);
 
     public static bool RequiresNullCoalescing(this PropertyMappingModel m) =>
         m.IsSourceNullable && !m.IsTargetNullable && m.NullBehavior == NullBehaviorType.Default && !m.HasNullSubstitute();

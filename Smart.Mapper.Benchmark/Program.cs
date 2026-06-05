@@ -1,7 +1,6 @@
 namespace Smart.Mapper.Benchmark;
 
 using System.Globalization;
-using System.Runtime.InteropServices;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
@@ -410,15 +409,19 @@ public class VoidNestedMapBenchmark
         for (var i = 0; i < N; i++)
         {
 #pragma warning disable IDE0017
-            ret = new() { Id = src.Id, Name = src.Name };
-            ret.Address = src.Address is not null
-                ? ((Func<AddressDestination>)(() =>
-                {
-                    var a = new AddressDestination();
-                    BenchmarkMappers.MapAddressVoid(src.Address!, a);
-                    return a;
-                }))()
-                : default!;
+            ret = new()
+            {
+                Id = src.Id,
+                Name = src.Name,
+                Address = src.Address is not null
+                    ? ((Func<AddressDestination>)(() =>
+                    {
+                        var a = new AddressDestination();
+                        BenchmarkMappers.MapAddressVoid(src.Address!, a);
+                        return a;
+                    }))()
+                    : default!
+            };
 #pragma warning restore IDE0017
         }
         return ret;

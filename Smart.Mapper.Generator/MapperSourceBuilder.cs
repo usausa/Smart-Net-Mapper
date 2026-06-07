@@ -935,7 +935,17 @@ internal static class MapperSourceBuilder
             }
             else if (mapping.RequiresNullCoalescing())
             {
-                builder.Append("!");
+                // A nullable value type source assigned to a non-nullable target must be unwrapped;
+                // the null-forgiving operator alone keeps the type nullable (CS0266). Nullable reference
+                // types display without "?" in FullyQualifiedFormat, so they correctly keep using "!".
+                if (mapping.SourceType.Contains("?") || mapping.SourceType.Contains("Nullable<"))
+                {
+                    builder.Append(".GetValueOrDefault()");
+                }
+                else
+                {
+                    builder.Append("!");
+                }
             }
         }
 

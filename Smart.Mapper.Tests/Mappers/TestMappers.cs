@@ -616,3 +616,32 @@ internal static partial class TestMappers
     [Mapper(Culture = "ja-JP", NumberFormat = "G")]
     public static partial void MapFormattable(FormattableSource source, FormattableDestination destination);
 }
+
+// =====================================================================
+// __todo.md カバレッジ用マッパー
+// =====================================================================
+internal static partial class TestMappers
+{
+    // §1 数値変換
+    [Mapper]
+    public static partial void MapNumericCov(NumericCovSource source, NumericCovDestination destination);
+
+    [Mapper]
+    public static partial void MapNullableNumCov(NullableNumCovSource source, NullableNumCovDestination destination);
+
+    // §2 Enum 変換
+    [Mapper]
+    public static partial void MapEnumCov(EnumCovSource source, EnumCovDestination destination);
+
+    [Mapper]
+    public static partial void MapNullableEnumCov(NullableEnumCovSource source, NullableEnumCovDestination destination);
+
+    // §3 ユーザー定義変換演算子
+    [Mapper]
+    public static partial void MapOperatorCov(OperatorCovSource source, OperatorCovDestination destination);
+
+    // §4 カスタムコンバータ
+    [Mapper]
+    [ValueConverter(typeof(CovConverter))]
+    public static partial void MapConverterCov(ConverterCovSource source, ConverterCovDestination destination);
+}

@@ -6,6 +6,7 @@ using System;
 using System.Globalization;
 
 // IParsable<T> のみ実装するユーザー定義型
+// User-defined type that implements only IParsable<T>.
 public readonly struct TestParsableId : IParsable<TestParsableId>, IEquatable<TestParsableId>
 {
     public int Value { get; }
@@ -32,6 +33,7 @@ public readonly struct TestParsableId : IParsable<TestParsableId>, IEquatable<Te
 }
 
 // ISpanParsable<T> を実装するユーザー定義型
+// User-defined type that implements ISpanParsable<T>.
 public readonly struct TestSpanParsableId : ISpanParsable<TestSpanParsableId>, IEquatable<TestSpanParsableId>
 {
     public int Value { get; }
@@ -64,6 +66,7 @@ public readonly struct TestSpanParsableId : ISpanParsable<TestSpanParsableId>, I
 }
 
 // IParsable のみ実装する参照型
+// Reference type that implements only IParsable.
 public class TestParsableCode : IParsable<TestParsableCode>
 {
     public string Code { get; }
@@ -80,8 +83,10 @@ public class TestParsableCode : IParsable<TestParsableCode>
 }
 
 // ---- マッピング用モデル ----
+// ---- mapping models ----
 
 // T1: string → TestParsableId (IParsable のみ)
+// T1: string → TestParsableId (IParsable only)
 public class ParsableSource
 {
     public string IdText { get; set; } = default!;
@@ -104,6 +109,7 @@ public class SpanParsableDestination
 }
 
 // T3/T4: Culture 指定あり
+// T3/T4: with specified Culture
 public class ParsableCultureSource
 {
     public string IdText { get; set; } = default!;

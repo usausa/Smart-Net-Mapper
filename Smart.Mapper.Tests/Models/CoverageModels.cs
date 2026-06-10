@@ -2,13 +2,16 @@ namespace Smart.Mapper.Models;
 
 // =====================================================================
 // __todo.md カバレッジ用モデル
+// __todo.md coverage models
 // =====================================================================
 
 // ---------------------------------------------------------------------
 // §1 数値変換
+// §1 Numeric conversion
 // ---------------------------------------------------------------------
 
 // 基本（拡大 / 縮小 / decimal）
+// Basic (widening / narrowing / decimal)
 public sealed class NumericCovSource
 {
     public short WidenS2I { get; set; } // short -> int
@@ -26,6 +29,7 @@ public sealed class NumericCovDestination
 }
 
 // Nullable 数値（名前一致 / 型違いで変換を強制）
+// Nullable numbers (name match / type mismatch forces conversion)
 public sealed class NullableNumCovSource
 {
     public int? IntQ2Int { get; set; } // int? -> int
@@ -62,6 +66,7 @@ public sealed class NullableNumCovDestination
 
 // ---------------------------------------------------------------------
 // §2 Enum 変換（幅 16/32/64 × int × enum × Nullable）
+// §2 Enum conversion (width 16/32/64 × int × enum × Nullable)
 // ---------------------------------------------------------------------
 public enum CovE16 : short
 {
@@ -89,6 +94,7 @@ public enum CovE64 : long
 }
 
 // enum <-> int, enum <-> enum（非 Nullable）
+// enum <-> int, enum <-> enum (non-Nullable)
 public sealed class EnumCovSource
 {
     public CovE16 E16ToInt { get; set; }
@@ -114,6 +120,7 @@ public sealed class EnumCovDestination
 }
 
 // Nullable 絡み
+// Nullable-involved cases
 public sealed class NullableEnumCovSource
 {
     public CovE16? E16QToInt { get; set; } // enum? -> int
@@ -136,7 +143,9 @@ public sealed class NullableEnumCovDestination
 
 // ---------------------------------------------------------------------
 // §3 ユーザー定義変換演算子（op_Implicit）
+// §3 User-defined conversion operators (op_Implicit)
 // 変換演算子を持つ型は UserDefinedConversionModels.cs に定義（CA1815/CA2225 抑制済み）
+// Types with conversion operators are defined in UserDefinedConversionModels.cs (CA1815/CA2225 suppressed)
 // ---------------------------------------------------------------------
 public sealed class OperatorCovSource
 {
@@ -166,6 +175,7 @@ public sealed class OperatorCovDestination
 
 // ---------------------------------------------------------------------
 // §4 カスタムコンバータ（ValueConverter × specialized × Nullable source）
+// §4 Custom converters (ValueConverter × specialized × Nullable source)
 // ---------------------------------------------------------------------
 public static class CovConverter
 {

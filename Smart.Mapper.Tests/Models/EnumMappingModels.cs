@@ -2,8 +2,10 @@
 namespace Smart.Mapper.Models;
 
 // A2: Enum マッピング用モデル
+// A2: Models for enum mapping
 
 // -- enum 定義 --
+// -- enum definitions --
 
 public enum SourceStatus
 {
@@ -20,6 +22,7 @@ public enum DestStatus
 }
 
 // SourceStatus と一部のメンバーが異なる enum（Unknown のみ共通外）
+// An enum whose members partly differ from SourceStatus (only Unknown is outside the shared set)
 public enum PartialDestStatus
 {
     Active,
@@ -27,6 +30,7 @@ public enum PartialDestStatus
 }
 
 // -- enum ↔ enum (同名一致) --
+// -- enum ↔ enum (same-name match) --
 
 public class EnumToEnumSource
 {
@@ -99,6 +103,7 @@ public class StringToEnumDestination
 }
 
 // -- 部分一致 (SourceStatus → PartialDestStatus, Unknown は default) --
+// -- partial match (SourceStatus → PartialDestStatus, Unknown becomes default) --
 
 public class PartialEnumSource
 {

@@ -5,10 +5,12 @@ using System.Globalization;
 using Microsoft.CodeAnalysis;
 
 // Source Generator が正しい診断（SMP0001〜SMP0020）を発行することを検証するテスト。
+// Tests that verify the source generator emits the correct diagnostics (SMP0001-SMP0020).
 public class DiagnosticTests
 {
     // -----------------------------------------------------------------------
     // SMP0001 — [Mapper] をインスタンスメソッドまたは非 partial メソッドに付与
+    // SMP0001 — [Mapper] applied to an instance method or a non-partial method
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -55,6 +57,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0002 — パラメーターが不足しているメソッド
+    // SMP0002 — method with insufficient parameters
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -77,6 +80,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0003 — カスタムパラメーターの型が重複
+    // SMP0003 — duplicate custom parameter type
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -102,6 +106,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0015 — 同一ターゲットプロパティへの重複マッピング
+    // SMP0015 — duplicate mapping to the same target property
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -129,6 +134,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0016 — Strict モードで未マッピングの destination プロパティ
+    // SMP0016 — unmapped destination property in Strict mode
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -178,6 +184,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0017 — required プロパティが未マッピング
+    // SMP0017 — required property is unmapped
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -209,6 +216,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0018 — コンストラクタ専用プロパティを持つ型（record）で void mapper を使用
+    // SMP0018 — void mapper used for a type with constructor-only properties (record)
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -225,6 +233,7 @@ public class DiagnosticTests
 
             public class Src { public int Value { get; set; } public string Name { get; set; } = ""; }
             // record 型はプライマリコンストラクタ経由のマッピングが必要 → void mapper では SMP0018
+            // A record type must be mapped via its primary constructor → a void mapper triggers SMP0018
             public record Dest(int Value, string Name);
             """;
 
@@ -235,6 +244,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0019 — Culture なしで Format 指定
+    // SMP0019 — Format specified without Culture
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -281,6 +291,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0020 — AllowTypeConverter なしで汎用フォールバック使用
+    // SMP0020 — generic fallback used without AllowTypeConverter
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -302,7 +313,9 @@ public class DiagnosticTests
             """;
 
         // MyValueObject → MyValueObject は同型コピーなので診断なし（スペシャライズド不要）
+        // MyValueObject → MyValueObject is a same-type copy, so no diagnostic (no specialized converter needed)
         // 異なる型でスペシャライズドが存在しない場合に SMP0020 が発火する
+        // SMP0020 fires when the types differ and no specialized converter exists
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0020");
@@ -334,6 +347,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0006 — Converter メソッドのシグネチャ不一致
+    // SMP0006 — Converter method signature mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -349,6 +363,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数が int なのに string を要求 → シグネチャ不一致
+                // The argument is int but a string is required → signature mismatch
                 private static string Convert(int value) => value.ToString();
             }
 
@@ -363,6 +378,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0009 — MapFrom メソッドのシグネチャ不一致
+    // SMP0009 — MapFrom method signature mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -378,6 +394,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数が int → Src ではない → SMP0009
+                // The argument is int → not Src → SMP0009
                 private static string Build(int x) => x.ToString();
             }
 
@@ -388,11 +405,13 @@ public class DiagnosticTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
         // 実際に発火される診断 ID を確認（SMP0009 または SMP0011）
+        // Check the diagnostic ID that is actually emitted (SMP0009 or SMP0011)
         Assert.Contains(diagnostics, d => d.Id is "SMP0009" or "SMP0011");
     }
 
     // -----------------------------------------------------------------------
     // SMP0022 — コンストラクタパラメーターがソースプロパティに解決できない
+    // SMP0022 — constructor parameter cannot be resolved to a source property
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -440,6 +459,7 @@ public class DiagnosticTests
     }
 
     // コンストラクタパラメーター名が source 以外 (src / input) でも正しく生成されることを確認
+    // Verifies correct generation even when the constructor parameter name is not "source" (src / input)
     [Fact]
     public void ConstructorMapping_NonDefaultParameterName_CompilesWithoutError()
     {
@@ -466,6 +486,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0023 — [MapCollection]/[MapNested] のソースプロパティ名が typo
+    // SMP0023 — source property name in [MapCollection]/[MapNested] is a typo
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -523,6 +544,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0024 — [MapCollection]/[MapNested] のターゲットプロパティ名が typo
+    // SMP0024 — target property name in [MapCollection]/[MapNested] is a typo
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -580,6 +602,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0025 — [MapFrom] のターゲットプロパティ名が typo
+    // SMP0025 — target property name in [MapFrom] is a typo
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -610,6 +633,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0026 — [MapCollection] のソースプロパティがコレクション型でない
+    // SMP0026 — source property in [MapCollection] is not a collection type
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -639,6 +663,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0027 — [MapCollection] のターゲットプロパティがコレクション型でない
+    // SMP0027 — target property in [MapCollection] is not a collection type
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -669,6 +694,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0004 / SMP0005 — BeforeMap / AfterMap シグネチャ不一致
+    // SMP0004 / SMP0005 — BeforeMap / AfterMap signature mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -684,6 +710,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数の型が不一致
+                // The argument type does not match
                 private static void Before(int x, Dest dst) { }
             }
 
@@ -709,6 +736,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数の型が不一致
+                // The argument type does not match
                 private static void After(int x, Dest dst) { }
             }
 
@@ -723,6 +751,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0007 — Converter 戻り値型不一致
+    // SMP0007 — Converter return type mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -738,6 +767,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数型は合うが戻り値が int（target は string）
+                // Argument type matches but the return type is int (target is string)
                 private static int Convert(string value) => value.Length;
             }
 
@@ -752,6 +782,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0008 — MapCondition シグネチャ不一致
+    // SMP0008 — MapCondition signature mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -767,6 +798,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数の型が不一致（string ではなく int を受け取る）
+                // The argument type does not match (receives int instead of string)
                 private static bool ShouldMap(int value) => value > 0;
             }
 
@@ -781,6 +813,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0010 — MapUsing の静的メソッド戻り値型不一致
+    // SMP0010 — MapUsing static method return type mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -796,6 +829,7 @@ public class DiagnosticTests
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数型は合うが戻り値が int（target は string）
+                // Argument type matches but the return type is int (target is string)
                 private static int Build(Src s) => s.Value;
             }
 
@@ -810,6 +844,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0011 / SMP0012 — MapFrom のソースメソッド未解決・戻り値型不一致
+    // SMP0011 / SMP0012 — MapFrom source method unresolved / return type mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -848,6 +883,7 @@ public class DiagnosticTests
             }
 
             // GetName() は string を返すが target は int
+            // GetName() returns string but the target is int
             public class Src { public string GetName() => "name"; }
             public class Dest { public int Count { get; set; } }
             """;
@@ -859,6 +895,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0013 / SMP0014 — MapCollection / MapNested のマッパーメソッド不一致
+    // SMP0013 / SMP0014 — MapCollection / MapNested mapper method mismatch
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -912,6 +949,7 @@ public class DiagnosticTests
 
     // -----------------------------------------------------------------------
     // SMP0021 — MapExpression 内のリフレクション使用
+    // SMP0021 — reflection used inside MapExpression
     // -----------------------------------------------------------------------
 
     [Fact]

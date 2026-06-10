@@ -8,14 +8,18 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 // Roslyn incremental generator をインメモリで実行し、診断結果を返すヘルパー
+// Helper that runs the Roslyn incremental generator in-memory and returns the diagnostics.
 internal static class GeneratorTestHelper
 {
     private static readonly Assembly SmartMapperAssembly =
         typeof(MapperAttribute).Assembly;
 
     // ジェネレーターが依存する SourceGenerateHelper を事前ロードしておく。
+    // Pre-loads the SourceGenerateHelper that the generator depends on.
     // テスト実行バイナリと同一ディレクトリに配置されているため、
+    // Because it sits in the same directory as the test binary,
     // Assembly.GetExecutingAssembly の CodeBase から解決する。
+    // it is resolved from the CodeBase of Assembly.GetExecutingAssembly.
     private static readonly Lazy<bool> EnsureDeps = new(() =>
     {
         var dir = Path.GetDirectoryName(typeof(GeneratorTestHelper).Assembly.Location)!;
@@ -28,16 +32,19 @@ internal static class GeneratorTestHelper
     });
 
     // 指定ソースコードに対してジェネレーターを実行し、SMP 診断を返す。
+    // Runs the generator against the given source code and returns the SMP diagnostics.
     public static IReadOnlyList<Diagnostic> GetDiagnostics(string source) =>
         RunGenerator(source).Diagnostics
             .Where(d => d.Id.StartsWith("SMP", StringComparison.Ordinal))
             .ToList();
 
     // SMP 以外の診断も含め全診断を返す（デバッグ用）。
+    // Returns all diagnostics, including non-SMP ones (for debugging).
     public static IReadOnlyList<Diagnostic> GetDiagnosticsAll(string source) =>
         RunGenerator(source).Diagnostics.ToList();
 
     // 最初の生成ファイルのソーステキストを返す。
+    // Returns the source text of the first generated file.
     public static string GetGeneratedSource(string source) =>
         RunGenerator(source).GeneratedSource;
 

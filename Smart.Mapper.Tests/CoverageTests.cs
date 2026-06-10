@@ -5,6 +5,7 @@ using Smart.Mapper.Models;
 
 // =====================================================================
 // __todo.md §1 数値変換
+// __todo.md §1 Numeric conversion
 // =====================================================================
 public sealed class NumericConversionCoverageTests
 {
@@ -63,6 +64,7 @@ public sealed class NumericConversionCoverageTests
 
 // =====================================================================
 // __todo.md §2 Enum 変換
+// __todo.md §2 Enum conversion
 // =====================================================================
 public sealed class EnumConversionCoverageTests
 {
@@ -121,6 +123,7 @@ public sealed class EnumConversionCoverageTests
 
 // =====================================================================
 // __todo.md §3 ユーザー定義変換演算子
+// __todo.md §3 User-defined conversion operators
 // =====================================================================
 public sealed class OperatorConversionCoverageTests
 {
@@ -157,6 +160,7 @@ public sealed class OperatorConversionCoverageTests
 
 // =====================================================================
 // __todo.md §4 カスタムコンバータ
+// __todo.md §4 Custom converters
 // =====================================================================
 public sealed class ConverterConversionCoverageTests
 {

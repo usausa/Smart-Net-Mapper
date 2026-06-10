@@ -4,7 +4,9 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
 // D2: required メンバー対応のテスト。
+// D2: Tests for required member support.
 // required プロパティが自動マッピングで設定されることを確認する。
+// Verifies that required properties are set via automatic mapping.
 public class RequiredMemberTests
 {
     [Fact]

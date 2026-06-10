@@ -4,9 +4,11 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
 // D1/D3: record・プライマリコンストラクタ対応のテスト。
+// D1/D3: Tests for record and primary-constructor support.
 public class PrimaryConstructorTests
 {
     // D1: record → record (全パラメータ)
+    // D1: record → record (all parameters)
     [Fact]
     public void MapRecord_AllParameters_MapsCorrectly()
     {
@@ -20,6 +22,7 @@ public class PrimaryConstructorTests
     }
 
     // D1: record → record (パラメータ数の少ない宛先)
+    // D1: record → record (destination with fewer parameters)
     [Fact]
     public void MapRecordPartial_FewerParameters_MapsAvailableProperties()
     {
@@ -32,6 +35,7 @@ public class PrimaryConstructorTests
     }
 
     // D3: クラスのプライマリコンストラクタ
+    // D3: primary constructor of a class
     [Fact]
     public void MapPrimaryCtorClass_AllParameters_MapsCorrectly()
     {
@@ -45,6 +49,7 @@ public class PrimaryConstructorTests
     }
 
     // D1: record + 通常 settable プロパティ
+    // D1: record + a regular settable property
     [Fact]
     public void MapRecordWithExtra_ConstructorAndSettableProperty_MapsAll()
     {
@@ -58,6 +63,7 @@ public class PrimaryConstructorTests
     }
 
     // D1: record + settable プロパティが null の場合
+    // D1: record + settable property is null
     [Fact]
     public void MapRecordWithExtra_NullExtra_MapsNullCorrectly()
     {
@@ -71,6 +77,7 @@ public class PrimaryConstructorTests
     }
 
     // D1: [MapProperty] でコンストラクタ引数を上書き
+    // D1: override a constructor argument with [MapProperty]
     [Fact]
     public void MapWithPropertyOverride_MapPropertyTakesPriority_MapsCorrectly()
     {

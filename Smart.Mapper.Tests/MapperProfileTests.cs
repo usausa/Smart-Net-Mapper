@@ -4,7 +4,9 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
 // E3: MapperProfile 集約のテスト。
+// E3: Tests for MapperProfile aggregation.
 // クラス属性の設定がメソッドに継承されること、およびメソッドレベルで上書きできることを確認する。
+// Verifies that class-level attribute settings are inherited by methods and can be overridden at the method level.
 public class MapperProfileTests
 {
     [Fact]

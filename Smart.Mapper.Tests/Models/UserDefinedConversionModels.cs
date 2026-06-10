@@ -89,6 +89,7 @@ public sealed class FormattableDestination
 }
 
 // __todo.md §3: op_Implicit を持つ型（value/class/struct/pair/cross-pair）
+// __todo.md §3: types that have op_Implicit (value/class/struct/pair/cross-pair)
 public sealed class OpClass
 {
     public int Value { get; init; }

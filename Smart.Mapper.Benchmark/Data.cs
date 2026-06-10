@@ -115,6 +115,7 @@ public sealed class CollectionItemDestination
 }
 
 // MapCollection 属性はプロパティ単位のため、コレクションをラップするオブジェクトを用意する
+// [MapCollection] is applied per property, so we provide an object that wraps the collection.
 public sealed class CollectionSource
 {
     public List<CollectionItemSource> Items { get; set; } = [];

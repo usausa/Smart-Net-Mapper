@@ -411,6 +411,7 @@ internal static partial class TestMappers
     public static partial void MapStringToEnum(StringToEnumSource source, StringToEnumDestination destination);
 
     // A2: 部分一致 (Pending → default)
+    // A2: partial match (Pending → default)
     [Mapper]
     public static partial void MapPartialEnum(PartialEnumSource source, PartialEnumDestination destination);
 
@@ -581,10 +582,12 @@ internal static partial class TestMappers
     public static partial void Map(SpanParsableSource source, SpanParsableDestination destination);
 
     // T3: Culture あり + IParsable
+    // T3: with Culture + IParsable
     [Mapper(Culture = "en-US")]
     public static partial void MapCulture(ParsableCultureSource source, ParsableCultureDestination destination);
 
     // T4: Culture あり + ISpanParsable
+    // T4: with Culture + ISpanParsable
     [Mapper(Culture = "en-US")]
     public static partial void MapCulture(SpanParsableCultureSource source, SpanParsableCultureDestination destination);
 
@@ -619,10 +622,12 @@ internal static partial class TestMappers
 
 // =====================================================================
 // __todo.md カバレッジ用マッパー
+// __todo.md coverage mappers
 // =====================================================================
 internal static partial class TestMappers
 {
     // §1 数値変換
+    // §1 Numeric conversion
     [Mapper]
     public static partial void MapNumericCov(NumericCovSource source, NumericCovDestination destination);
 
@@ -630,6 +635,7 @@ internal static partial class TestMappers
     public static partial void MapNullableNumCov(NullableNumCovSource source, NullableNumCovDestination destination);
 
     // §2 Enum 変換
+    // §2 Enum conversion
     [Mapper]
     public static partial void MapEnumCov(EnumCovSource source, EnumCovDestination destination);
 
@@ -637,10 +643,12 @@ internal static partial class TestMappers
     public static partial void MapNullableEnumCov(NullableEnumCovSource source, NullableEnumCovDestination destination);
 
     // §3 ユーザー定義変換演算子
+    // §3 User-defined conversion operators
     [Mapper]
     public static partial void MapOperatorCov(OperatorCovSource source, OperatorCovDestination destination);
 
     // §4 カスタムコンバータ
+    // §4 Custom converters
     [Mapper]
     [ValueConverter(typeof(CovConverter))]
     public static partial void MapConverterCov(ConverterCovSource source, ConverterCovDestination destination);

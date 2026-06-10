@@ -4,7 +4,9 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
 // A2: Enum マッピングのテスト。
+// A2: Tests for enum mapping.
 // enum ↔ enum、enum ↔ int、enum ↔ string の各変換パターンを検証する。
+// Verifies each conversion pattern: enum ↔ enum, enum ↔ int, and enum ↔ string.
 public class EnumMappingTests
 {
     // ---- enum ↔ enum (by name) ----

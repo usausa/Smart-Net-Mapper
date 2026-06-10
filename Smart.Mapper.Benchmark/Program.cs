@@ -81,6 +81,7 @@ public class SimpleMapBenchmark
     }
 
     // 手書きの直接代入（理論上の最速ベースライン）
+    // Hand-written direct assignment (theoretical fastest baseline)
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public SimpleDestination Direct()
     {
@@ -104,6 +105,7 @@ public class SimpleMapBenchmark
     }
 
     // Smart.Mapper 生成コード（同型プロパティコピー）
+    // Smart.Mapper generated code (same-type property copy)
     [Benchmark(OperationsPerInvoke = N)]
     public SimpleDestination SmartMapper()
     {
@@ -259,6 +261,7 @@ public class CollectionListMapBenchmark
     }
 
     // 手書き代入（インライン）— 呼び出し側でリスト管理
+    // Hand-written assignment (inline) — list managed by the caller
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public List<CollectionItemDestination> Direct()
     {
@@ -277,6 +280,7 @@ public class CollectionListMapBenchmark
     }
 
     // MapItem 呼び出し — 同一のリスト管理コード、アイテムマッピングのみ異なる
+    // MapItem call — same list-management code, only the item mapping differs
     [Benchmark(OperationsPerInvoke = N)]
     public List<CollectionItemDestination> SmartMapper()
     {
@@ -324,6 +328,7 @@ public class CollectionWrapperMapBenchmark
     }
 
     // 手書き代入（インライン）+ CollectionWrapper 生成
+    // Hand-written assignment (inline) + CollectionWrapper construction
     [Benchmark(Baseline = true, OperationsPerInvoke = N)]
     public CollectionWrapper Direct()
     {
@@ -342,6 +347,7 @@ public class CollectionWrapperMapBenchmark
     }
 
     // Smart.Mapper 生成コード（MapWrapper = MapItem を内部で展開）
+    // Smart.Mapper generated code (MapWrapper expands MapItem internally)
     [Benchmark(OperationsPerInvoke = N)]
     public CollectionWrapper SmartMapper()
     {
@@ -401,6 +407,7 @@ public class VoidNestedMapBenchmark
     }
 
     // 旧コード: Func<T> ラムダを毎回アロケーション
+    // Old code: allocates a Func<T> lambda every time
     [Benchmark(OperationsPerInvoke = N)]
     public NestedDestination LegacyLambda()
     {
@@ -428,6 +435,7 @@ public class VoidNestedMapBenchmark
     }
 
     // 新コード: ラムダなしの多文展開（Generator 修正後）
+    // New code: lambda-free multi-statement expansion (after the generator fix)
     [Benchmark(OperationsPerInvoke = N)]
     public NestedDestination SmartMapperVoidNested()
     {

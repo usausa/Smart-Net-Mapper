@@ -1,7 +1,9 @@
 namespace Smart.Mapper.Benchmark;
 
 // ベンチマーク用 Smart.Mapper マッパー定義。
+// Smart.Mapper mapper definitions for the benchmarks.
 // 各ベンチマークシナリオに対応した static partial メソッドを宣言する。
+// Declares a static partial method for each benchmark scenario.
 internal static partial class BenchmarkMappers
 {
     // Scenario 1: Simple flat copy

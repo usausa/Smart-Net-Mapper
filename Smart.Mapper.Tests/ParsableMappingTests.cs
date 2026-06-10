@@ -4,9 +4,11 @@ using Smart.Mapper.Mappers;
 using Smart.Mapper.Models;
 
 // B3: IParsable<T> / ISpanParsable<T> 自動変換テスト
+// B3: Automatic conversion tests for IParsable<T> / ISpanParsable<T>.
 public class ParsableMappingTests
 {
     // T1: string → TestParsableId (IParsable のみ実装)
+    // T1: string → TestParsableId (implements only IParsable)
     [Fact]
     public void Map_StringToIParsable_ConvertsCorrectly()
     {
@@ -19,6 +21,7 @@ public class ParsableMappingTests
     }
 
     // T2: string → TestSpanParsableId (ISpanParsable 実装、IParsable より優先)
+    // T2: string → TestSpanParsableId (implements ISpanParsable; preferred over IParsable)
     [Fact]
     public void Map_StringToISpanParsable_ConvertsCorrectly()
     {
@@ -31,6 +34,7 @@ public class ParsableMappingTests
     }
 
     // T3: Culture 指定あり + IParsable
+    // T3: with specified Culture + IParsable
     [Fact]
     public void Map_StringToIParsableWithCulture_UsesSpecifiedCulture()
     {
@@ -43,6 +47,7 @@ public class ParsableMappingTests
     }
 
     // T4: Culture 指定あり + ISpanParsable
+    // T4: with specified Culture + ISpanParsable
     [Fact]
     public void Map_StringToISpanParsableWithCulture_UsesSpecifiedCulture()
     {
@@ -55,6 +60,7 @@ public class ParsableMappingTests
     }
 
     // T6: string → int は既存の ConvertToInt32 が使われる (B3 に到達しない)
+    // T6: string → int uses the existing ConvertToInt32 (does not reach B3)
     [Fact]
     public void Map_StringToInt_UsesSpecializedConverter()
     {
@@ -67,6 +73,7 @@ public class ParsableMappingTests
     }
 
     // T7: string? → TestSpanParsableId (nullable source: null ハンドリング後に Parse が呼ばれる)
+    // T7: string? → TestSpanParsableId (nullable source: Parse is called after null handling)
     [Fact]
     public void Map_NullableStringToISpanParsable_WhenNotNull_ConvertsCorrectly()
     {

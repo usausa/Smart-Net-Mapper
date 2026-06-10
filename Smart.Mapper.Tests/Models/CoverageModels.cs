@@ -71,6 +71,7 @@ public enum CovE16 : short
     C = 3
 }
 
+// ReSharper disable once EnumUnderlyingTypeIsInt
 public enum CovE32 : int
 {
     None = 0,

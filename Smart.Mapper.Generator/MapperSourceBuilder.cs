@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Generator;
+namespace Smart.Mapper.Generator;
 
 using System;
 using System.Collections.Generic;

@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper;
+namespace Smart.Mapper;
 
 using System;
 using System.Globalization;

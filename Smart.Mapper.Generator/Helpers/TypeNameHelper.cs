@@ -44,23 +44,32 @@ internal static class TypeNameHelper
     // Type name normalisation
     // -------------------------------------------------------
 
-    // Strips global:: and System. prefixes and removes trailing ?
+    // Strips the global:: qualifier and a leading System. namespace, and removes trailing ?
     // or Nullable<> wrappers so that two equivalent type names compare equal.
+    // System. is stripped only as a leading namespace qualifier (not as an arbitrary substring),
+    // so user namespaces that merely contain "System." as a segment are preserved.
     public static string NormalizeTypeName(string typeName)
     {
-        var normalized = typeName
-            .Replace("global::", string.Empty)
-            .Replace("System.", string.Empty);
+        var normalized = typeName.Replace("global::", string.Empty);
 
+        // Unwrap nullable value types: a trailing "?" or a Nullable<...> wrapper.
         if (normalized.EndsWith("?", StringComparison.Ordinal))
         {
             normalized = normalized.TrimEnd('?');
         }
-
-        if (normalized.StartsWith("Nullable<", StringComparison.Ordinal) &&
-            normalized.EndsWith(">", StringComparison.Ordinal))
+        else if (normalized.EndsWith(">", StringComparison.Ordinal))
         {
-            normalized = normalized.Substring(9, normalized.Length - 10);
+            var open = normalized.IndexOf("Nullable<", StringComparison.Ordinal);
+            if (open >= 0)
+            {
+                var start = open + "Nullable<".Length;
+                normalized = normalized.Substring(start, normalized.Length - start - 1);
+            }
+        }
+
+        if (normalized.StartsWith("System.", StringComparison.Ordinal))
+        {
+            normalized = normalized.Substring("System.".Length);
         }
 
         return normalized;

@@ -54,4 +54,55 @@ public class CultureFormatMappingTests
         // de-DE: comma as decimal separator
         Assert.Contains(",", destination.ValueB, StringComparison.Ordinal);
     }
+
+    // Regression: with a Culture in effect, string -> bool/Guid/Half/Int128/UInt128/BigInteger
+    // previously generated a 3-argument converter call with no matching overload (did not compile).
+    [Fact]
+    public void Map_WithCulture_ParsesSpecializedTypes()
+    {
+        var guid = Guid.Parse("12345678-1234-1234-1234-1234567890ab");
+        var source = new CultureSpecialParseSource
+        {
+            HalfValue = "2.5",
+            Int128Value = "12345",
+            UInt128Value = "12345",
+            BigIntegerValue = "12345",
+            BoolValue = "true",
+            GuidValue = guid.ToString()
+        };
+
+        var destination = TestMappers.MapCultureSpecialParse(source);
+
+        Assert.Equal((Half)2.5, destination.HalfValue);
+        Assert.Equal((Int128)12345, destination.Int128Value);
+        Assert.Equal((UInt128)12345, destination.UInt128Value);
+        Assert.Equal((System.Numerics.BigInteger)12345, destination.BigIntegerValue);
+        Assert.True(destination.BoolValue);
+        Assert.Equal(guid, destination.GuidValue);
+    }
+
+    // Regression: with a Culture in effect, bool/Guid/Half/Int128/UInt128/BigInteger -> string.
+    [Fact]
+    public void Map_WithCulture_FormatsSpecializedTypes()
+    {
+        var guid = Guid.Parse("12345678-1234-1234-1234-1234567890ab");
+        var source = new CultureSpecialFormatSource
+        {
+            HalfValue = (Half)2.5,
+            Int128Value = 12345,
+            UInt128Value = 12345,
+            BigIntegerValue = 12345,
+            BoolValue = true,
+            GuidValue = guid
+        };
+
+        var destination = TestMappers.MapCultureSpecialFormat(source);
+
+        Assert.Equal("2.5", destination.HalfValue);
+        Assert.Equal("12345", destination.Int128Value);
+        Assert.Equal("12345", destination.UInt128Value);
+        Assert.Equal("12345", destination.BigIntegerValue);
+        Assert.Equal("True", destination.BoolValue);
+        Assert.Equal(guid.ToString(), destination.GuidValue);
+    }
 }

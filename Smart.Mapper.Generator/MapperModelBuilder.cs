@@ -43,12 +43,12 @@ internal static class MapperModelBuilder
 
         if (!symbol.IsStatic || !symbol.IsPartialDefinition)
         {
-            return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodDefinition, syntax.GetLocation(), symbol.Name));
+            return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodDefinition, syntax.Identifier.GetLocation(), symbol.Name));
         }
 
         if (symbol.Parameters.Length < 1)
         {
-            return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodParameter, syntax.GetLocation(), symbol.Name));
+            return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodParameter, syntax.Identifier.GetLocation(), symbol.Name));
         }
 
         var containingType = symbol.ContainingType;
@@ -78,7 +78,7 @@ internal static class MapperModelBuilder
         {
             if (symbol.Parameters.Length < 2)
             {
-                return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodParameter, syntax.GetLocation(), symbol.Name));
+                return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodParameter, syntax.Identifier.GetLocation(), symbol.Name));
             }
 
             var destParam = symbol.Parameters[1];

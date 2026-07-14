@@ -108,6 +108,10 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ConvertToBoolean(string source) => Boolean.Parse(source);
 
+    // Converts string to Boolean. Culture and format are ignored; Boolean parsing is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool ConvertToBoolean(string source, IFormatProvider culture, string? format) => Boolean.Parse(source);
+
     // Converts string to DateTime.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture);
@@ -120,6 +124,10 @@ public static class DefaultValueConverter
     // Converts string to Guid.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Guid ConvertToGuid(string source) => Guid.Parse(source);
+
+    // Converts string to Guid. Culture and format are ignored; Guid parsing is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Guid ConvertToGuid(string source, IFormatProvider culture, string? format) => Guid.Parse(source);
 
     // ============================================================
     // Specialized methods: numeric types -> string
@@ -228,6 +236,10 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(bool source) => source.ToString();
 
+    // Converts Boolean to string. Culture and format are ignored; Boolean formatting is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(bool source, IFormatProvider culture, string? format) => source.ToString();
+
     // Converts DateTime to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(DateTime source) => source.ToString(CultureInfo.InvariantCulture);
@@ -240,6 +252,10 @@ public static class DefaultValueConverter
     // Converts Guid to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(Guid source) => source.ToString();
+
+    // Converts Guid to string. Culture and format are ignored; Guid formatting is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(Guid source, IFormatProvider culture, string? format) => source.ToString();
 
     // ============================================================
     // Specialized methods: string <-> date/time types (.NET 6+)
@@ -325,6 +341,10 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(string source) => Half.Parse(source, CultureInfo.InvariantCulture);
 
+    // Converts string to Half using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(string source, IFormatProvider culture, string? format) => Half.Parse(source, culture);
+
     // Converts int to Half.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(int source) => (Half)source;
@@ -345,29 +365,61 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Int128 ConvertToInt128(string source) => Int128.Parse(source, CultureInfo.InvariantCulture);
 
+    // Converts string to Int128 using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Int128 ConvertToInt128(string source, IFormatProvider culture, string? format) => Int128.Parse(source, culture);
+
     // Converts string to UInt128.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static UInt128 ConvertToUInt128(string source) => UInt128.Parse(source, CultureInfo.InvariantCulture);
+
+    // Converts string to UInt128 using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static UInt128 ConvertToUInt128(string source, IFormatProvider culture, string? format) => UInt128.Parse(source, culture);
 
     // Converts string to BigInteger.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BigInteger ConvertToBigInteger(string source) => BigInteger.Parse(source, CultureInfo.InvariantCulture);
 
+    // Converts string to BigInteger using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BigInteger ConvertToBigInteger(string source, IFormatProvider culture, string? format) => BigInteger.Parse(source, culture);
+
     // Converts Half to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(Half source) => source.ToString(CultureInfo.InvariantCulture);
+
+    // Converts Half to string using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(Half source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     // Converts Int128 to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(Int128 source) => source.ToString(CultureInfo.InvariantCulture);
 
+    // Converts Int128 to string using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(Int128 source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     // Converts UInt128 to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(UInt128 source) => source.ToString(CultureInfo.InvariantCulture);
 
+    // Converts UInt128 to string using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(UInt128 source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
+
     // Converts BigInteger to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(BigInteger source) => source.ToString(CultureInfo.InvariantCulture);
+
+    // Converts BigInteger to string using specified culture and optional format.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(BigInteger source, IFormatProvider culture, string? format) =>
+        format is null ? source.ToString(culture) : source.ToString(format, culture);
 
     // ============================================================
     // Generic fallback method

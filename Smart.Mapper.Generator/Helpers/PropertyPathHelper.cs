@@ -10,8 +10,8 @@ using SourceGenerateHelper;
 // against Roslyn ITypeSymbol instances.
 internal static class PropertyPathHelper
 {
-    // Walks  (dot-separated property names) starting from
-    //  and returns the resulting type and whether the path is valid.
+    // Walks the path (dot-separated property names) starting from rootType
+    // and returns the resulting type and whether the path is valid.
     // Supports Length on arrays and Length/Count on named types.
     public static (ITypeSymbol? Type, bool IsValid) ResolvePropertyPath(ITypeSymbol rootType, string path)
     {
@@ -67,8 +67,8 @@ internal static class PropertyPathHelper
         return prop;
     }
 
-    // Returns the ITypeSymbol at the end of a dot-separated
-    // starting from , or null when the path cannot be resolved.
+    // Returns the ITypeSymbol at the end of a dot-separated path
+    // starting from type, or null when the path cannot be resolved.
     public static ITypeSymbol? ResolvePropertyType(ITypeSymbol type, string path)
     {
         var parts = path.Split('.');

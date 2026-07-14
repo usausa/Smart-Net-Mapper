@@ -30,9 +30,18 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 static (context, _) => MapperModelBuilder.BuildModel(context))
             .Collect();
 
-        context.RegisterImplementationSourceOutput(
+        context.RegisterSourceOutput(
             methodProvider,
-            static (context, methods) => Execute(context, methods));
+            static (context, methods) => ReportDiagnostics(context, methods));
+
+        var groups = methodProvider.SelectMany(static (methods, _) =>
+            methods.SelectValue()
+                .GroupBy(static x => new { x.Namespace, x.ClassName })
+                .Select(static g => new ClassMethodsModel(g.Key.Namespace, g.Key.ClassName, new EquatableArray<MapperMethodModel>(g.ToArray())))
+                .ToImmutableArray());
+        context.RegisterImplementationSourceOutput(
+            groups,
+            static (context, group) => Execute(context, group));
     }
 
     // ------------------------------------------------------------
@@ -48,34 +57,33 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     // パーサーから受け取ったモデルをクラスごとにグループ化し、ソースファイルを生成する。診断も発行する。
     // Groups parsed mapper models by class, generates one source file per class, and reports diagnostics.
-    private static void Execute(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods)
+    private static void ReportDiagnostics(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods)
     {
         foreach (var info in methods.SelectError())
         {
             context.ReportDiagnostic(info);
         }
 
-        var builder = new SourceBuilder();
-        foreach (var group in methods.SelectValue().GroupBy(static x => new { x.Namespace, x.ClassName }))
+        // Report strict-mode warnings
+        foreach (var model in methods.SelectValue())
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-
-            // Report strict-mode warnings
-            foreach (var model in group)
+            foreach (var (descriptor, arg) in model.Warnings)
             {
-                foreach (var (descriptor, arg) in model.Warnings)
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg));
-                }
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg));
             }
-
-            builder.Clear();
-            MapperSourceBuilder.BuildSource(builder, group.ToList());
-
-            var filename = MakeFilename(group.Key.Namespace, group.Key.ClassName);
-            var source = builder.ToString();
-            context.AddSource(filename, SourceText.From(source, Encoding.UTF8));
         }
+    }
+
+    private static void Execute(SourceProductionContext context, ClassMethodsModel group)
+    {
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        var builder = new SourceBuilder();
+        MapperSourceBuilder.BuildSource(builder, group.Methods.ToList());
+
+        var filename = MakeFilename(group.Namespace, group.ClassName);
+        var source = builder.ToString();
+        context.AddSource(filename, SourceText.From(source, Encoding.UTF8));
     }
 
     // ------------------------------------------------------------

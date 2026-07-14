@@ -1,5 +1,5 @@
 <Solution>
-  <Folder Name="/Behchmark/">
+  <Folder Name="/Benchmark/">
     <Project Path="Smart.Mapper.Benchmark/Smart.Mapper.Benchmark.csproj" />
   </Folder>
   <Folder Name="/Example/">

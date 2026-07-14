@@ -427,6 +427,14 @@ internal static partial class TestMappers
     [Mapper(Culture = "en-US")]
     [MapProperty(nameof(CultureOverrideDestination.ValueB), Culture = "de-DE")]
     public static partial CultureOverrideDestination MapWithPropertyCultureOverride(CultureOverrideSource source);
+
+    // Regression: Culture + bool/Guid/Half/Int128/UInt128/BigInteger (string -> type)
+    [Mapper(Culture = "en-US")]
+    public static partial CultureSpecialParseDestination MapCultureSpecialParse(CultureSpecialParseSource source);
+
+    // Regression: Culture + bool/Guid/Half/Int128/UInt128/BigInteger (type -> string)
+    [Mapper(Culture = "en-US")]
+    public static partial CultureSpecialFormatDestination MapCultureSpecialFormat(CultureSpecialFormatSource source);
 }
 
 // D1/D3: Primary constructor and record mapping

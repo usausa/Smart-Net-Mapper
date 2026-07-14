@@ -9,8 +9,8 @@ internal static class MapperSymbolExtensions
     // Type resolution
     // -------------------------------------------------------
 
-    // Resolves a INamedTypeSymbol from a fully-qualified name by searching
-    // the containing assembly and all referenced assemblies of .
+    // Resolves a type symbol from a fully-qualified name by searching
+    // the method's containing assembly and all referenced assemblies.
     public static ITypeSymbol? FindTypeByFullyQualifiedName(this IMethodSymbol mapperMethod, string fullyQualifiedName)
     {
         var typeName = fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal)
@@ -39,8 +39,8 @@ internal static class MapperSymbolExtensions
     // User-defined conversion operators
     // -------------------------------------------------------
 
-    // Returns true when a user-defined implicit (=true) or explicit
-    // conversion operator exists between  and .
+    // Returns true when a user-defined implicit (isImplicit=true) or explicit
+    // conversion operator exists between sourceType and targetType.
     // Both source-declared and target-declared operators are checked.
     public static bool HasUserDefinedConversion(ITypeSymbol sourceType, ITypeSymbol targetType, bool isImplicit)
     {

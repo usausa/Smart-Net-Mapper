@@ -249,4 +249,14 @@ internal static class Diagnostics
         category: "Smart.Mapper",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    // SMP0028: MapCollection/MapNested cannot target init-only / required members
+
+    public static DiagnosticDescriptor UnsupportedInitOnlyCollectionTarget { get; } = new(
+        id: "SMP0028",
+        title: "Unsupported init-only or required target for MapCollection/MapNested",
+        messageFormat: "[MapCollection]/[MapNested] cannot target property '{0}' because it is init-only (or required with a return-type mapper); the generated loop cannot run inside an object initializer. Use a settable property.",
+        category: "Smart.Mapper",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

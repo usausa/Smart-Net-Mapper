@@ -1,30 +1,14 @@
-#pragma warning disable CA2227
+﻿#pragma warning disable CA2227
 namespace Smart.Mapper.Benchmark;
 
 using System.Runtime.InteropServices;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Jobs;
 
 // emit 改善(enum switch 化 / InPlace 直接呼び出し / IReadOnlyList インデクサ反復)の
 // 前後比較用ベンチマーク。OldEmit 系メソッドは改善前の生成コードを手書きで再現したもの。
 // Before/after benchmarks for the emit improvements (enum switch, InPlace direct calls,
 // IReadOnlyList indexer iteration). OldEmit methods reproduce the previous generated code by hand.
-
-public sealed class QuickBenchmarkConfig : ManualConfig
-{
-    public QuickBenchmarkConfig()
-    {
-        AddExporter(MarkdownExporter.Default);
-        AddColumn(StatisticColumn.Mean, StatisticColumn.Error, StatisticColumn.StdDev);
-        AddDiagnoser(MemoryDiagnoser.Default);
-        AddJob(Job.ShortRun);
-    }
-}
 
 // -- Models --
 
@@ -105,7 +89,7 @@ internal static partial class PerfBenchmarkMappers
 // Perf 1: enum ⇔ string conversion emit
 // ==========================================================================
 
-[Config(typeof(QuickBenchmarkConfig))]
+[Config(typeof(BenchmarkConfig))]
 [BenchmarkCategory("PerfEnum")]
 public class EnumMapBenchmark
 {
@@ -156,7 +140,7 @@ public class EnumMapBenchmark
 // Perf 2: InPlace collection emit (interface dispatch vs direct List calls)
 // ==========================================================================
 
-[Config(typeof(QuickBenchmarkConfig))]
+[Config(typeof(BenchmarkConfig))]
 [BenchmarkCategory("PerfInPlace")]
 public class InPlaceMapBenchmark
 {
@@ -220,7 +204,7 @@ public class InPlaceMapBenchmark
 // Perf 3: IReadOnlyList source emit (enumerator vs indexer + SetCount)
 // ==========================================================================
 
-[Config(typeof(QuickBenchmarkConfig))]
+[Config(typeof(BenchmarkConfig))]
 [BenchmarkCategory("PerfRoList")]
 public class ReadOnlyListMapBenchmark
 {

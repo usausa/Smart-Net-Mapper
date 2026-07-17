@@ -1,4 +1,4 @@
-# Smart.Mapper
+﻿# Smart.Mapper
 
 [![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
 [![NuGet](https://img.shields.io/nuget/dt/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
@@ -639,6 +639,17 @@ dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r 
 ```
 
 No `IL2xxx` / `IL3xxx` diagnostics should appear.
+
+---
+
+## TODO
+
+Future improvements under consideration:
+
+- **`[MapCollection]` / `[MapNested]` targeting init-only or required members** — currently rejected with `SMP0028` because the generated loop runs after construction. Could be supported by hoisting the built collection / nested instance into a local before construction and assigning it in the object initializer.
+- **Direct `FrozenSet` construction** — the generated code builds a `HashSet<T>` and calls `ToFrozenSet` (two-phase by BCL design). If the BCL ever ships a frozen-collection builder API, the intermediate set can be eliminated.
+- **Generic fallback `Convert<TSource, TDestination>` for `Half` / `Int128` / `UInt128` / `BigInteger` sources** — these currently reach the boxing fallback when routed through the generic converter opt-in; specialized branches can be added if demand arises (the default specialized-method path already covers them).
+- **Generator incrementality tuning** — output is regenerated per run via `Collect()` and destination/source property walks are repeated per feature pass. Measured cost is negligible today; revisit (per-class output splitting, property-list caching) if very large models appear.
 
 ---
 

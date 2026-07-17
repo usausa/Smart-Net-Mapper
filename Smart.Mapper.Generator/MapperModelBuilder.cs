@@ -219,6 +219,12 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(constructorError);
         }
 
+        var voidInitOnlyError = ValidateVoidMapperInitOnlyTargets(model, syntax);
+        if (voidInitOnlyError is not null)
+        {
+            return Results.Error<MapperMethodModel>(voidInitOnlyError);
+        }
+
         var requiredMemberError = ValidateRequiredMembers(model, destinationType, syntax);
         if (requiredMemberError is not null)
         {
@@ -1064,6 +1070,18 @@ internal static class MapperModelBuilder
             if (destProp is not null)
             {
                 constantMapping.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                constantMapping.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
+                constantMapping.IsTargetRequired = destProp.IsRequired;
+            }
+        }
+
+        foreach (var expressionMapping in model.ExpressionMappings)
+        {
+            var destProp = destinationProperties.FirstOrDefault(p => p.Name == expressionMapping.TargetName);
+            if (destProp is not null)
+            {
+                expressionMapping.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
+                expressionMapping.IsTargetRequired = destProp.IsRequired;
             }
         }
     }
@@ -1150,6 +1168,8 @@ internal static class MapperModelBuilder
             }
 
             mapUsing.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            mapUsing.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
+            mapUsing.IsTargetRequired = destProp.IsRequired;
 
             var candidateMethods = containingType.GetMembers(mapUsing.Method)
                 .OfType<IMethodSymbol>()
@@ -1300,6 +1320,8 @@ internal static class MapperModelBuilder
             }
 
             mapFrom.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            mapFrom.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
+            mapFrom.IsTargetRequired = destProp.IsRequired;
 
             var member = mapFrom.Member;
             var isMethodCall = !member.Contains('.');
@@ -1388,6 +1410,16 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
+            // The emitted loop runs after construction, so init-only targets can never be assigned,
+            // and required targets are left unset by the generator-constructed instance.
+            if ((destProp.SetMethod?.IsInitOnly == true) || (model.ReturnsDestination && destProp.IsRequired))
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnsupportedInitOnlyCollectionTarget,
+                    syntax.GetLocation(),
+                    mapCollection.TargetName);
+            }
+
             var sourceElementType = sourceProp.Type.GetCollectionOrMemoryElementType();
             if (sourceElementType is null)
             {
@@ -1464,6 +1496,15 @@ internal static class MapperModelBuilder
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionTargetProperty,
+                    syntax.GetLocation(),
+                    mapNested.TargetName);
+            }
+
+            // Same restriction as MapCollection: the nested-map statements run after construction.
+            if ((destProp.SetMethod?.IsInitOnly == true) || (model.ReturnsDestination && destProp.IsRequired))
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnsupportedInitOnlyCollectionTarget,
                     syntax.GetLocation(),
                     mapNested.TargetName);
             }
@@ -1839,6 +1880,27 @@ internal static class MapperModelBuilder
                 }
             }
         }
+    }
+
+    // A void mapper assigns properties on a caller-supplied instance, so init-only targets can never
+    // be set. Reports SMP0018 when any mapping (automap or explicit feature) targets an init-only member.
+    internal static DiagnosticInfo? ValidateVoidMapperInitOnlyTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        if (model.ReturnsDestination)
+        {
+            return null;
+        }
+
+        var hasInitOnlyTarget =
+            model.PropertyMappings.Any(static pm => pm.IsTargetInitOnly) ||
+            model.ConstantMappings.Any(static cm => cm.IsTargetInitOnly) ||
+            model.ExpressionMappings.Any(static em => em.IsTargetInitOnly) ||
+            model.MapUsingMappings.Any(static mu => mu.IsTargetInitOnly) ||
+            model.MapFromMappings.Any(static mf => mf.IsTargetInitOnly);
+
+        return hasInitOnlyTarget
+            ? new DiagnosticInfo(Diagnostics.InitOnlyDestinationRequiresReturnMapper, syntax.GetLocation(), model.DestinationTypeName)
+            : null;
     }
 
     internal static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)

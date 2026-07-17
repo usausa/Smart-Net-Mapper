@@ -10,4 +10,6 @@ internal sealed record MapUsingModel
     public bool AcceptsCustomParameters { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
+    public bool IsTargetInitOnly { get; set; }
+    public bool IsTargetRequired { get; set; }
 }

@@ -55,4 +55,20 @@ public class RequiredMemberTests
         Assert.Equal("nine", dest.Name);
         Assert.Null(dest.Extra);
     }
+
+    // MapConstant / MapExpression / MapUsing / MapFrom が init-only / required メンバーを対象とする場合、
+    // オブジェクト初期化子経由で代入される (以前は構築後代入で CS8852 / CS9035)。
+    // MapConstant / MapExpression / MapUsing / MapFrom targeting init-only / required members are
+    // assigned via the object initializer (previously post-construction assignment: CS8852 / CS9035).
+    [Fact]
+    public void Map_FeatureMappings_SetInitOnlyAndRequiredTargets()
+    {
+        var dest = TestMappers.MapFeatureInit(new FeatureInitSource { Id = 3, Name = "abc" });
+
+        Assert.Equal(3, dest.Id);
+        Assert.Equal("F", dest.Fixed);
+        Assert.Equal("ABC", dest.Upper);
+        Assert.Equal("abc", dest.FromName);
+        Assert.Equal(6, dest.Doubled);
+    }
 }

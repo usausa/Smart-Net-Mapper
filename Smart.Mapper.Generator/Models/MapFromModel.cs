@@ -10,4 +10,6 @@ internal sealed record MapFromModel
     public string ReturnType { get; set; } = default!;
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
+    public bool IsTargetInitOnly { get; set; }
+    public bool IsTargetRequired { get; set; }
 }

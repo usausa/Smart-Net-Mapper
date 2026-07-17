@@ -141,6 +141,25 @@ public class RequiredReturnDestination
     public string? Extra { get; set; }
 }
 
+// MapConstant / MapExpression / MapUsing / MapFrom が init-only / required メンバーを対象にする場合、
+// オブジェクト初期化子で代入される (return マッパー)。
+// MapConstant / MapExpression / MapUsing / MapFrom targeting init-only / required members are
+// assigned via the object initializer (return mapper).
+public class FeatureInitSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = default!;
+}
+
+public class FeatureInitDestination
+{
+    public int Id { get; set; }
+    public required string Fixed { get; set; }
+    public string Upper { get; init; } = default!;
+    public required string FromName { get; set; }
+    public int Doubled { get; init; }
+}
+
 // E3: MapperProfile models
 public class ProfileSource
 {

@@ -395,6 +395,16 @@ internal static partial class TestMappers
     [Mapper]
     public static partial RequiredReturnDestination MapRequiredReturn(RequiredReturnSource source);
 
+    // Explicit feature mappings targeting init-only / required members (object-initializer emit)
+    [Mapper]
+    [MapConstant(nameof(FeatureInitDestination.Fixed), "F")]
+    [MapExpression(nameof(FeatureInitDestination.Doubled), "source.Id * 2")]
+    [MapUsing(nameof(FeatureInitDestination.Upper), nameof(BuildUpper))]
+    [MapFrom(nameof(FeatureInitDestination.FromName), nameof(FeatureInitSource.Name))]
+    public static partial FeatureInitDestination MapFeatureInit(FeatureInitSource source);
+
+    private static string BuildUpper(FeatureInitSource source) => source.Name.ToUpperInvariant();
+
     // D2: required member – all required properties are mapped
     [Mapper]
     public static partial void MapRequiredMembers(RequiredMemberSource source, RequiredMemberDestination destination);

@@ -161,6 +161,38 @@ internal static class MapperSourceBuilder
                     .Where(pm => pm.IsTargetInitOnly || pm.IsTargetRequired)
                     .ToList();
 
+                // Explicit feature mappings (constant/expression/using/from) that target init-only or
+                // required members must be assigned in the object initializer; the post-construction
+                // loops below skip them.
+                var featureInitEntries = new List<(int Order, int DefinitionOrder, string Target, string Value)>();
+                foreach (var constant in method.ConstantMappings.Where(static c => c.IsTargetInitOnly || c.IsTargetRequired))
+                {
+                    featureInitEntries.Add((constant.Order, constant.DefinitionOrder, constant.TargetName, constant.Value ?? "null"));
+                }
+                foreach (var expression in method.ExpressionMappings.Where(static e => e.IsTargetInitOnly || e.IsTargetRequired))
+                {
+                    featureInitEntries.Add((expression.Order, expression.DefinitionOrder, expression.TargetName, expression.Expression));
+                }
+                foreach (var mapUsing in method.MapUsingMappings.Where(static mu => mu.IsTargetInitOnly || mu.IsTargetRequired))
+                {
+                    var callText = new StringBuilder(mapUsing.Method);
+                    callText.Append('(').Append(method.SourceParameterName);
+                    if (mapUsing.AcceptsCustomParameters)
+                    {
+                        foreach (var customParam in method.CustomParameters)
+                        {
+                            callText.Append(", ").Append(customParam.Name);
+                        }
+                    }
+                    callText.Append(')');
+                    featureInitEntries.Add((mapUsing.Order, mapUsing.DefinitionOrder, mapUsing.TargetName, callText.ToString()));
+                }
+                foreach (var mapFrom in method.MapFromMappings.Where(static mf => mf.IsTargetInitOnly || mf.IsTargetRequired))
+                {
+                    var invoke = mapFrom.IsMethodCall ? "()" : string.Empty;
+                    featureInitEntries.Add((mapFrom.Order, mapFrom.DefinitionOrder, mapFrom.TargetName, $"{method.SourceParameterName}.{mapFrom.Member}{invoke}"));
+                }
+
                 var ctorParameters = method.ConstructorParameters;
                 builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("(");
                 for (var i = 0; i < ctorParameters.Count; i++)
@@ -173,7 +205,7 @@ internal static class MapperSourceBuilder
                 }
                 builder.Append(")");
 
-                if (initOnlyMappings.Count > 0)
+                if ((initOnlyMappings.Count > 0) || (featureInitEntries.Count > 0))
                 {
                     builder.NewLine();
                     builder.Indent().Append("{").NewLine();
@@ -181,6 +213,10 @@ internal static class MapperSourceBuilder
                     foreach (var pm in initOnlyMappings)
                     {
                         builder.Indent().Append(pm.TargetPath).Append(" = ").Append(pm.SourcePath.Contains('.') ? pm.SourcePath : $"{method.SourceParameterName}.{pm.SourcePath}").Append(",").NewLine();
+                    }
+                    foreach (var (_, _, target, value) in featureInitEntries.OrderBy(static x => x.Order).ThenBy(static x => x.DefinitionOrder))
+                    {
+                        builder.Indent().Append(target).Append(" = ").Append(value).Append(",").NewLine();
                     }
                     builder.IndentLevel--;
                     builder.Indent().Append("}");
@@ -277,8 +313,17 @@ internal static class MapperSourceBuilder
             builder.EndScope();
         }
 
+        // Feature mappings already emitted in the object initializer are skipped here.
+        bool EmittedInInitializer(bool isTargetInitOnly, bool isTargetRequired) =>
+            method.UseConstructorMapping && (isTargetInitOnly || isTargetRequired);
+
         foreach (var constant in method.ConstantMappings.OrderBy(c => c.Order).ThenBy(c => c.DefinitionOrder))
         {
+            if (EmittedInInitializer(constant.IsTargetInitOnly, constant.IsTargetRequired))
+            {
+                continue;
+            }
+
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(constant.TargetName).Append(" = ");
             builder.Append(constant.Value ?? "null");
@@ -287,6 +332,11 @@ internal static class MapperSourceBuilder
 
         foreach (var expression in method.ExpressionMappings.OrderBy(e => e.Order).ThenBy(e => e.DefinitionOrder))
         {
+            if (EmittedInInitializer(expression.IsTargetInitOnly, expression.IsTargetRequired))
+            {
+                continue;
+            }
+
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(expression.TargetName).Append(" = ");
             builder.Append(expression.Expression);
@@ -295,6 +345,11 @@ internal static class MapperSourceBuilder
 
         foreach (var mapUsing in method.MapUsingMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
+            if (EmittedInInitializer(mapUsing.IsTargetInitOnly, mapUsing.IsTargetRequired))
+            {
+                continue;
+            }
+
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(mapUsing.TargetName).Append(" = ");
             builder.Append(mapUsing.Method).Append("(").Append(method.SourceParameterName);
@@ -310,6 +365,11 @@ internal static class MapperSourceBuilder
 
         foreach (var mapFrom in method.MapFromMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
+            if (EmittedInInitializer(mapFrom.IsTargetInitOnly, mapFrom.IsTargetRequired))
+            {
+                continue;
+            }
+
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(mapFrom.TargetName).Append(" = ");
             builder.Append(method.SourceParameterName).Append(".");

@@ -1,4 +1,4 @@
-# Smart.Mapper
+﻿# Smart.Mapper
 
 [![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
 [![NuGet](https://img.shields.io/nuget/dt/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
@@ -609,6 +609,17 @@ dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r 
 ```
 
 `IL2xxx` / `IL3xxx` 診断が出力されないことを確認します。
+
+---
+
+## TODO
+
+将来的に改善を検討している項目:
+
+- **`[MapCollection]` / `[MapNested]` の init-only / required メンバー対応** — 生成されるループが構築後に実行されるため、現在は `SMP0028` で拒否している。構築前にローカルへコレクション / ネストインスタンスを構築し、オブジェクト初期化子で代入する方式で対応可能。
+- **`FrozenSet` の直接構築** — 生成コードは `HashSet<T>` を構築してから `ToFrozenSet` を呼ぶ（BCL の設計上の二段構築）。BCL に frozen コレクションのビルダー API が追加されれば、中間セットを排除できる。
+- **ジェネリックフォールバック `Convert<TSource, TDestination>` の `Half` / `Int128` / `UInt128` / `BigInteger` ソース対応** — ジェネリックコンバーターへのオプトイン経由では boxing フォールバックに到達する。既定の specialized メソッド経路はカバー済みのため、需要が生じた場合に分岐を追加する。
+- **ジェネレーターのインクリメンタリティ調整** — 出力は `Collect()` 経由で実行ごとに再生成され、プロパティ走査も機能パスごとに繰り返される。現状の実測コストは無視できる水準のため、非常に大きなモデルが現れた場合に再検討する（クラス単位の出力分割・プロパティリストのキャッシュ）。
 
 ---
 

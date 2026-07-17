@@ -270,6 +270,13 @@ public class MatrixReadOnlyListSource
     public IReadOnlyList<MatrixSrcItem>? Items { get; set; }
 }
 
+// IReadOnlyCollection ソースは Count を使った presize 付き foreach で処理される。
+// IReadOnlyCollection sources are iterated via foreach with Count-based presizing.
+public class MatrixReadOnlyCollectionSource
+{
+    public IReadOnlyCollection<MatrixSrcItem>? Items { get; set; }
+}
+
 public class MatrixToFrozenSetDst
 {
     public FrozenSet<MatrixDstItem>? Items { get; set; }

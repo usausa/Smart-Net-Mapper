@@ -549,6 +549,16 @@ internal static partial class TestMappers
     [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixReadOnlyListSource.Items), Mapper = nameof(MapMatrixItem))]
     public static partial void MapReadOnlyListToList(MatrixReadOnlyListSource source, MatrixToListDst destination);
 
+    // IReadOnlyCollection → ImmutableArray (Func) — presized builder + MoveToImmutable
+    [Mapper]
+    [MapCollection(nameof(MatrixToImmutableArrayDst.Items), nameof(MatrixReadOnlyCollectionSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapReadOnlyCollectionToImmutableArray(MatrixReadOnlyCollectionSource source, MatrixToImmutableArrayDst destination);
+
+    // IReadOnlyCollection → HashSet (Func) — presized HashSet
+    [Mapper]
+    [MapCollection(nameof(MatrixToHashSetDst.Items), nameof(MatrixReadOnlyCollectionSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapReadOnlyCollectionToHashSet(MatrixReadOnlyCollectionSource source, MatrixToHashSetDst destination);
+
     // Regression: char -> string and string -> char (scalar conversion matrix sweep)
     [Mapper]
     public static partial ScalarCharDestination MapScalarChar(ScalarCharSource source);

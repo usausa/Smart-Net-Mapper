@@ -1616,6 +1616,11 @@ internal static class MapperModelBuilder
                     // Indexer iteration: one interface call per element and no enumerator allocation,
                     // versus two calls per element plus an enumerator through IEnumerable<T>.
                     return CollectionSourceShape.IndexedList;
+                case "System.Collections.Generic.IReadOnlyCollection<T>":
+                case "System.Collections.Generic.ICollection<T>":
+                    // An interface type does not appear in its own AllInterfaces, so properties
+                    // declared as these interfaces need an explicit match to get Count-based presizing.
+                    return CollectionSourceShape.ReadOnlyCollection;
             }
 
             foreach (var iface in named.AllInterfaces)

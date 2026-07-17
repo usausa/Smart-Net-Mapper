@@ -445,7 +445,8 @@ internal static class MapperSourceBuilder
         {
             CollectionSourceShape.Array or CollectionSourceShape.ImmutableArray or
             CollectionSourceShape.ReadOnlyMemory or CollectionSourceShape.Memory => $"{sourceAccess}{srcBang}.Length",
-            CollectionSourceShape.List or CollectionSourceShape.IndexedList => $"{sourceAccess}{srcBang}.Count",
+            CollectionSourceShape.List or CollectionSourceShape.IndexedList or
+            CollectionSourceShape.ReadOnlyCollection => $"{sourceAccess}{srcBang}.Count",
             _ => string.Empty
         };
 
@@ -462,6 +463,14 @@ internal static class MapperSourceBuilder
         var iCollectionType = $"global::System.Collections.Generic.ICollection<{mapCollection.TargetElementType}>";
         var collectionAccess = isConcreteTarget ? destAccess : $"(({iCollectionType}){destAccess})";
         builder.Indent().Append(collectionAccess).Append(".Clear();").NewLine();
+
+        // A pre-existing destination may be undersized; growing once up front avoids repeated
+        // reallocation during Add. EnsureCapacity is not on ICollection<T>, so this is emitted
+        // only for concrete List/HashSet destinations.
+        if (isConcreteTarget && (capacityArg.Length > 0))
+        {
+            builder.Indent().Append(collectionAccess).Append(".EnsureCapacity(").Append(capacityArg).Append(");").NewLine();
+        }
 
         EmitInPlaceSourceIteration(builder, mapCollection, sourceAccess, collectionAccess);
 
@@ -740,6 +749,32 @@ internal static class MapperSourceBuilder
                 EmitForEachAddToList(builder, mapCollection, "__list");
                 builder.EndScope();
                 builder.Indent().Append(destProp).Append(" = __list;").NewLine();
+                break;
+            case CollectionTargetShape.ImmutableArray:
+                // Presizing the builder to the known count enables MoveToImmutable, which hands the
+                // internal array over without the copy that ToImmutable performs.
+                builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableArray.CreateBuilder<").Append(dstElem).Append(">(").Append(countExpr).Append(");").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddBuilder(builder, mapCollection, "__ib");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __ib.MoveToImmutable();").NewLine();
+                break;
+            case CollectionTargetShape.HashSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(countExpr).Append(");").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddSet(builder, mapCollection, "__set");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = __set;").NewLine();
+                break;
+            case CollectionTargetShape.FrozenSet:
+                builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(countExpr).Append(");").NewLine();
+                builder.Indent().Append("foreach (var __item in ").Append(srcExpr).Append(")").NewLine();
+                builder.BeginScope();
+                EmitForEachAddSet(builder, mapCollection, "__set");
+                builder.EndScope();
+                builder.Indent().Append(destProp).Append(" = global::System.Collections.Frozen.FrozenSet.ToFrozenSet(__set);").NewLine();
                 break;
             default:
                 EmitInlineTargetBuildFromEnumerable(builder, mapCollection, dstElem, destProp, srcExpr);

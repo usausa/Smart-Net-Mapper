@@ -130,6 +130,33 @@ public class CollectionMatrixMappingTests
         Assert.Null(dst.Items);
     }
 
+    // ── IReadOnlyCollection source (Count-presized targets) ──────────────────
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_ReadOnlyCollectionToImmutableArray_PreservesElements(int count)
+    {
+        var src = new MatrixReadOnlyCollectionSource { Items = MakeList(count) };
+        var dst = new MatrixToImmutableArrayDst();
+        TestMappers.MapReadOnlyCollectionToImmutableArray(src, dst);
+        Assert.Equal(count, dst.Items.Length);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_ReadOnlyCollectionToHashSet_PreservesElements(int count)
+    {
+        var src = new MatrixReadOnlyCollectionSource { Items = MakeList(count) };
+        var dst = new MatrixToHashSetDst();
+        TestMappers.MapReadOnlyCollectionToHashSet(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+    }
+
     // ── List source ──────────────────────────────────────────────────────────
 
     [Theory]

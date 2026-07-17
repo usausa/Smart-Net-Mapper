@@ -251,6 +251,28 @@ public class InPlaceCollectionMappingTests
         Assert.Equal("New", destination.Items[0].Name);
     }
 
+    // 容量不足の既存リストは EnsureCapacity で一括拡張されたうえで再充填される。
+    // An undersized existing list is grown once via EnsureCapacity and then refilled.
+    [Fact]
+    public void MapInPlace_UndersizedExistingList_RefillsCorrectly()
+    {
+        var source = new InPlaceSource
+        {
+            Items = [.. Enumerable.Range(1, 10).Select(static i => new InPlaceSourceChild { Id = i, Name = $"N{i}" })]
+        };
+        var destination = new InPlaceDestination { Items = [] };
+        var originalReference = destination.Items;
+
+        TestMappers.MapInPlace(source, destination);
+
+        Assert.Same(originalReference, destination.Items);
+        Assert.Equal(10, destination.Items!.Count);
+        for (var i = 0; i < 10; i++)
+        {
+            Assert.Equal(i + 1, destination.Items[i].Id);
+        }
+    }
+
     [Fact]
     public void MapInPlace_NullSource_LeavesDestinationUnchanged()
     {

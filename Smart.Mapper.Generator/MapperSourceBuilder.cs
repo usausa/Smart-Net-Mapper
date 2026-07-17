@@ -438,9 +438,20 @@ internal static class MapperSourceBuilder
             builder.BeginScope();
         }
 
+        // Known-count sources size the fallback instance so the first fill avoids growth
+        // reallocations (List.Clear/HashSet.Clear preserve capacity on subsequent calls).
+        var srcBang = mapCollection.IsSourceNullable ? "!" : string.Empty;
+        var capacityArg = mapCollection.SourceShape switch
+        {
+            CollectionSourceShape.Array or CollectionSourceShape.ImmutableArray or
+            CollectionSourceShape.ReadOnlyMemory or CollectionSourceShape.Memory => $"{sourceAccess}{srcBang}.Length",
+            CollectionSourceShape.List or CollectionSourceShape.IndexedList => $"{sourceAccess}{srcBang}.Count",
+            _ => string.Empty
+        };
+
         builder.Indent().Append("if (").Append(destAccess).Append(" is null)").NewLine();
         builder.BeginScope();
-        builder.Indent().Append(destAccess).Append(" = new ").Append(fallbackType).Append("();").NewLine();
+        builder.Indent().Append(destAccess).Append(" = new ").Append(fallbackType).Append("(").Append(capacityArg).Append(");").NewLine();
         builder.EndScope();
 
         // Direct member access on a concrete List<T>/HashSet<T> lets the JIT devirtualize and inline

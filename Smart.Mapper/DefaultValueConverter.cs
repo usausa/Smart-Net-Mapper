@@ -541,6 +541,74 @@ public static class DefaultValueConverter
             if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
         }
 
+        // sbyte -> other numeric types
+        if (typeof(TSource) == typeof(sbyte))
+        {
+            var value = (sbyte)(object)source!;
+            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)(int)value;
+            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
+            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
+            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
+            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
+            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
+            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
+            if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        // ushort -> other numeric types
+        if (typeof(TSource) == typeof(ushort))
+        {
+            var value = (ushort)(object)source!;
+            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)(int)value;
+            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
+            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
+            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
+            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
+            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
+            if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        // uint -> other numeric types
+        if (typeof(TSource) == typeof(uint))
+        {
+            var value = (uint)(object)source!;
+            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)(int)value;
+            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
+            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
+            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
+            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
+            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
+            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
+            if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        // ulong -> other numeric types
+        if (typeof(TSource) == typeof(ulong))
+        {
+            var value = (ulong)(object)source!;
+            if (typeof(TDestination) == typeof(int)) return (TDestination)(object)(int)value;
+            if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
+            if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
+            if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
+            if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
+            if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
+            if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
+            if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
+        }
+
         // float -> other numeric types
         if (typeof(TSource) == typeof(float))
         {
@@ -549,6 +617,10 @@ public static class DefaultValueConverter
             if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
             if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
             if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
             if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
             if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
             if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
@@ -562,6 +634,10 @@ public static class DefaultValueConverter
             if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
             if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
             if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
             if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
             if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)(decimal)value;
             if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
@@ -575,6 +651,10 @@ public static class DefaultValueConverter
             if (typeof(TDestination) == typeof(long)) return (TDestination)(object)(long)value;
             if (typeof(TDestination) == typeof(short)) return (TDestination)(object)(short)value;
             if (typeof(TDestination) == typeof(byte)) return (TDestination)(object)(byte)value;
+            if (typeof(TDestination) == typeof(sbyte)) return (TDestination)(object)(sbyte)value;
+            if (typeof(TDestination) == typeof(uint)) return (TDestination)(object)(uint)value;
+            if (typeof(TDestination) == typeof(ulong)) return (TDestination)(object)(ulong)value;
+            if (typeof(TDestination) == typeof(ushort)) return (TDestination)(object)(ushort)value;
             if (typeof(TDestination) == typeof(float)) return (TDestination)(object)(float)value;
             if (typeof(TDestination) == typeof(double)) return (TDestination)(object)(double)value;
             if (typeof(TDestination) == typeof(string)) return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);

@@ -112,6 +112,15 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ConvertToBoolean(string source, IFormatProvider culture, string? format) => Boolean.Parse(source);
 
+    // Converts string to Char. Char implements IParsable/ISpanParsable explicitly, so there is no public
+    // Char.Parse(ReadOnlySpan, IFormatProvider) to call; this specialized converter avoids that path.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static char ConvertToChar(string source) => Char.Parse(source);
+
+    // Converts string to Char. Culture and format are ignored; Char parsing is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static char ConvertToChar(string source, IFormatProvider culture, string? format) => Char.Parse(source);
+
     // Converts string to DateTime.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture);
@@ -232,6 +241,14 @@ public static class DefaultValueConverter
     public static string ConvertToString(decimal source, IFormatProvider culture, string? format) =>
         format is null ? source.ToString(culture) : source.ToString(format, culture);
 
+    // Converts Char to string.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(char source) => source.ToString();
+
+    // Converts Char to string. Culture and format are ignored; Char formatting is culture-invariant.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string ConvertToString(char source, IFormatProvider culture, string? format) => source.ToString();
+
     // Converts Boolean to string.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(bool source) => source.ToString();
@@ -349,17 +366,33 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(int source) => (Half)source;
 
+    // Converts int to Half. Culture and format are ignored; this is a numeric cast.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(int source, IFormatProvider culture, string? format) => (Half)source;
+
     // Converts long to Half.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(long source) => (Half)source;
+
+    // Converts long to Half. Culture and format are ignored; this is a numeric cast.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(long source, IFormatProvider culture, string? format) => (Half)source;
 
     // Converts double to Half.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(double source) => (Half)source;
 
+    // Converts double to Half. Culture and format are ignored; this is a numeric cast.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(double source, IFormatProvider culture, string? format) => (Half)source;
+
     // Converts float to Half.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Half ConvertToHalf(float source) => (Half)source;
+
+    // Converts float to Half. Culture and format are ignored; this is a numeric cast.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Half ConvertToHalf(float source, IFormatProvider culture, string? format) => (Half)source;
 
     // Converts string to Int128.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

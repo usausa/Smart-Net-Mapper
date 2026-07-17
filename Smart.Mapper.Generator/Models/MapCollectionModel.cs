@@ -9,7 +9,8 @@ internal enum CollectionSourceShape
     List,
     ImmutableArray,
     ReadOnlyMemory,
-    Memory
+    Memory,
+    IndexedList
 }
 
 // Classifies the target collection type for optimized emit strategy selection.

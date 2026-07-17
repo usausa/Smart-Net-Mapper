@@ -71,6 +71,65 @@ public class CollectionMatrixMappingTests
         Assert.Equal(count, dst.Items.Count);
     }
 
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_ArrayToFrozenSet_PreservesElements(int count)
+    {
+        var src = new MatrixArraySource { Items = MakeArray(count) };
+        var dst = new MatrixToFrozenSetDst();
+        TestMappers.MapArrayToFrozenSet(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+        var values = dst.Items.Select(static x => x.Value).OrderBy(static x => x).ToArray();
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, values[i]);
+        }
+    }
+
+    // ── Memory source ────────────────────────────────────────────────────────
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_MemoryToList_PreservesElements(int count)
+    {
+        var src = new MatrixMemorySource { Items = MakeArray(count).AsMemory() };
+        var dst = new MatrixToListDst();
+        TestMappers.MapMemoryToList(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    // ── IReadOnlyList source (IndexedList shape) ─────────────────────────────
+
+    [Theory]
+    [MemberData(nameof(ElementCounts))]
+    public void Map_ReadOnlyListToList_PreservesElements(int count)
+    {
+        var src = new MatrixReadOnlyListSource { Items = MakeList(count) };
+        var dst = new MatrixToListDst();
+        TestMappers.MapReadOnlyListToList(src, dst);
+        Assert.NotNull(dst.Items);
+        Assert.Equal(count, dst.Items.Count);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(i + 1, dst.Items[i].Value);
+        }
+    }
+
+    [Fact]
+    public void Map_NullReadOnlyListToList_SetsDefault()
+    {
+        var src = new MatrixReadOnlyListSource { Items = null };
+        var dst = new MatrixToListDst { Items = [] };
+        TestMappers.MapReadOnlyListToList(src, dst);
+        Assert.Null(dst.Items);
+    }
+
     // ── List source ──────────────────────────────────────────────────────────
 
     [Theory]

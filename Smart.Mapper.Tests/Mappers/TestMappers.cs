@@ -382,6 +382,19 @@ internal static partial class TestMappers
     [Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]
     public static partial void MapCaseInsensitive(CaseInsensitiveSource source, CaseInsensitiveDestination destination);
 
+    // Regression G: NullBehavior.Skip with no conversion (nullable value -> non-nullable), void mapper
+    [Mapper]
+    [MapProperty(nameof(SkipNoConvDestination.Value), NullBehavior = NullBehavior.Skip)]
+    public static partial void MapSkipNoConv(SkipNoConvSource source, SkipNoConvDestination destination);
+
+    // Regression H: return-mapper to init-only destination without a parameterized constructor
+    [Mapper]
+    public static partial InitReturnDestination MapInitReturn(InitReturnSource source);
+
+    // Regression I: return-mapper to required-member destination
+    [Mapper]
+    public static partial RequiredReturnDestination MapRequiredReturn(RequiredReturnSource source);
+
     // D2: required member – all required properties are mapped
     [Mapper]
     public static partial void MapRequiredMembers(RequiredMemberSource source, RequiredMemberDestination destination);
@@ -414,6 +427,16 @@ internal static partial class TestMappers
     // A2: partial match (Pending → default)
     [Mapper]
     public static partial void MapPartialEnum(PartialEnumSource source, PartialEnumDestination destination);
+
+    // A2: エイリアス値を持つ enum → string (switch 生成、値で重複排除)
+    // A2: enum with alias values → string (switch emit, deduped by value)
+    [Mapper]
+    public static partial void MapAliasEnumToString(AliasEnumToStringSource source, AliasEnumToStringDestination destination);
+
+    // A2: Flags enum → string (合成値は ToString フォールバック)
+    // A2: flags enum → string (combined values fall back to ToString)
+    [Mapper]
+    public static partial void MapFlagsEnumToString(FlagsEnumToStringSource source, FlagsEnumToStringDestination destination);
 
     // B4: Method-level Culture + NumberFormat (double -> string)
     [Mapper(Culture = "fr-FR", NumberFormat = "N2")]
@@ -510,6 +533,29 @@ internal static partial class TestMappers
     [Mapper]
     [MapCollection(nameof(MatrixToHashSetDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
     public static partial void MapArrayToHashSet(MatrixArraySource source, MatrixToHashSetDst destination);
+
+    // Array → FrozenSet (Func) — regression for bare .ToFrozenSet()
+    [Mapper]
+    [MapCollection(nameof(MatrixToFrozenSetDst.Items), nameof(MatrixArraySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapArrayToFrozenSet(MatrixArraySource source, MatrixToFrozenSetDst destination);
+
+    // Memory → List (Func) — regression for Memory<T> source being rejected as non-collection
+    [Mapper]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixMemorySource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapMemoryToList(MatrixMemorySource source, MatrixToListDst destination);
+
+    // IReadOnlyList → List (Func) — indexer-based IndexedList shape
+    [Mapper]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixReadOnlyListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial void MapReadOnlyListToList(MatrixReadOnlyListSource source, MatrixToListDst destination);
+
+    // Regression: char -> string and string -> char (scalar conversion matrix sweep)
+    [Mapper]
+    public static partial ScalarCharDestination MapScalarChar(ScalarCharSource source);
+
+    // Regression: numeric -> Half with Culture (scalar conversion matrix sweep)
+    [Mapper(Culture = "en-US")]
+    public static partial ScalarHalfDestination MapScalarHalf(ScalarHalfSource source);
 
     // List → List (Func)
     [Mapper]

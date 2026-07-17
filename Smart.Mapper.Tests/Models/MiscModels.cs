@@ -105,6 +105,42 @@ public class RequiredMemberDestination
     public string? Description { get; set; }
 }
 
+// Regression G/H/I: NullBehavior.Skip without conversion, and return-mappers to init-only / required destinations.
+public class SkipNoConvSource
+{
+    public int? Value { get; set; }
+}
+
+public class SkipNoConvDestination
+{
+    public int Value { get; set; }
+}
+
+public class InitReturnSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = default!;
+}
+
+public class InitReturnDestination
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+}
+
+public class RequiredReturnSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = default!;
+}
+
+public class RequiredReturnDestination
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public string? Extra { get; set; }
+}
+
 // E3: MapperProfile models
 public class ProfileSource
 {

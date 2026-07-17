@@ -56,6 +56,7 @@ internal sealed record PropertyMappingModel
     public bool ConditionAcceptsCustomParameters { get; set; }
     public bool HasExplicitMapping { get; set; }
     public bool IsTargetInitOnly { get; set; }
+    public bool IsTargetRequired { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
     public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;

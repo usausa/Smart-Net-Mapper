@@ -16,6 +16,27 @@ public class TypeConversionMappingTests
         Assert.Equal("999", destination.IntValue);
         Assert.Equal(123, destination.StringValue);
     }
+
+    [Fact]
+    public void Map_CharAndStringInterconvert()
+    {
+        var source = new ScalarCharSource { CharValue = 'A', StringValue = "B" };
+
+        var destination = TestMappers.MapScalarChar(source);
+
+        Assert.Equal("A", destination.CharValue);
+        Assert.Equal('B', destination.StringValue);
+    }
+
+    [Fact]
+    public void Map_NumericToHalf_WithCulture()
+    {
+        var source = new ScalarHalfSource { IntValue = 3 };
+
+        var destination = TestMappers.MapScalarHalf(source);
+
+        Assert.Equal((Half)3, destination.IntValue);
+    }
 }
 
 public class ExtendedTypeConversionTests

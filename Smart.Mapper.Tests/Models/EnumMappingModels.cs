@@ -1,4 +1,7 @@
 #pragma warning disable CA1008
+// CA1069: AliasStatus intentionally declares alias members (same constant value) to exercise
+// the value-deduped switch emit.
+#pragma warning disable CA1069
 namespace Smart.Mapper.Models;
 
 // A2: Enum マッピング用モデル
@@ -113,4 +116,43 @@ public class PartialEnumSource
 public class PartialEnumDestination
 {
     public PartialDestStatus Status { get; set; }
+}
+
+// -- エイリアス / Flags enum (switch 生成 emit の回帰用) --
+// -- alias / flags enums (regression for the switch-based emit) --
+
+public enum AliasStatus
+{
+    None = 0,
+    Active = 1,
+    Enabled = 1,
+    Inactive = 2
+}
+
+[Flags]
+public enum FlagOptions
+{
+    None = 0,
+    A = 1,
+    B = 2
+}
+
+public class AliasEnumToStringSource
+{
+    public AliasStatus Status { get; set; }
+}
+
+public class AliasEnumToStringDestination
+{
+    public string Status { get; set; } = default!;
+}
+
+public class FlagsEnumToStringSource
+{
+    public FlagOptions Options { get; set; }
+}
+
+public class FlagsEnumToStringDestination
+{
+    public string Options { get; set; } = default!;
 }

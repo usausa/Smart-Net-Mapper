@@ -2,9 +2,37 @@ namespace Smart.Mapper.Generator.Helpers;
 
 using Microsoft.CodeAnalysis;
 
+using SourceGenerateHelper;
+
 // Mapper-domain Roslyn extension methods that are not candidates for SourceGenerateHelper promotion.
 internal static class MapperSymbolExtensions
 {
+    // -------------------------------------------------------
+    // Collections
+    // -------------------------------------------------------
+
+    // Returns the element type of a collection-like type, additionally recognizing
+    // Memory<T> / ReadOnlyMemory<T>, which the shared GetCollectionElementType helper does not.
+    public static ITypeSymbol? GetCollectionOrMemoryElementType(this ITypeSymbol type)
+    {
+        var elementType = type.GetCollectionElementType();
+        if (elementType is not null)
+        {
+            return elementType;
+        }
+
+        if (type is INamedTypeSymbol { IsGenericType: true } named)
+        {
+            var constructedFrom = named.ConstructedFrom.ToDisplayString();
+            if (constructedFrom is "System.Memory<T>" or "System.ReadOnlyMemory<T>")
+            {
+                return named.TypeArguments[0];
+            }
+        }
+
+        return null;
+    }
+
     // -------------------------------------------------------
     // Type resolution
     // -------------------------------------------------------

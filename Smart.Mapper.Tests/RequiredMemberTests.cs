@@ -32,4 +32,27 @@ public class RequiredMemberTests
         // Description is not in source, so it stays null
         Assert.Null(destination.Description);
     }
+
+    // Regression H: return-mapper to an init-only destination without a parameterized constructor.
+    // Previously generated `new Dst(); dst.Id = ...;` which failed with CS8852.
+    [Fact]
+    public void Map_InitOnlyReturnMapper_SetsInitMembers()
+    {
+        var dest = TestMappers.MapInitReturn(new InitReturnSource { Id = 7, Name = "seven" });
+
+        Assert.Equal(7, dest.Id);
+        Assert.Equal("seven", dest.Name);
+    }
+
+    // Regression I: return-mapper to a required-member destination.
+    // Previously generated `new Dst();` which failed with CS9035 (required members unset).
+    [Fact]
+    public void Map_RequiredReturnMapper_SetsRequiredMembers()
+    {
+        var dest = TestMappers.MapRequiredReturn(new RequiredReturnSource { Id = 9, Name = "nine" });
+
+        Assert.Equal(9, dest.Id);
+        Assert.Equal("nine", dest.Name);
+        Assert.Null(dest.Extra);
+    }
 }

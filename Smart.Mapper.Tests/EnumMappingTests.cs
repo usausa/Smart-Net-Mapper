@@ -179,4 +179,41 @@ public class EnumMappingTests
 
         Assert.Equal(DestStatus.Inactive, destination.Status);
     }
+
+    // エイリアス値 (Active = Enabled = 1) は最初に宣言された名前にマップされる。
+    // Alias values (Active = Enabled = 1) map to the first declared name.
+    [Fact]
+    public void MapAliasEnumToString_AliasValue_UsesFirstDeclaredName()
+    {
+        var source = new AliasEnumToStringSource { Status = AliasStatus.Enabled };
+        var destination = new AliasEnumToStringDestination();
+
+        TestMappers.MapAliasEnumToString(source, destination);
+
+        Assert.Equal("Active", destination.Status);
+    }
+
+    // Flags の合成値は switch アームに一致せず ToString へフォールバックする。
+    // Combined flags values match no switch arm and fall back to ToString.
+    [Fact]
+    public void MapFlagsEnumToString_CombinedValue_FallsBackToToString()
+    {
+        var source = new FlagsEnumToStringSource { Options = FlagOptions.A | FlagOptions.B };
+        var destination = new FlagsEnumToStringDestination();
+
+        TestMappers.MapFlagsEnumToString(source, destination);
+
+        Assert.Equal("A, B", destination.Options);
+    }
+
+    [Fact]
+    public void MapFlagsEnumToString_SingleValue_MapsViaSwitch()
+    {
+        var source = new FlagsEnumToStringSource { Options = FlagOptions.B };
+        var destination = new FlagsEnumToStringDestination();
+
+        TestMappers.MapFlagsEnumToString(source, destination);
+
+        Assert.Equal("B", destination.Options);
+    }
 }

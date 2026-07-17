@@ -92,6 +92,7 @@ internal static class TypeNameHelper
             "double" or "global::System.Double" => "Double",
             "decimal" or "global::System.Decimal" => "Decimal",
             "bool" or "global::System.Boolean" => "Boolean",
+            "char" or "global::System.Char" => "Char",
             "string" or "global::System.String" => "String",
             "global::System.DateTime" => "DateTime",
             "global::System.Guid" => "Guid",

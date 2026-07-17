@@ -25,6 +25,9 @@ public static class Program
                 case "collection-wrapper": BenchmarkRunner.Run<CollectionWrapperMapBenchmark>(); return;
                 case "conversion": BenchmarkRunner.Run<ConversionMapBenchmark>(); return;
                 case "voidnested": BenchmarkRunner.Run<VoidNestedMapBenchmark>(); return;
+                case "perf-enum": BenchmarkRunner.Run<EnumMapBenchmark>(); return;
+                case "perf-inplace": BenchmarkRunner.Run<InPlaceMapBenchmark>(); return;
+                case "perf-rolist": BenchmarkRunner.Run<ReadOnlyListMapBenchmark>(); return;
             }
         }
 

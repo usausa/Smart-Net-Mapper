@@ -128,4 +128,18 @@ public class NullHandlingTests
         Assert.Equal("hello", destination.Name);
         Assert.Equal(5, destination.Count);
     }
+
+    // Regression G: NullBehavior.Skip on a nullable value type -> non-nullable target with no conversion.
+    // Previously generated `dst.Value = src.Value;` (int? -> int) which did not compile and ignored Skip.
+    [Fact]
+    public void MapSkipNoConversion_CopiesValueButSkipsNull()
+    {
+        var whenValue = new SkipNoConvDestination { Value = 99 };
+        TestMappers.MapSkipNoConv(new SkipNoConvSource { Value = 5 }, whenValue);
+        Assert.Equal(5, whenValue.Value);
+
+        var whenNull = new SkipNoConvDestination { Value = 99 };
+        TestMappers.MapSkipNoConv(new SkipNoConvSource { Value = null }, whenNull);
+        Assert.Equal(99, whenNull.Value); // skipped: destination preserved
+    }
 }

@@ -100,9 +100,16 @@ internal static class MapperSourceBuilder
 
     internal static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
-        builder.Indent()
-               .Append("[global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]")
-               .NewLine();
+        // Mappers that emit collection loops have large bodies; forcing them into callers bloats
+        // code for no gain, so AggressiveInlining is applied only to loop-free mappers.
+        // (The helper path is a single converter call and stays inlinable.)
+        var emitsLoop = method.MapCollectionMappings.Any(mc => mc.InPlace || !mc.UseHelperPath);
+        if (!emitsLoop)
+        {
+            builder.Indent()
+                   .Append("[global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]")
+                   .NewLine();
+        }
 
         builder.Indent().Append(method.MethodAccessibility.ToText()).Append(" static partial ");
 
@@ -151,7 +158,7 @@ internal static class MapperSourceBuilder
             if (method.UseConstructorMapping)
             {
                 var initOnlyMappings = method.PropertyMappings
-                    .Where(pm => pm.IsTargetInitOnly)
+                    .Where(pm => pm.IsTargetInitOnly || pm.IsTargetRequired)
                     .ToList();
 
                 var ctorParameters = method.ConstructorParameters;
@@ -224,7 +231,7 @@ internal static class MapperSourceBuilder
         }
 
         var effectiveMappings = method.UseConstructorMapping
-            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly).ToList()
+            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly && !m.IsTargetRequired).ToList()
             : method.PropertyMappings.ToList();
         var sortedMappings = effectiveMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
         var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck()).ToList();
@@ -436,10 +443,16 @@ internal static class MapperSourceBuilder
         builder.Indent().Append(destAccess).Append(" = new ").Append(fallbackType).Append("();").NewLine();
         builder.EndScope();
 
+        // Direct member access on a concrete List<T>/HashSet<T> lets the JIT devirtualize and inline
+        // Clear/Add; the ICollection<T> cast is required only for interface-typed destinations.
+        var isConcreteTarget =
+            mapCollection.TargetType.StartsWith("global::System.Collections.Generic.List<", StringComparison.Ordinal) ||
+            mapCollection.TargetType.StartsWith("global::System.Collections.Generic.HashSet<", StringComparison.Ordinal);
         var iCollectionType = $"global::System.Collections.Generic.ICollection<{mapCollection.TargetElementType}>";
-        builder.Indent().Append("((").Append(iCollectionType).Append(")").Append(destAccess).Append(").Clear();").NewLine();
+        var collectionAccess = isConcreteTarget ? destAccess : $"(({iCollectionType}){destAccess})";
+        builder.Indent().Append(collectionAccess).Append(".Clear();").NewLine();
 
-        EmitInPlaceSourceIteration(builder, mapCollection, destVarName, sourceAccess, iCollectionType);
+        EmitInPlaceSourceIteration(builder, mapCollection, sourceAccess, collectionAccess);
 
         if (mapCollection.IsSourceNullable)
         {
@@ -450,11 +463,9 @@ internal static class MapperSourceBuilder
     internal static void EmitInPlaceSourceIteration(
         SourceBuilder builder,
         MapCollectionModel mapCollection,
-        string destVarName,
         string sourceAccess,
-        string iCollectionType)
+        string collectionAccess)
     {
-        var destAccess = $"{destVarName}.{mapCollection.TargetName}";
         var srcNullBang = mapCollection.IsSourceNullable ? "!" : string.Empty;
 
         switch (mapCollection.SourceShape)
@@ -462,7 +473,7 @@ internal static class MapperSourceBuilder
             case CollectionSourceShape.Array:
             {
                 builder.Indent().Append("var __srcArr = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
-                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
                 builder.Indent().Append("for (var __i = 0; __i < __srcArr.Length; __i++)").NewLine();
                 builder.BeginScope();
                 EmitInPlaceAddItem(builder, mapCollection, "__srcArr[__i]", "__dstColl");
@@ -472,7 +483,7 @@ internal static class MapperSourceBuilder
             case CollectionSourceShape.List:
             {
                 builder.Indent().Append("var __srcSpan = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(").Append(sourceAccess).Append(srcNullBang).Append(");").NewLine();
-                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
                 builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
                 builder.BeginScope();
                 EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
@@ -482,7 +493,7 @@ internal static class MapperSourceBuilder
             case CollectionSourceShape.ImmutableArray:
             {
                 builder.Indent().Append("var __srcSpan = ").Append(sourceAccess).Append(".AsSpan();").NewLine();
-                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
                 builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
                 builder.BeginScope();
                 EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
@@ -493,16 +504,27 @@ internal static class MapperSourceBuilder
             case CollectionSourceShape.Memory:
             {
                 builder.Indent().Append("var __srcSpan = ").Append(sourceAccess).Append(srcNullBang).Append(".Span;").NewLine();
-                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
                 builder.Indent().Append("for (var __i = 0; __i < __srcSpan.Length; __i++)").NewLine();
                 builder.BeginScope();
                 EmitInPlaceAddItem(builder, mapCollection, "__srcSpan[__i]", "__dstColl");
                 builder.EndScope();
                 break;
             }
+            case CollectionSourceShape.IndexedList:
+            {
+                builder.Indent().Append("var __srcList = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
+                builder.Indent().Append("var __count = __srcList.Count;").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
+                builder.Indent().Append("for (var __i = 0; __i < __count; __i++)").NewLine();
+                builder.BeginScope();
+                EmitInPlaceAddItem(builder, mapCollection, "__srcList[__i]", "__dstColl");
+                builder.EndScope();
+                break;
+            }
             default:
             {
-                builder.Indent().Append("var __dstColl = ((").Append(iCollectionType).Append(")").Append(destAccess).Append(");").NewLine();
+                builder.Indent().Append("var __dstColl = ").Append(collectionAccess).Append(";").NewLine();
                 builder.Indent().Append("foreach (var __item in ").Append(sourceAccess).Append(srcNullBang).Append(")").NewLine();
                 builder.BeginScope();
                 EmitInPlaceAddItem(builder, mapCollection, "__item", "__dstColl");
@@ -593,7 +615,7 @@ internal static class MapperSourceBuilder
         switch (mapCollection.SourceShape)
         {
             case CollectionSourceShape.Array:
-                builder.Indent().Append("var __src = ").Append(sourceAccess).Append(srcNullBang).Append(".AsSpan();").NewLine();
+                builder.Indent().Append("var __src = global::System.MemoryExtensions.AsSpan(").Append(sourceAccess).Append(srcNullBang).Append(");").NewLine();
                 EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
                 break;
             case CollectionSourceShape.List:
@@ -608,6 +630,13 @@ internal static class MapperSourceBuilder
             case CollectionSourceShape.Memory:
                 builder.Indent().Append("var __src = ").Append(sourceAccess).Append(srcNullBang).Append(".Span;").NewLine();
                 EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__src", "__src.Length");
+                break;
+            case CollectionSourceShape.IndexedList:
+                // Count is hoisted into a local so the loop condition does not re-invoke the
+                // interface Count getter on every iteration.
+                builder.Indent().Append("var __srcList = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
+                builder.Indent().Append("var __count = __srcList.Count;").NewLine();
+                EmitInlineTargetBuild(builder, mapCollection, dstElem, destProp, "__srcList", "__count");
                 break;
             case CollectionSourceShape.ReadOnlyCollection:
                 builder.Indent().Append("var __srcColl = ").Append(sourceAccess).Append(srcNullBang).Append(";").NewLine();
@@ -636,40 +665,40 @@ internal static class MapperSourceBuilder
         {
             case CollectionTargetShape.Array:
                 builder.Indent().Append("var __arr = new ").Append(dstElem).Append("[").Append(lengthExpr).Append("];").NewLine();
-                EmitSpanLoop(builder, mapCollection, srcSpanExpr, "__arr");
+                EmitIndexedLoop(builder, mapCollection, srcSpanExpr, lengthExpr, "__arr");
                 builder.Indent().Append(destProp).Append(" = __arr;").NewLine();
                 break;
             case CollectionTargetShape.List:
                 builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
                 builder.Indent().Append("global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(__list, ").Append(lengthExpr).Append(");").NewLine();
                 builder.Indent().Append("var __dst = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(__list);").NewLine();
-                EmitSpanLoop(builder, mapCollection, srcSpanExpr, "__dst");
+                EmitIndexedLoop(builder, mapCollection, srcSpanExpr, lengthExpr, "__dst");
                 builder.Indent().Append(destProp).Append(" = __list;").NewLine();
                 break;
             case CollectionTargetShape.ImmutableArray:
                 builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableArray.CreateBuilder<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
-                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                EmitIndexedLoopAdd(builder, mapCollection, srcSpanExpr, lengthExpr, "__ib");
                 builder.Indent().Append(destProp).Append(" = __ib.MoveToImmutable();").NewLine();
                 break;
             case CollectionTargetShape.ImmutableList:
                 builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableList.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
-                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                EmitIndexedLoopAdd(builder, mapCollection, srcSpanExpr, lengthExpr, "__ib");
                 builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
                 break;
             case CollectionTargetShape.HashSet:
                 builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
-                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__set");
+                EmitIndexedLoopAdd(builder, mapCollection, srcSpanExpr, lengthExpr, "__set");
                 builder.Indent().Append(destProp).Append(" = __set;").NewLine();
                 break;
             case CollectionTargetShape.ImmutableHashSet:
                 builder.Indent().Append("var __ib = global::System.Collections.Immutable.ImmutableHashSet.CreateBuilder<").Append(dstElem).Append(">();").NewLine();
-                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__ib");
+                EmitIndexedLoopAdd(builder, mapCollection, srcSpanExpr, lengthExpr, "__ib");
                 builder.Indent().Append(destProp).Append(" = __ib.ToImmutable();").NewLine();
                 break;
             case CollectionTargetShape.FrozenSet:
                 builder.Indent().Append("var __set = new global::System.Collections.Generic.HashSet<").Append(dstElem).Append(">(").Append(lengthExpr).Append(");").NewLine();
-                EmitSpanLoopAdd(builder, mapCollection, srcSpanExpr, "__set");
-                builder.Indent().Append(destProp).Append(" = __set.ToFrozenSet();").NewLine();
+                EmitIndexedLoopAdd(builder, mapCollection, srcSpanExpr, lengthExpr, "__set");
+                builder.Indent().Append(destProp).Append(" = global::System.Collections.Frozen.FrozenSet.ToFrozenSet(__set);").NewLine();
                 break;
         }
     }
@@ -762,7 +791,7 @@ internal static class MapperSourceBuilder
                 builder.BeginScope();
                 EmitForEachAddSet(builder, mapCollection, "__set");
                 builder.EndScope();
-                builder.Indent().Append(destProp).Append(" = __set.ToFrozenSet();").NewLine();
+                builder.Indent().Append(destProp).Append(" = global::System.Collections.Frozen.FrozenSet.ToFrozenSet(__set);").NewLine();
                 break;
             default:
                 builder.Indent().Append("var __list = new global::System.Collections.Generic.List<").Append(dstElem).Append(">();").NewLine();
@@ -775,43 +804,45 @@ internal static class MapperSourceBuilder
         }
     }
 
-    internal static void EmitSpanLoop(
+    internal static void EmitIndexedLoop(
         SourceBuilder builder,
         MapCollectionModel mapCollection,
-        string srcSpanExpr,
+        string srcExpr,
+        string countExpr,
         string dstSpanExpr)
     {
-        builder.Indent().Append("for (var __i = 0; __i < ").Append(srcSpanExpr).Append(".Length; __i++)").NewLine();
+        builder.Indent().Append("for (var __i = 0; __i < ").Append(countExpr).Append("; __i++)").NewLine();
         builder.BeginScope();
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(dstSpanExpr).Append("[__i] = ").Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i]);").NewLine();
+            builder.Indent().Append(dstSpanExpr).Append("[__i] = ").Append(mapCollection.Mapper!).Append("(").Append(srcExpr).Append("[__i]);").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcExpr).Append("[__i], __dest);").NewLine();
             builder.Indent().Append(dstSpanExpr).Append("[__i] = __dest;").NewLine();
         }
         builder.EndScope();
     }
 
-    internal static void EmitSpanLoopAdd(
+    internal static void EmitIndexedLoopAdd(
         SourceBuilder builder,
         MapCollectionModel mapCollection,
-        string srcSpanExpr,
+        string srcExpr,
+        string countExpr,
         string containerExpr)
     {
-        builder.Indent().Append("for (var __i = 0; __i < ").Append(srcSpanExpr).Append(".Length; __i++)").NewLine();
+        builder.Indent().Append("for (var __i = 0; __i < ").Append(countExpr).Append("; __i++)").NewLine();
         builder.BeginScope();
         if (mapCollection.MapperReturnsValue)
         {
-            builder.Indent().Append(containerExpr).Append(".Add(").Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i]));").NewLine();
+            builder.Indent().Append(containerExpr).Append(".Add(").Append(mapCollection.Mapper!).Append("(").Append(srcExpr).Append("[__i]));").NewLine();
         }
         else
         {
             builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcSpanExpr).Append("[__i], __dest);").NewLine();
+            builder.Indent().Append(mapCollection.Mapper!).Append("(").Append(srcExpr).Append("[__i], __dest);").NewLine();
             builder.Indent().Append(containerExpr).Append(".Add(__dest);").NewLine();
         }
         builder.EndScope();
@@ -885,7 +916,12 @@ internal static class MapperSourceBuilder
             builder.BeginScope();
         }
 
-        if (mapping.IsSourceNullable && mapping.RequiresConversion && !mapping.HasConverter())
+        if (mapping.IsSourceNullable && !mapping.HasConverter() && !mapping.RequiresConversion &&
+            mapping.NullBehavior == NullBehaviorType.Skip)
+        {
+            BuildSkipAssignment(builder, mapping, sourceParamName, destVarName, nullChecked);
+        }
+        else if (mapping.IsSourceNullable && mapping.RequiresConversion && !mapping.HasConverter())
         {
             BuildNullableSourceConversion(builder, mapping, sourceParamName, destVarName, method, nullChecked);
         }
@@ -898,6 +934,24 @@ internal static class MapperSourceBuilder
         {
             builder.EndScope();
         }
+    }
+
+    // Emits a guarded assignment for NullBehavior.Skip when no type conversion is required:
+    // a nullable source is copied only when it has a value, otherwise the destination is left as-is.
+    internal static void BuildSkipAssignment(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, bool nullChecked)
+    {
+        var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+        var isNullableValueType = mapping.SourceType.Contains("?") || mapping.SourceType.Contains("Nullable<");
+
+        builder.Indent().Append("if (").Append(sourceAccessor).Append(" is not null)").NewLine();
+        builder.BeginScope();
+        builder.Indent().Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ").Append(sourceAccessor);
+        if (!mapping.IsTargetNullable)
+        {
+            builder.Append(isNullableValueType ? ".GetValueOrDefault()" : "!");
+        }
+        builder.Append(";").NewLine();
+        builder.EndScope();
     }
 
     internal static void BuildStandardAssignment(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked)
@@ -1038,7 +1092,9 @@ internal static class MapperSourceBuilder
     {
         if (mapping.IsEnumMapping())
         {
-            var valueAccessor = sourceAccessor + ".Value";
+            // Guarded by the surrounding `is not null` check, so GetValueOrDefault skips the
+            // redundant HasValue re-check (and throw path) that .Value would perform.
+            var valueAccessor = sourceAccessor + ".GetValueOrDefault()";
             var enumMapping = new PropertyMappingModel
             {
                 EnumMappingKind = mapping.EnumMappingKind,
@@ -1065,7 +1121,7 @@ internal static class MapperSourceBuilder
                        .Append(mapping.SpecializedConverterMethod!)
                        .Append("(")
                        .Append(sourceAccessor)
-                       .Append(".Value, ")
+                       .Append(".GetValueOrDefault(), ")
                        .Append(GetCultureFieldName(mapping.EffectiveCulture!))
                        .Append(formatArg)
                        .Append(")");
@@ -1077,7 +1133,7 @@ internal static class MapperSourceBuilder
                        .Append(mapping.SpecializedConverterMethod!)
                        .Append("(")
                        .Append(sourceAccessor)
-                       .Append(".Value)");
+                       .Append(".GetValueOrDefault())");
             }
         }
         else if (mapping.HasParsableMethod())
@@ -1088,30 +1144,30 @@ internal static class MapperSourceBuilder
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
-                builder.Append(targetTypeForParse).Append(".Parse(")
-                       .Append(sourceAccessor).Append(".Value.AsSpan(), ")
+                builder.Append(targetTypeForParse).Append(".Parse(global::System.MemoryExtensions.AsSpan(")
+                       .Append(sourceAccessor).Append(".GetValueOrDefault()), ")
                        .Append(cultureArg).Append(")");
             }
             else
             {
                 builder.Append(targetTypeForParse).Append(".Parse(")
-                       .Append(sourceAccessor).Append(".Value, ")
+                       .Append(sourceAccessor).Append(".GetValueOrDefault(), ")
                        .Append(cultureArg).Append(")");
             }
         }
         else if (mapping.RequiresExplicitNumericCast)
         {
             var targetTypeForCast = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".Value");
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".GetValueOrDefault()");
         }
         else if (mapping.UserDefinedConversion == UserDefinedConversionKind.Implicit)
         {
-            builder.Append(sourceAccessor).Append(".Value");
+            builder.Append(sourceAccessor).Append(".GetValueOrDefault()");
         }
         else if (mapping.HasUserDefinedExplicit())
         {
             var targetTypeForCast = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".Value");
+            builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceAccessor).Append(".GetValueOrDefault()");
         }
         else if (mapping.UseFormattable)
         {
@@ -1120,7 +1176,7 @@ internal static class MapperSourceBuilder
                 ? GetCultureFieldName(mapping.EffectiveCulture!)
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
-            builder.Append(sourceAccessor).Append(".Value.ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
+            builder.Append(sourceAccessor).Append(".GetValueOrDefault().ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
         }
         else
         {
@@ -1135,7 +1191,7 @@ internal static class MapperSourceBuilder
                    .Append(targetTypeForConversion)
                    .Append(">(")
                    .Append(sourceAccessor)
-                   .Append(".Value)");
+                   .Append(".GetValueOrDefault())");
         }
     }
 
@@ -1232,8 +1288,8 @@ internal static class MapperSourceBuilder
                 : "global::System.Globalization.CultureInfo.InvariantCulture";
             if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
-                builder.Append(targetTypeForParse).Append(".Parse(")
-                       .Append(sourceExpr).Append(".AsSpan(), ")
+                builder.Append(targetTypeForParse).Append(".Parse(global::System.MemoryExtensions.AsSpan(")
+                       .Append(sourceExpr).Append("), ")
                        .Append(cultureArg).Append(")");
             }
             else
@@ -1321,11 +1377,50 @@ internal static class MapperSourceBuilder
                 break;
 
             case EnumMappingKind.EnumToString:
-                builder.Append(sourceExpr).Append(".ToString()");
+                // Member names are known at compile time; a switch returns cached string constants
+                // without the boxing/name-lookup cost of Enum.ToString. Undefined values (e.g. flags
+                // combinations) fall back to ToString to preserve semantics.
+                if (mapping.SourceEnumMembers.Count > 0)
+                {
+                    var enumSourceType = !String.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
+                    builder.Append(sourceExpr).Append(" switch").NewLine();
+                    builder.Indent().Append("{").NewLine();
+                    foreach (var memberName in mapping.SourceEnumMembers)
+                    {
+                        builder.Indent().Append("    ")
+                               .Append(enumSourceType).Append(".").Append(memberName)
+                               .Append(" => \"").Append(memberName).Append("\",").NewLine();
+                    }
+                    builder.Indent().Append("    _ => ").Append(sourceExpr).Append(".ToString()").NewLine();
+                    builder.Indent().Append("}");
+                }
+                else
+                {
+                    builder.Append(sourceExpr).Append(".ToString()");
+                }
                 break;
 
             case EnumMappingKind.StringToEnum:
-                builder.Append("global::System.Enum.Parse<").Append(targetType).Append(">(").Append(sourceExpr).Append(")");
+                // A string switch (length/char dispatch) avoids the Enum.Parse machinery for exact
+                // member names; anything else (numeric strings, whitespace, flags lists) falls back
+                // to Enum.Parse to preserve semantics.
+                if (mapping.DestEnumMembers.Count > 0)
+                {
+                    builder.Append(sourceExpr).Append(" switch").NewLine();
+                    builder.Indent().Append("{").NewLine();
+                    foreach (var memberName in mapping.DestEnumMembers)
+                    {
+                        builder.Indent().Append("    \"").Append(memberName).Append("\" => ")
+                               .Append(targetType).Append(".").Append(memberName)
+                               .Append(",").NewLine();
+                    }
+                    builder.Indent().Append("    _ => global::System.Enum.Parse<").Append(targetType).Append(">(").Append(sourceExpr).Append(")").NewLine();
+                    builder.Indent().Append("}");
+                }
+                else
+                {
+                    builder.Append("global::System.Enum.Parse<").Append(targetType).Append(">(").Append(sourceExpr).Append(")");
+                }
                 break;
         }
     }

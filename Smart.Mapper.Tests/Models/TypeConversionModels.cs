@@ -6,6 +6,29 @@ public class TypeConversionSource
     public string StringValue { get; set; } = default!;
 }
 
+// Regression: char <-> string, and numeric -> Half with Culture (scalar conversion matrix sweep).
+public class ScalarCharSource
+{
+    public char CharValue { get; set; }
+    public string StringValue { get; set; } = default!;
+}
+
+public class ScalarCharDestination
+{
+    public string CharValue { get; set; } = default!;
+    public char StringValue { get; set; }
+}
+
+public class ScalarHalfSource
+{
+    public int IntValue { get; set; }
+}
+
+public class ScalarHalfDestination
+{
+    public Half IntValue { get; set; }
+}
+
 public class TypeConversionDestination
 {
     public string IntValue { get; set; } = default!;

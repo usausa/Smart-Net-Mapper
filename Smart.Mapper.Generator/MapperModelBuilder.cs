@@ -1388,7 +1388,7 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
-            var sourceElementType = sourceProp.Type.GetCollectionElementType();
+            var sourceElementType = sourceProp.Type.GetCollectionOrMemoryElementType();
             if (sourceElementType is null)
             {
                 return new DiagnosticInfo(
@@ -1611,6 +1611,11 @@ internal static class MapperModelBuilder
                     return CollectionSourceShape.ReadOnlyMemory;
                 case "System.Memory<T>":
                     return CollectionSourceShape.Memory;
+                case "System.Collections.Generic.IList<T>":
+                case "System.Collections.Generic.IReadOnlyList<T>":
+                    // Indexer iteration: one interface call per element and no enumerator allocation,
+                    // versus two calls per element plus an enumerator through IEnumerable<T>.
+                    return CollectionSourceShape.IndexedList;
             }
 
             foreach (var iface in named.AllInterfaces)
@@ -1909,6 +1914,14 @@ internal static class MapperModelBuilder
 
         if (bestCtor is null)
         {
+            // No parameterized constructor. A return-mapper must still initialize init-only or required
+            // members via an object initializer, since `new Dst()` cannot assign them afterwards.
+            if (model.ReturnsDestination &&
+                destinationType.GetAllPublicProperties().Any(p => (p.SetMethod?.IsInitOnly == true) || p.IsRequired))
+            {
+                model.UseConstructorMapping = true;
+            }
+
             return null;
         }
 
@@ -2117,6 +2130,7 @@ internal static class MapperModelBuilder
                     Order = order,
                     DefinitionOrder = definitionOrder,
                     IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
+                    IsTargetRequired = destProp.IsRequired,
                     EffectiveCulture = propEffectiveCulture,
                     EffectiveDateTimeFormat = propEffectiveDateTimeFormat,
                     EffectiveNumberFormat = propEffectiveNumberFormat
@@ -2172,8 +2186,7 @@ internal static class MapperModelBuilder
             mapping.EnumMappingKind = EnumMappingKind.EnumToEnum;
             mapping.RequiresConversion = true;
 
-            mapping.SourceEnumMembers = new EquatableArray<string>(
-                [.. sourceUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)]);
+            mapping.SourceEnumMembers = new EquatableArray<string>([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)]);
             mapping.DestEnumMembers = new EquatableArray<string>(
                 [.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)]);
         }
@@ -2191,12 +2204,40 @@ internal static class MapperModelBuilder
         {
             mapping.EnumMappingKind = EnumMappingKind.EnumToString;
             mapping.RequiresConversion = true;
+
+            mapping.SourceEnumMembers = new EquatableArray<string>([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)]);
         }
         else if (sourceIsString && targetIsEnum)
         {
             mapping.EnumMappingKind = EnumMappingKind.StringToEnum;
             mapping.RequiresConversion = true;
+
+            mapping.DestEnumMembers = new EquatableArray<string>(
+                [.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)]);
         }
+    }
+
+    // Returns enum member names in declaration order, keeping only the first name per constant value.
+    // Switch arms are emitted per member, and alias members (same value) would otherwise produce
+    // duplicate case constants (CS8510).
+    internal static List<string> GetEnumMemberNamesDedupedByValue(ITypeSymbol enumType)
+    {
+        var names = new List<string>();
+        var seenValues = new HashSet<object>();
+        foreach (var field in enumType.GetMembers().OfType<IFieldSymbol>())
+        {
+            if (!field.IsConst || (field.ConstantValue is null))
+            {
+                continue;
+            }
+
+            if (seenValues.Add(field.ConstantValue))
+            {
+                names.Add(field.Name);
+            }
+        }
+
+        return names;
     }
 
     internal static void DetectParsableMethodFromSymbol(PropertyMappingModel mapping, ITypeSymbol targetType)

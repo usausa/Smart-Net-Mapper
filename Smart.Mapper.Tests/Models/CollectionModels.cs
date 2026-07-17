@@ -3,6 +3,7 @@
 #pragma warning disable CA2227
 namespace Smart.Mapper.Models;
 
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 
 public class CollectionSourceChild
@@ -253,6 +254,25 @@ public class MatrixToImmutableArrayDst
 public class MatrixToHashSetDst
 {
     public HashSet<MatrixDstItem>? Items { get; set; }
+}
+
+// Regression: Memory<T> source (previously rejected as non-collection) and FrozenSet target
+// (previously emitted a bare .ToFrozenSet() that did not compile).
+public class MatrixMemorySource
+{
+    public Memory<MatrixSrcItem> Items { get; set; }
+}
+
+// IReadOnlyList ソースはインデクサベースの反復 (IndexedList 形状) で処理される。
+// IReadOnlyList sources are iterated via the indexer (IndexedList shape).
+public class MatrixReadOnlyListSource
+{
+    public IReadOnlyList<MatrixSrcItem>? Items { get; set; }
+}
+
+public class MatrixToFrozenSetDst
+{
+    public FrozenSet<MatrixDstItem>? Items { get; set; }
 }
 
 public class MatrixVoidDst

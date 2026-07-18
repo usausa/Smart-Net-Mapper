@@ -39,33 +39,40 @@ internal enum NullBehaviorType
 // Represents a property mapping configuration.
 internal sealed record PropertyMappingModel
 {
+    // Identity
     public string SourcePath { get; set; } = default!;
     public string TargetPath { get; set; } = default!;
     public string SourceType { get; set; } = default!;
     public string TargetType { get; set; } = default!;
     public string SourceUnderlyingType { get; set; } = default!;
     public string TargetUnderlyingType { get; set; } = default!;
-    public bool RequiresConversion { get; set; }
-    public EquatableArray<NestedPathSegment> TargetPathSegments { get; set; } = new([]);
     public EquatableArray<NestedPathSegment> SourcePathSegments { get; set; } = new([]);
+    public EquatableArray<NestedPathSegment> TargetPathSegments { get; set; } = new([]);
+
+    // Base analysis flags / ordering
+    public bool RequiresConversion { get; set; }
     public bool IsSourceNullable { get; set; }
     public bool IsTargetNullable { get; set; }
+    public bool IsTargetInitOnly { get; set; }
+    public bool IsTargetRequired { get; set; }
+    public bool HasExplicitMapping { get; set; }
+    public int Order { get; set; }
+    public int DefinitionOrder { get; set; }
+
+    // Optional per-mapping settings
     public string? ConverterMethod { get; set; }
     public bool ConverterAcceptsCustomParameters { get; set; }
     public string? ConditionMethod { get; set; }
     public bool ConditionAcceptsCustomParameters { get; set; }
-    public bool HasExplicitMapping { get; set; }
-    public bool IsTargetInitOnly { get; set; }
-    public bool IsTargetRequired { get; set; }
-    public int Order { get; set; }
-    public int DefinitionOrder { get; set; }
     public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;
     public string? NullSubstitute { get; set; }
-    public string? SpecializedConverterMethod { get; set; }
-    public ParseMethodKind ParseMethod { get; set; } = ParseMethodKind.None;
     public string? EffectiveCulture { get; set; }
     public string? EffectiveDateTimeFormat { get; set; }
     public string? EffectiveNumberFormat { get; set; }
+
+    // Conversion-detection results
+    public string? SpecializedConverterMethod { get; set; }
+    public ParseMethodKind ParseMethod { get; set; } = ParseMethodKind.None;
     public UserDefinedConversionKind UserDefinedConversion { get; set; } = UserDefinedConversionKind.None;
     public bool RequiresExplicitNumericCast { get; set; }
     public bool UseFormattable { get; set; }

@@ -46,5 +46,5 @@ internal sealed record MapperMethodModel
     public bool AfterMapAcceptsCustomParameters { get; set; }
     public bool UseConstructorMapping { get; set; }
     public EquatableArray<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = new([]);
-    public EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)> Warnings { get; set; } = new([]);
+    public EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> Warnings { get; set; } = new([]);
 }

@@ -7,9 +7,9 @@ internal sealed record MapUsingModel
     public string TargetType { get; set; } = default!;
     public string Method { get; set; } = default!;
     public string MethodReturnType { get; set; } = default!;
-    public bool AcceptsCustomParameters { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
+    public bool AcceptsCustomParameters { get; set; }
     public bool IsTargetInitOnly { get; set; }
     public bool IsTargetRequired { get; set; }
 }

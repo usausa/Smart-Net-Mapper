@@ -4,8 +4,8 @@
 internal sealed record ConstantMappingModel
 {
     public string TargetName { get; set; } = default!;
-    public string? Value { get; set; }
     public string TargetType { get; set; } = default!;
+    public string? Value { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
     public bool IsTargetInitOnly { get; set; }

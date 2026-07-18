@@ -8,8 +8,8 @@ internal sealed record MapNestedModel
     public string TargetName { get; set; } = default!;
     public string TargetType { get; set; } = default!;
     public string Mapper { get; set; } = default!;
-    public bool MapperReturnsValue { get; set; }
-    public bool IsSourceNullable { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
+    public bool MapperReturnsValue { get; set; }
+    public bool IsSourceNullable { get; set; }
 }

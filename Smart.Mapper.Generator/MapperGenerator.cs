@@ -67,9 +67,9 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // Report strict-mode warnings
         foreach (var model in methods.SelectValue())
         {
-            foreach (var (descriptor, arg) in model.Warnings)
+            foreach (var (descriptor, arg0, arg1) in model.Warnings)
             {
-                context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg));
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg0, arg1));
             }
         }
     }

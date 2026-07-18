@@ -35,18 +35,18 @@ internal sealed record MapCollectionModel
     public string TargetType { get; set; } = default!;
     public string TargetElementType { get; set; } = default!;
     public string? Mapper { get; set; }
-    public bool MapperReturnsValue { get; set; }
-    public bool TargetIsArray { get; set; }
-    public string TargetCollectionMethod { get; set; } = "ToList";
-    public bool IsSourceNullable { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
+    public CollectionSourceShape SourceShape { get; set; } = CollectionSourceShape.Enumerable;
+    public CollectionTargetShape TargetShape { get; set; } = CollectionTargetShape.List;
+    public string TargetCollectionMethod { get; set; } = "ToList";
+    public bool MapperReturnsValue { get; set; }
+    public bool IsSourceNullable { get; set; }
+    public bool TargetIsArray { get; set; }
+    public bool UseHelperPath { get; set; }
     public string? Converter { get; set; }
     public bool InPlace { get; set; }
     public string? InPlaceFallbackTypeName { get; set; }
-    public CollectionSourceShape SourceShape { get; set; } = CollectionSourceShape.Enumerable;
-    public CollectionTargetShape TargetShape { get; set; } = CollectionTargetShape.List;
-    public bool UseHelperPath { get; set; }
 }
 
 internal static class MapCollectionModelExtensions

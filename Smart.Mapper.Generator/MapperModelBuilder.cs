@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Generator;
+﻿namespace Smart.Mapper.Generator;
 
 using System;
 using System.Collections.Generic;
@@ -117,7 +117,8 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(new DiagnosticInfo(
                 Diagnostics.DuplicateCustomParameterType,
                 syntax.GetLocation(),
-                $"{duplicateType.Key}, {symbol.Name}"));
+                symbol.Name,
+                duplicateType.Key));
         }
 
         model.CustomParameters = new EquatableArray<CustomParameterModel>([.. customParameters]);
@@ -203,7 +204,7 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(mapNestedError);
         }
 
-        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
+        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>();
         if (model.Strict)
         {
             warnings.AddRange(CollectStrictModeWarnings(model, destinationType));
@@ -211,7 +212,7 @@ internal static class MapperModelBuilder
 
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
 
-        model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg)>([.. warnings]);
+        model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>([.. warnings]);
 
         var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
         if (constructorError is not null)
@@ -268,7 +269,9 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.InvalidPropertyConditionSignature,
                     syntax.GetLocation(),
-                    $"{mapping.ConditionMethod}, {mapping.SourcePath} -> {mapping.TargetPath}");
+                    mapperMethod.Name,
+                    mapping.ConditionMethod!,
+                    mapping.TargetPath);
             }
 
             mapping.ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams;
@@ -359,7 +362,10 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.InvalidConverterReturnType,
                     syntax.GetLocation(),
-                    $"{mapping.ConverterMethod}, expected={mapping.TargetType}, actual={actualReturnType}, {mapping.SourcePath} -> {mapping.TargetPath}");
+                    mapperMethod.Name,
+                    mapping.ConverterMethod!,
+                    mapping.TargetType,
+                    actualReturnType);
             }
 
             if (matchResult == ConverterMatchResult.NoMatch)
@@ -367,7 +373,9 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.InvalidConverterSignature,
                     syntax.GetLocation(),
-                    $"{mapping.ConverterMethod}, {mapping.SourcePath} -> {mapping.TargetPath}");
+                    mapperMethod.Name,
+                    mapping.ConverterMethod!,
+                    mapping.TargetPath);
             }
 
             mapping.ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams;
@@ -476,7 +484,7 @@ internal static class MapperModelBuilder
             var matchResult = FindMatchingCallbackMethod(beforeMapMethods, model);
             if (matchResult == CallbackMatchResult.NoMatch)
             {
-                return new DiagnosticInfo(Diagnostics.InvalidBeforeMapSignature, syntax.GetLocation(), $"{model.BeforeMapMethod!}, {mapperMethod.Name}");
+                return new DiagnosticInfo(Diagnostics.InvalidBeforeMapSignature, syntax.GetLocation(), mapperMethod.Name, model.BeforeMapMethod!);
             }
             model.BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams;
         }
@@ -491,7 +499,7 @@ internal static class MapperModelBuilder
             var matchResult = FindMatchingCallbackMethod(afterMapMethods, model);
             if (matchResult == CallbackMatchResult.NoMatch)
             {
-                return new DiagnosticInfo(Diagnostics.InvalidAfterMapSignature, syntax.GetLocation(), $"{model.AfterMapMethod!}, {mapperMethod.Name}");
+                return new DiagnosticInfo(Diagnostics.InvalidAfterMapSignature, syntax.GetLocation(), mapperMethod.Name, model.AfterMapMethod!);
             }
             model.AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams;
         }
@@ -1142,7 +1150,9 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.DuplicateTargetMapping,
                     syntax.GetLocation(),
-                    $"{kvp.Key}: {String.Join(", ", kvp.Value)}");
+                    model.MethodName,
+                    kvp.Key,
+                    String.Join(", ", kvp.Value));
             }
         }
 
@@ -1180,17 +1190,22 @@ internal static class MapperModelBuilder
             if (matchResult.Result == MapUsingMatchResult.NoMatch)
             {
                 return new DiagnosticInfo(
-                    Diagnostics.InvalidMapFromSignature,
+                    Diagnostics.InvalidMapUsingSignature,
                     syntax.GetLocation(),
-                    $"{mapUsing.Method}, {mapUsing.TargetName}");
+                    mapperMethod.Name,
+                    mapUsing.Method,
+                    mapUsing.TargetName);
             }
 
             if (matchResult.Result == MapUsingMatchResult.ReturnTypeMismatch)
             {
                 return new DiagnosticInfo(
-                    Diagnostics.MapFromReturnTypeMismatch,
+                    Diagnostics.MapUsingReturnTypeMismatch,
                     syntax.GetLocation(),
-                    $"{mapUsing.TargetType}, {matchResult.ActualReturnType ?? "unknown"}, {mapUsing.Method} -> {mapUsing.TargetName}");
+                    mapperMethod.Name,
+                    mapUsing.Method,
+                    mapUsing.TargetType,
+                    matchResult.ActualReturnType ?? "unknown");
             }
 
             mapUsing.AcceptsCustomParameters = matchResult.Result == MapUsingMatchResult.MatchWithCustomParams;
@@ -1316,6 +1331,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapFromTargetProperty,
                     syntax.GetLocation(),
+                    model.MethodName,
                     mapFrom.TargetName);
             }
 
@@ -1340,9 +1356,12 @@ internal static class MapperModelBuilder
                     if (returnType != targetTypeName && !sourceMethod.ReturnType.IsAssignableTo(destProp.Type))
                     {
                         return new DiagnosticInfo(
-                            Diagnostics.MapFromMethodReturnTypeMismatch,
+                            Diagnostics.MapFromReturnTypeMismatch,
                             syntax.GetLocation(),
-                            $"{targetTypeName}, {returnType}, {mapFrom.Member} -> {mapFrom.TargetName}");
+                            model.MethodName,
+                            mapFrom.Member,
+                            targetTypeName,
+                            returnType);
                     }
 
                     mapFrom.IsMethodCall = true;
@@ -1360,7 +1379,7 @@ internal static class MapperModelBuilder
                 if (returnType != targetTypeName && !resolvedType.IsAssignableTo(destProp.Type))
                 {
                     return new DiagnosticInfo(
-                        Diagnostics.MapFromMethodReturnTypeMismatch,
+                        Diagnostics.MapFromReturnTypeMismatch,
                         syntax.GetLocation(),
                         $"{targetTypeName}, {returnType}, {mapFrom.Member} -> {mapFrom.TargetName}");
                 }
@@ -1371,9 +1390,11 @@ internal static class MapperModelBuilder
             }
 
             return new DiagnosticInfo(
-                Diagnostics.InvalidMapFromMethodSignature,
+                Diagnostics.InvalidMapFromMember,
                 syntax.GetLocation(),
-                $"{mapFrom.Member}, {mapFrom.TargetName}");
+                model.MethodName,
+                mapFrom.Member,
+                mapFrom.TargetName);
         }
 
         return null;
@@ -1398,6 +1419,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionSourceProperty,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapCollection.SourceName);
             }
 
@@ -1407,6 +1429,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionTargetProperty,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapCollection.TargetName);
             }
 
@@ -1417,6 +1440,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnsupportedInitOnlyCollectionTarget,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapCollection.TargetName);
             }
 
@@ -1426,6 +1450,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.MapCollectionSourceNotCollection,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapCollection.SourceName);
             }
 
@@ -1435,6 +1460,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.MapCollectionTargetNotCollection,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapCollection.TargetName);
             }
 
@@ -1460,7 +1486,9 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.InvalidMapCollectionMapperMethod,
                     syntax.GetLocation(),
-                    $"{mapCollection.Mapper}, {mapCollection.SourceName} -> {mapCollection.TargetName}");
+                    mapperMethod.Name,
+                    mapCollection.Mapper!,
+                    mapCollection.TargetName);
             }
 
             mapCollection.MapperReturnsValue = mapperMethodResult.Value;
@@ -1488,6 +1516,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionSourceProperty,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapNested.SourceName);
             }
 
@@ -1497,6 +1526,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionTargetProperty,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapNested.TargetName);
             }
 
@@ -1506,6 +1536,7 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.UnsupportedInitOnlyCollectionTarget,
                     syntax.GetLocation(),
+                    mapperMethod.Name,
                     mapNested.TargetName);
             }
 
@@ -1535,7 +1566,9 @@ internal static class MapperModelBuilder
                 return new DiagnosticInfo(
                     Diagnostics.InvalidMapNestedMapperMethod,
                     syntax.GetLocation(),
-                    $"{mapNested.Mapper}, {mapNested.SourceName} -> {mapNested.TargetName}");
+                    mapperMethod.Name,
+                    mapNested.Mapper,
+                    mapNested.TargetName);
             }
 
             mapNested.MapperReturnsValue = mapperMethodResult.Value;
@@ -1706,9 +1739,9 @@ internal static class MapperModelBuilder
         return CollectionTargetShape.List;
     }
 
-    internal static List<(DiagnosticDescriptor Descriptor, string Arg)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
+    internal static List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
     {
-        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg)>();
+        var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>();
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var pm in model.PropertyMappings)
@@ -1760,7 +1793,7 @@ internal static class MapperModelBuilder
 
             if (!mappedTargets.Contains(destProp.Name))
             {
-                warnings.Add((Diagnostics.UnmappedDestinationProperty, destProp.Name));
+                warnings.Add((Diagnostics.UnmappedDestinationProperty, model.MethodName, destProp.Name));
             }
         }
 
@@ -1771,7 +1804,7 @@ internal static class MapperModelBuilder
     {
         if (String.IsNullOrEmpty(model.Culture) && (!String.IsNullOrEmpty(model.DateTimeFormat) || !String.IsNullOrEmpty(model.NumberFormat)))
         {
-            return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), model.MethodName);
+            return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), model.MethodName, "(method)");
         }
 
         foreach (var mapping in model.PropertyMappings)
@@ -1779,7 +1812,7 @@ internal static class MapperModelBuilder
             if (String.IsNullOrEmpty(mapping.EffectiveCulture) &&
                 (!String.IsNullOrEmpty(mapping.EffectiveDateTimeFormat) || !String.IsNullOrEmpty(mapping.EffectiveNumberFormat)))
             {
-                return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), $"{model.MethodName}.{mapping.TargetPath}");
+                return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, syntax.GetLocation(), model.MethodName, mapping.TargetPath);
             }
         }
 
@@ -1861,13 +1894,13 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), mapping.TargetPath);
+            return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), model.MethodName, mapping.TargetPath);
         }
 
         return null;
     }
 
-    internal static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg)> CollectMapExpressionReflectionWarnings(MapperMethodModel model)
+    internal static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectMapExpressionReflectionWarnings(MapperMethodModel model)
     {
         foreach (var expression in model.ExpressionMappings)
         {
@@ -1875,7 +1908,7 @@ internal static class MapperModelBuilder
             {
                 if (expression.Expression.IndexOf(pattern, StringComparison.Ordinal) >= 0)
                 {
-                    yield return (Diagnostics.MapExpressionReflectionNotAllowed, expression.TargetName);
+                    yield return (Diagnostics.MapExpressionReflectionNotAllowed, model.MethodName, expression.TargetName);
                     break;
                 }
             }
@@ -1883,7 +1916,7 @@ internal static class MapperModelBuilder
     }
 
     // A void mapper assigns properties on a caller-supplied instance, so init-only targets can never
-    // be set. Reports SMP0018 when any mapping (automap or explicit feature) targets an init-only member.
+    // be set. Reports SMP0302 when any mapping (automap or explicit feature) targets an init-only member.
     internal static DiagnosticInfo? ValidateVoidMapperInitOnlyTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         if (model.ReturnsDestination)
@@ -1899,7 +1932,7 @@ internal static class MapperModelBuilder
             model.MapFromMappings.Any(static mf => mf.IsTargetInitOnly);
 
         return hasInitOnlyTarget
-            ? new DiagnosticInfo(Diagnostics.InitOnlyDestinationRequiresReturnMapper, syntax.GetLocation(), model.DestinationTypeName)
+            ? new DiagnosticInfo(Diagnostics.InitOnlyDestinationRequiresReturnMapper, syntax.GetLocation(), model.MethodName, model.DestinationTypeName)
             : null;
     }
 
@@ -1956,7 +1989,7 @@ internal static class MapperModelBuilder
 
             if (!mappedTargets.Contains(destProp.Name))
             {
-                return new DiagnosticInfo(Diagnostics.UnmappedRequiredProperty, syntax.GetLocation(), destProp.Name);
+                return new DiagnosticInfo(Diagnostics.UnmappedRequiredProperty, syntax.GetLocation(), model.MethodName, destProp.Name);
             }
         }
 
@@ -2012,6 +2045,7 @@ internal static class MapperModelBuilder
             return new DiagnosticInfo(
                 Diagnostics.InitOnlyDestinationRequiresReturnMapper,
                 syntax.GetLocation(),
+                model.MethodName,
                 namedDest.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
 
@@ -2044,6 +2078,7 @@ internal static class MapperModelBuilder
                     return new DiagnosticInfo(
                         Diagnostics.UnresolvedConstructorParameter,
                         syntax.GetLocation(),
+                        model.MethodName,
                         param.Name,
                         destinationType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
                 }

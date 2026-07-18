@@ -1,4 +1,4 @@
-namespace Smart.Mapper.Generator.Tests;
+﻿namespace Smart.Mapper.Generator.Tests;
 
 using System.Linq;
 
@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis;
 // init-only / required メンバーを対象とする明示マッピング機能の受理・拒否を検証する。
 // Verifies acceptance and rejection of explicit feature mappings targeting init-only / required members.
 //   - constant/expression/using/from × init/required × return mapper: accepted, assigned via object initializer
-//   - any init-only target × void mapper: rejected with SMP0018 (cannot assign init-only on an existing instance)
-//   - MapCollection/MapNested × init-only (or required × return): rejected with SMP0028 (loop cannot run in an initializer)
+//   - any init-only target × void mapper: rejected with SMP0302 (cannot assign init-only on an existing instance)
+//   - MapCollection/MapNested × init-only (or required × return): rejected with SMP0212 (loop cannot run in an initializer)
 public class ExplicitFeatureTargetTests
 {
     private static IReadOnlyList<Diagnostic> AllDiagnostics(string source) =>
@@ -68,7 +68,7 @@ public class ExplicitFeatureTargetTests
 
     [Fact]
     public void Constant_On_InitOnly_VoidMapper_IsRejected() =>
-        AssertRejected(FeatureSource("public string Extra { get; init; } = \"\";", returns: false, "[global::Smart.Mapper.MapConstant(\"Extra\", \"x\")]"), "SMP0018");
+        AssertRejected(FeatureSource("public string Extra { get; init; } = \"\";", returns: false, "[global::Smart.Mapper.MapConstant(\"Extra\", \"x\")]"), "SMP0302");
 
     [Fact]
     public void AutoMap_On_InitOnly_VoidMapper_IsRejected() =>
@@ -77,7 +77,7 @@ public class ExplicitFeatureTargetTests
             "    [global::Smart.Mapper.Mapper]\n    public static partial void Map(Src src, Dst dst);\n}\n" +
             "public class Src { public string Extra { get; set; } = \"\"; }\n" +
             "public class Dst { public string Extra { get; init; } = \"\"; }\n",
-            "SMP0018");
+            "SMP0302");
 
     private static string CollectionSource(string itemsDecl, bool returns)
     {
@@ -100,11 +100,11 @@ public class ExplicitFeatureTargetTests
 
     [Fact]
     public void Collection_On_InitOnly_IsRejected() =>
-        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true), "SMP0028");
+        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true), "SMP0212");
 
     [Fact]
     public void Collection_On_Required_ReturnMapper_IsRejected() =>
-        AssertRejected(CollectionSource("public required List<E2> Items { get; set; }", returns: true), "SMP0028");
+        AssertRejected(CollectionSource("public required List<E2> Items { get; set; }", returns: true), "SMP0212");
 
     [Fact]
     public void Collection_On_Required_VoidMapper_Compiles() =>

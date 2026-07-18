@@ -13,7 +13,7 @@ It automatically generates property-copying code at compile time for `static par
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
 - **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 27 compiler-time diagnostics (SMP0001–SMP0027)
+- **Rich diagnostics** - 28 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
 
 ## Installation
 
@@ -82,7 +82,7 @@ public static partial Destination Map(Source source)
 |-----------|-------------|
 | `[Mapper]` | Marks a method as a mapping method |
 | `[Mapper(AutoMap = false)]` | Disables automatic same-name property mapping |
-| `[Mapper(Strict = true)]` | Emits SMP0016 warning for unmapped destination properties |
+| `[Mapper(Strict = true)]` | Emits SMP0501 warning for unmapped destination properties |
 | `[Mapper(NameComparison = ...)]` | Property name comparison mode for auto-mapping (default: `Ordinal`) |
 | `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
 | `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
@@ -347,7 +347,7 @@ public static partial DestModel Map(SrcModel src)
 }
 ```
 
-> `void` mapper is not allowed for `init-only` / `record` destination types (SMP0018).
+> `void` mapper is not allowed for `init-only` / `record` destination types (SMP0302).
 
 ---
 
@@ -450,7 +450,7 @@ Priority: `[MapProperty]` > `[Mapper]` > `[MapperProfile]` > `CultureInfo.Invari
 
 The resolved `CultureInfo` is cached as a `static readonly` field in the generated class to avoid repeated `GetCultureInfo(...)` calls.
 
-> Specifying `DateTimeFormat` / `NumberFormat` without `Culture` is a compile-time error (SMP0019).
+> Specifying `DateTimeFormat` / `NumberFormat` without `Culture` is a compile-time error (SMP0401).
 
 ---
 
@@ -463,7 +463,7 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 - `Activator.CreateInstance` is never used; object creation is expanded inline by the generator
 - `[DynamicallyAccessedMembers]` annotations are applied to `ValueConverterAttribute.ConverterType` and `CollectionConverterAttribute.ConverterType`
 
-> **`[MapExpression]` warning** - If an expression contains reflection APIs (`Activator`, `Type.GetType`, `MethodInfo`, etc.), SMP0021 is emitted. Prefer `[MapFrom]` or `[MapUsing]` in AOT contexts.
+> **`[MapExpression]` warning** - If an expression contains reflection APIs (`Activator`, `Type.GetType`, `MethodInfo`, etc.), SMP0403 is emitted. Prefer `[MapFrom]` or `[MapUsing]` in AOT contexts.
 
 ---
 
@@ -474,30 +474,31 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 | SMP0001 | Mapper method must be `static partial` | Error |
 | SMP0002 | Invalid parameter count on mapper method | Error |
 | SMP0003 | Duplicate custom parameter type | Error |
-| SMP0004 | `BeforeMap` method signature mismatch | Error |
-| SMP0005 | `AfterMap` method signature mismatch | Error |
-| SMP0006 | Converter method signature mismatch | Error |
-| SMP0007 | Converter return type does not match destination property type | Error |
-| SMP0008 | Property-condition method signature mismatch | Error |
-| SMP0009 | `MapUsing` static method signature mismatch | Error |
-| SMP0010 | `MapUsing` static method return type does not match destination property type | Error |
-| SMP0011 | `MapFrom` member is not a valid parameterless instance method or property path on the source type | Error |
-| SMP0012 | `MapFrom` instance method return type does not match destination property type | Error |
-| SMP0013 | `MapCollection` mapper method not found or signature mismatch | Error |
-| SMP0014 | `MapNested` mapper method not found or signature mismatch | Error |
-| SMP0015 | Duplicate mapping to the same destination property | Error |
-| SMP0016 | Strict mode: unmapped destination property | Warning |
-| SMP0017 | `required` member is not mapped | Error |
-| SMP0018 | `void` mapper cannot be used with `init-only` / `record` destination | Error |
-| SMP0019 | `DateTimeFormat` / `NumberFormat` specified without `Culture` | Error |
-| SMP0020 | AOT incompatible: generic fallback `Convert<TSource,TDest>` is reachable | Error |
-| SMP0021 | AOT warning: possible reflection pattern in `MapExpression` | Warning |
-| SMP0022 | Constructor parameter has no matching source property | Error |
-| SMP0023 | `[MapCollection]` / `[MapNested]` source property not found on source type | Error |
-| SMP0024 | `[MapCollection]` / `[MapNested]` target property not found on destination type | Error |
-| SMP0025 | `[MapFrom]` target property not found on destination type | Error |
-| SMP0026 | `[MapCollection]` source property is not a collection type | Error |
-| SMP0027 | `[MapCollection]` target property is not a collection type | Error |
+| SMP0101 | Duplicate mapping to the same destination property | Error |
+| SMP0102 | `BeforeMap` method signature mismatch | Error |
+| SMP0103 | `AfterMap` method signature mismatch | Error |
+| SMP0104 | Converter method signature mismatch | Error |
+| SMP0105 | Converter return type does not match destination property type | Error |
+| SMP0106 | Property-condition method signature mismatch | Error |
+| SMP0201 | `MapUsing` static method signature mismatch | Error |
+| SMP0202 | `MapUsing` static method return type does not match destination property type | Error |
+| SMP0203 | `[MapFrom]` target property not found on destination type | Error |
+| SMP0204 | `MapFrom` member is not a valid parameterless instance method or property path on the source type | Error |
+| SMP0205 | `MapFrom` member type does not match destination property type | Error |
+| SMP0206 | `[MapCollection]` / `[MapNested]` source property not found on source type | Error |
+| SMP0207 | `[MapCollection]` / `[MapNested]` target property not found on destination type | Error |
+| SMP0208 | `[MapCollection]` source property is not a collection type | Error |
+| SMP0209 | `[MapCollection]` target property is not a collection type | Error |
+| SMP0210 | `MapCollection` element mapper method not found or signature mismatch | Error |
+| SMP0211 | `MapNested` mapper method not found or signature mismatch | Error |
+| SMP0212 | `[MapCollection]` / `[MapNested]` cannot target an init-only / required member | Error |
+| SMP0301 | Constructor parameter has no matching source property | Error |
+| SMP0302 | `void` mapper cannot be used with `init-only` / `record` destination | Error |
+| SMP0303 | `required` member is not mapped | Error |
+| SMP0401 | `DateTimeFormat` / `NumberFormat` specified without `Culture` | Error |
+| SMP0402 | AOT incompatible: generic fallback `Convert<TSource,TDest>` is reachable | Error |
+| SMP0403 | AOT warning: possible reflection pattern in `MapExpression` | Warning |
+| SMP0501 | Strict mode: unmapped destination property | Warning |
 
 ---
 
@@ -646,7 +647,7 @@ No `IL2xxx` / `IL3xxx` diagnostics should appear.
 
 Future improvements under consideration:
 
-- **`[MapCollection]` / `[MapNested]` targeting init-only or required members** — currently rejected with `SMP0028` because the generated loop runs after construction. Could be supported by hoisting the built collection / nested instance into a local before construction and assigning it in the object initializer.
+- **`[MapCollection]` / `[MapNested]` targeting init-only or required members** — currently rejected with `SMP0212` because the generated loop runs after construction. Could be supported by hoisting the built collection / nested instance into a local before construction and assigning it in the object initializer.
 - **Direct `FrozenSet` construction** — the generated code builds a `HashSet<T>` and calls `ToFrozenSet` (two-phase by BCL design). If the BCL ever ships a frozen-collection builder API, the intermediate set can be eliminated.
 - **Generic fallback `Convert<TSource, TDestination>` for `Half` / `Int128` / `UInt128` / `BigInteger` sources** — these currently reach the boxing fallback when routed through the generic converter opt-in; specialized branches can be added if demand arises (the default specialized-method path already covers them).
 - **Generator incrementality tuning** — output is regenerated per run via `Collect()` and destination/source property walks are repeated per feature pass. Measured cost is negligible today; revisit (per-class output splitting, property-list caching) if very large models appear.

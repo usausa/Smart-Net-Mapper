@@ -74,9 +74,9 @@ public class CultureFormatMappingTests
         var destination = TestMappers.MapCultureSpecialParse(source);
 
         Assert.Equal((Half)2.5, destination.HalfValue);
-        Assert.Equal((Int128)12345, destination.Int128Value);
+        Assert.Equal(12345, destination.Int128Value);
         Assert.Equal((UInt128)12345, destination.UInt128Value);
-        Assert.Equal((System.Numerics.BigInteger)12345, destination.BigIntegerValue);
+        Assert.Equal(12345, destination.BigIntegerValue);
         Assert.True(destination.BoolValue);
         Assert.Equal(guid, destination.GuidValue);
     }

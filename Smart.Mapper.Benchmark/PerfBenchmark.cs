@@ -1,4 +1,4 @@
-﻿#pragma warning disable CA2227
+#pragma warning disable CA2227
 namespace Smart.Mapper.Benchmark;
 
 using System.Runtime.InteropServices;
@@ -176,6 +176,7 @@ public class InPlaceMapBenchmark
             ((ICollection<PerfItemDestination>)dst.Items).Clear();
             var srcSpan = CollectionsMarshal.AsSpan(src.Items);
             var dstColl = (ICollection<PerfItemDestination>)dst.Items;
+            // ReSharper disable once ForCanBeConvertedToForeach
             for (var j = 0; j < srcSpan.Length; j++)
             {
                 dstColl.Add(PerfBenchmarkMappers.MapPerfItem(srcSpan[j]));

@@ -32,6 +32,13 @@ internal sealed record MapperMethodModel
     public string? CollectionConverterTypeName { get; set; }
     public EquatableArray<CustomParameterModel> CustomParameters { get; set; } = new([]);
     public EquatableArray<PropertyMappingModel> PropertyMappings { get; set; } = new([]);
+
+    // Snapshot of the parsed [MapProperty] mappings, taken by ValidateExplicitPropertyMappings.
+    // BuildPropertyMappings rebuilds PropertyMappings from the destination members and drops anything
+    // with no matching property, so constructor resolution reads the renames and their options
+    // (Converter, NullSubstitute, Culture, Order) from here instead.
+    public EquatableArray<PropertyMappingModel> ExplicitPropertyMappings { get; set; } = new([]);
+
     public EquatableArray<string> IgnoredProperties { get; set; } = new([]);
     public EquatableArray<PropertyConditionModel> PropertyConditions { get; set; } = new([]);
     public EquatableArray<ConstantMappingModel> ConstantMappings { get; set; } = new([]);
@@ -45,6 +52,9 @@ internal sealed record MapperMethodModel
     public string? AfterMapMethod { get; set; }
     public bool AfterMapAcceptsCustomParameters { get; set; }
     public bool UseConstructorMapping { get; set; }
-    public EquatableArray<(string ParamName, string SourceExpression)> ConstructorParameters { get; set; } = new([]);
+    // TargetPath names the PropertyMappings entry that supplies the argument, carrying its
+    // conversion metadata. BuildConstructorParameterMappings guarantees the entry exists: it either
+    // flags an existing mapping or synthesizes one under the parameter's own name.
+    public EquatableArray<(string ParamName, string TargetPath)> ConstructorParameters { get; set; } = new([]);
     public EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> Warnings { get; set; } = new([]);
 }

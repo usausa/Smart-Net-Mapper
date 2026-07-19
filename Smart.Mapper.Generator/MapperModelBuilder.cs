@@ -125,6 +125,10 @@ internal static class MapperModelBuilder
 
         ParseMappingAttributes(symbol, model);
 
+        // Runs before the duplicate check so that two attributes naming the same member with
+        // different casing are recognised as the duplicate they are.
+        CanonicalizeTargetNames(model, destinationType);
+
         var duplicateTargetError = ValidateDuplicateTargets(model, syntax);
         if (duplicateTargetError is not null)
         {
@@ -141,7 +145,27 @@ internal static class MapperModelBuilder
 
         var sourceType = symbol.Parameters[0].Type;
 
+        var explicitMappingError = ValidateExplicitPropertyMappings(model, sourceType, destinationType, syntax);
+        if (explicitMappingError is not null)
+        {
+            return Results.Error<MapperMethodModel>(explicitMappingError);
+        }
+
         BuildPropertyMappings(sourceType, destinationType, model);
+
+        // Runs before the detection passes below so that mappings synthesized for constructor
+        // parameters are analysed alongside the ones built from destination properties.
+        var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
+        if (constructorError is not null)
+        {
+            return Results.Error<MapperMethodModel>(constructorError);
+        }
+
+        var expressionTargetError = ValidateExpressionAssignedTargets(model, syntax);
+        if (expressionTargetError is not null)
+        {
+            return Results.Error<MapperMethodModel>(expressionTargetError);
+        }
 
         DetectSpecializedConverterMethods(model, symbol);
 
@@ -213,12 +237,6 @@ internal static class MapperModelBuilder
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
 
         model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>([.. warnings]);
-
-        var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
-        if (constructorError is not null)
-        {
-            return Results.Error<MapperMethodModel>(constructorError);
-        }
 
         var voidInitOnlyError = ValidateVoidMapperInitOnlyTargets(model, syntax);
         if (voidInitOnlyError is not null)
@@ -642,11 +660,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if ((namedArg.Key == "Source") && (namedArg.Value.Value is string src))
-                        {
-                            sourceName = src;
-                        }
-                        else if ((namedArg.Key == "Converter") && (namedArg.Value.Value is string conv))
+                        if ((namedArg.Key == "Converter") && (namedArg.Value.Value is string conv))
                         {
                             converter = conv;
                         }
@@ -856,11 +870,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Source" && namedArg.Value.Value is string src)
-                        {
-                            sourceName = src;
-                        }
-                        else if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
+                        if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
                         {
                             mapper = m;
                         }
@@ -908,11 +918,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Source" && namedArg.Value.Value is string src)
-                        {
-                            sourceName = src;
-                        }
-                        else if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
+                        if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
                         {
                             mapper = m;
                         }
@@ -1408,12 +1414,11 @@ internal static class MapperModelBuilder
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
-        var sourceProperties = sourceType.GetAllPublicProperties();
         var destinationProperties = destinationType.GetAllPublicProperties();
 
         foreach (var mapCollection in model.MapCollectionMappings)
         {
-            var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapCollection.SourceName);
+            var sourceProp = PropertyPathHelper.ResolveProperty(sourceType, mapCollection.SourceName, (StringComparison)model.NameComparison);
             if (sourceProp is null)
             {
                 return new DiagnosticInfo(
@@ -1422,6 +1427,10 @@ internal static class MapperModelBuilder
                     mapperMethod.Name,
                     mapCollection.SourceName);
             }
+
+            // The name is emitted verbatim, so adopt the declared casing when NameComparison matched
+            // a source property that the attribute spelled differently.
+            mapCollection.SourceName = sourceProp.Name;
 
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapCollection.TargetName);
             if (destProp is null)
@@ -1505,12 +1514,11 @@ internal static class MapperModelBuilder
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
-        var sourceProperties = sourceType.GetAllPublicProperties();
         var destinationProperties = destinationType.GetAllPublicProperties();
 
         foreach (var mapNested in model.MapNestedMappings)
         {
-            var sourceProp = sourceProperties.FirstOrDefault(p => p.Name == mapNested.SourceName);
+            var sourceProp = PropertyPathHelper.ResolveProperty(sourceType, mapNested.SourceName, (StringComparison)model.NameComparison);
             if (sourceProp is null)
             {
                 return new DiagnosticInfo(
@@ -1519,6 +1527,10 @@ internal static class MapperModelBuilder
                     mapperMethod.Name,
                     mapNested.SourceName);
             }
+
+            // The name is emitted verbatim, so adopt the declared casing when NameComparison matched
+            // a source property that the attribute spelled differently.
+            mapNested.SourceName = sourceProp.Name;
 
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapNested.TargetName);
             if (destProp is null)
@@ -2007,36 +2019,20 @@ internal static class MapperModelBuilder
             return null;
         }
 
-        var bestCtor = namedDest.InstanceConstructors
-            .Where(c => !c.IsImplicitlyDeclared && c.Parameters.Length > 0)
-            .OrderByDescending(c => c.Parameters.Length)
-            .FirstOrDefault();
+        var bestCtor = SelectBestConstructor(destinationType);
 
-        if (bestCtor is null)
+        if ((bestCtor is null) ||
+            !WillUseConstructor(bestCtor, destinationType, (StringComparison)model.NameComparison, model.ReturnsDestination))
         {
-            // No parameterized constructor. A return-mapper must still initialize init-only or required
-            // members via an object initializer, since `new Dst()` cannot assign them afterwards.
+            // Construction is parameterless. A return-mapper must still initialize init-only or
+            // required members via an object initializer, since `new Dst()` cannot assign them
+            // afterwards.
             if (model.ReturnsDestination &&
                 destinationType.GetAllPublicProperties().Any(p => (p.SetMethod?.IsInitOnly == true) || p.IsRequired))
             {
                 model.UseConstructorMapping = true;
             }
 
-            return null;
-        }
-
-        var allDestProps = destinationType.GetAllPublicProperties();
-        var isRecord = namedDest.IsRecord;
-
-        var hasConstructorOnlyParams = bestCtor.Parameters.Any(p =>
-        {
-            var nc = (StringComparison)model.NameComparison;
-            var matchingProp = allDestProps.FirstOrDefault(prop => String.Equals(prop.Name, p.Name, nc));
-            return (matchingProp?.SetMethod is null) || matchingProp.SetMethod.IsInitOnly;
-        });
-
-        if ((!isRecord) && (!hasConstructorOnlyParams))
-        {
             return null;
         }
 
@@ -2051,23 +2047,48 @@ internal static class MapperModelBuilder
 
         model.UseConstructorMapping = true;
 
-        var customMappings = model.PropertyMappings
-            .Where(pm => !pm.TargetPath.Contains('.'))
-            .ToDictionary(pm => pm.TargetPath, pm => pm.SourcePath, StringComparer.Ordinal);
-
         var nameComparison = (StringComparison)model.NameComparison;
         var sourceProperties = sourceType.GetAllPublicProperties();
-        var ctorParams = new List<(string ParamName, string SourceExpression)>();
+        var ctorParams = new List<(string ParamName, string TargetPath)>();
+        var synthesizedMappings = new List<PropertyMappingModel>();
 
         foreach (var param in bestCtor.Parameters)
         {
-            string sourceExpression;
-
-            var pascalParamName = char.ToUpperInvariant(param.Name[0]) + param.Name.Substring(1);
-            if (customMappings.TryGetValue(param.Name, out var customSource) ||
-                customMappings.TryGetValue(pascalParamName, out customSource))
+            // The constructor requires a value for every parameter, so an ignored member that a
+            // parameter assigns cannot actually be skipped. Reject rather than silently map it.
+            var ignoredName = model.IgnoredProperties.FirstOrDefault(name => MatchesConstructorParameter(param, name, nameComparison));
+            if (ignoredName is not null)
             {
-                sourceExpression = $"{model.SourceParameterName}.{customSource}";
+                return new DiagnosticInfo(
+                    Diagnostics.IgnoredConstructorParameter,
+                    syntax.GetLocation(),
+                    model.MethodName,
+                    ignoredName);
+            }
+
+            // Prefer the property mapping built for this member: it carries the converter, null
+            // handling and culture/format metadata that the argument has to be emitted with. The
+            // mapping is flagged rather than removed so it keeps flowing through the analysis passes.
+            var mapping = model.PropertyMappings.FirstOrDefault(pm => MatchesConstructorParameter(param, pm.TargetPath, nameComparison));
+            if (mapping is not null)
+            {
+                mapping.IsConstructorParameter = true;
+                ctorParams.Add((param.Name, mapping.TargetPath));
+                continue;
+            }
+
+            // No destination property backs this parameter, so synthesize a mapping for it. An
+            // explicit [MapProperty] may still name the parameter, in which case its source path and
+            // options are used; otherwise the source is matched by name.
+            var explicitMapping = model.ExplicitPropertyMappings.FirstOrDefault(pm => MatchesConstructorParameter(param, pm.TargetPath, nameComparison));
+
+            string sourcePath;
+            ITypeSymbol sourcePropertyType;
+            if (explicitMapping is not null)
+            {
+                // ValidateExplicitPropertyMappings already resolved and canonicalized this path.
+                sourcePath = explicitMapping.SourcePath;
+                sourcePropertyType = PropertyPathHelper.ResolvePropertyType(sourceType, sourcePath)!;
             }
             else
             {
@@ -2083,19 +2104,379 @@ internal static class MapperModelBuilder
                         destinationType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
                 }
 
-                sourceExpression = $"{model.SourceParameterName}.{srcProp.Name}";
+                sourcePath = srcProp.Name;
+                sourcePropertyType = srcProp.Type;
             }
 
-            ctorParams.Add((param.Name, sourceExpression));
+            var options = new Dictionary<string, PropertyMappingModel>(StringComparer.Ordinal);
+            if (explicitMapping is not null)
+            {
+                options[param.Name] = explicitMapping;
+            }
+
+            // Conditions for parameter-only targets never pass through BuildPropertyMappings, so the
+            // attribute has to be looked up directly; carrying it on the mapping lets the shared
+            // ValidateExpressionAssignedTargets pass reject it like any other constructor target.
+            var paramCondition = model.PropertyConditions.FirstOrDefault(c => MatchesConstructorParameter(param, c.TargetName, nameComparison));
+
+            var synthesized = CreatePropertyMapping(
+                model,
+                options,
+                param.Name,
+                param.Type,
+                isTargetInitOnly: false,
+                isTargetRequired: false,
+                sourcePath,
+                sourcePropertyType,
+                explicitMapping?.ConverterMethod,
+                paramCondition?.ConditionMethod);
+            synthesized.IsConstructorParameter = true;
+
+            synthesizedMappings.Add(synthesized);
+            ctorParams.Add((param.Name, param.Name));
         }
 
-        model.ConstructorParameters = new EquatableArray<(string ParamName, string SourceExpression)>([.. ctorParams]);
+        model.ConstructorParameters = new EquatableArray<(string ParamName, string TargetPath)>([.. ctorParams]);
 
-        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings
-            .Where(pm => !bestCtor.Parameters.Any(p =>
-                String.Equals(p.Name, pm.TargetPath, nameComparison)))]);
+        if (synthesizedMappings.Count > 0)
+        {
+            model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings, .. synthesizedMappings]);
+        }
 
         return null;
+    }
+
+    // Selects the parameterized constructor that generated construction would call: the longest
+    // explicitly declared one. Null when the type only has parameterless constructors.
+    internal static IMethodSymbol? SelectBestConstructor(ITypeSymbol destinationType) =>
+        destinationType is INamedTypeSymbol namedType
+            ? namedType.InstanceConstructors
+                .Where(static c => !c.IsImplicitlyDeclared && (c.Parameters.Length > 0))
+                .OrderByDescending(static c => c.Parameters.Length)
+                .FirstOrDefault()
+            : null;
+
+    // Whether generated construction will actually call bestCtor:
+    //   - records always construct through their primary constructor;
+    //   - a parameter without a settable matching property (matched the same way arguments bind,
+    //     so the camelCase parameter / PascalCase property convention is honoured) forces the
+    //     constructor, because it is the only way to assign that member;
+    //   - a return mapper without a public parameterless constructor has no other way to construct.
+    // For a void mapper the last clause does not apply - it never constructs - so the result reads
+    // as "would construction be required", which is exactly what the SMP0302 check needs.
+    internal static bool WillUseConstructor(IMethodSymbol bestCtor, ITypeSymbol destinationType, StringComparison nameComparison, bool returnsDestination)
+    {
+        if (bestCtor.ContainingType.IsRecord)
+        {
+            return true;
+        }
+
+        var allDestProps = destinationType.GetAllPublicProperties();
+        var hasConstructorOnlyParams = bestCtor.Parameters.Any(p =>
+        {
+            var matchingProp = allDestProps.FirstOrDefault(prop => MatchesConstructorParameter(p, prop.Name, nameComparison));
+            return (matchingProp?.SetMethod is null) || matchingProp.SetMethod.IsInitOnly;
+        });
+        if (hasConstructorOnlyParams)
+        {
+            return true;
+        }
+
+        return returnsDestination && !HasUsableParameterlessConstructor(bestCtor.ContainingType);
+    }
+
+    // Public keeps this conservative: implicit parameterless constructors are public, and when an
+    // internal one is missed the generator simply keeps using the parameterized constructor, which
+    // always compiles.
+    private static bool HasUsableParameterlessConstructor(INamedTypeSymbol type) =>
+        type.InstanceConstructors.Any(static c => (c.Parameters.Length == 0) && (c.DeclaredAccessibility == Accessibility.Public));
+
+    // The constructor whose parameters generated construction will bind, or null when construction
+    // is parameterless or never happens. Admission of get-only / parameter-only targets and their
+    // consumption in BuildConstructorParameterMappings must agree on this single answer.
+    internal static IMethodSymbol? GetEffectiveConstructor(MapperMethodModel model, ITypeSymbol destinationType)
+    {
+        var bestCtor = SelectBestConstructor(destinationType);
+        return (bestCtor is not null) && WillUseConstructor(bestCtor, destinationType, (StringComparison)model.NameComparison, model.ReturnsDestination)
+            ? bestCtor
+            : null;
+    }
+
+    // Matches a target name against a constructor parameter exactly the way the consumption loop
+    // binds arguments: the parameter name itself or its PascalCase form, under the mapper's
+    // configured comparison. Admission and consumption sharing this is what guarantees an accepted
+    // mapping is also emitted.
+    internal static bool MatchesConstructorParameter(IParameterSymbol param, string targetName, StringComparison nameComparison)
+    {
+        var pascalParamName = char.ToUpperInvariant(param.Name[0]) + param.Name.Substring(1);
+        return String.Equals(targetName, param.Name, nameComparison) ||
+               String.Equals(targetName, pascalParamName, nameComparison);
+    }
+
+    private static bool IsConstructorParameterTarget(IMethodSymbol? constructor, string targetName, StringComparison nameComparison) =>
+        (constructor is not null) &&
+        constructor.Parameters.Any(p => MatchesConstructorParameter(p, targetName, nameComparison));
+
+    // Constructor arguments and object-initializer entries are emitted as single expressions, so
+    // statement-only options cannot apply there: a [MapCondition] has no way to leave the member
+    // unassigned, and NullBehavior.Skip has no previous value to keep. Rejecting them loudly beats
+    // silently ignoring the attribute. Runs after BuildConstructorParameterMappings so that both
+    // flagged and synthesized constructor mappings are covered.
+    internal static DiagnosticInfo? ValidateExpressionAssignedTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        foreach (var mapping in model.PropertyMappings)
+        {
+            var expressionAssigned = mapping.IsConstructorParameter ||
+                (model.UseConstructorMapping && (mapping.IsTargetInitOnly || mapping.IsTargetRequired));
+            if (!expressionAssigned)
+            {
+                continue;
+            }
+
+            if (mapping.ConditionMethod is not null)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnsupportedConstructorAssignedOption,
+                    syntax.GetLocation(),
+                    model.MethodName,
+                    mapping.TargetPath,
+                    "MapCondition");
+            }
+
+            if (mapping.NullBehavior == NullBehaviorType.Skip)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnsupportedConstructorAssignedOption,
+                    syntax.GetLocation(),
+                    model.MethodName,
+                    mapping.TargetPath,
+                    "NullBehavior.Skip");
+            }
+        }
+
+        return null;
+    }
+
+    // Rewrites every attribute target name to the destination member's declared name, so that the
+    // mapper's NameComparison is honoured on the target side too. Auto-mapping already matched names
+    // that way; without this, an explicit attribute would only accept the exact spelling.
+    //
+    // Doing it once here keeps every later stage matching ordinally against real member names, which
+    // also means the emitted code carries the correct casing. Names that do not resolve are left
+    // untouched so the existing "not found" diagnostics still fire.
+    internal static void CanonicalizeTargetNames(MapperMethodModel model, ITypeSymbol destinationType)
+    {
+        var nameComparison = (StringComparison)model.NameComparison;
+
+        string Canonical(string targetName) =>
+            (targetName.Contains('.')
+                ? PropertyPathHelper.ResolveCanonicalPath(destinationType, targetName, nameComparison)
+                : PropertyPathHelper.ResolveProperty(destinationType, targetName, nameComparison)?.Name)
+            ?? targetName;
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            mapping.TargetPath = Canonical(mapping.TargetPath);
+        }
+
+        foreach (var condition in model.PropertyConditions)
+        {
+            condition.TargetName = Canonical(condition.TargetName);
+        }
+
+        foreach (var constant in model.ConstantMappings)
+        {
+            constant.TargetName = Canonical(constant.TargetName);
+        }
+
+        foreach (var expression in model.ExpressionMappings)
+        {
+            expression.TargetName = Canonical(expression.TargetName);
+        }
+
+        foreach (var mapUsing in model.MapUsingMappings)
+        {
+            mapUsing.TargetName = Canonical(mapUsing.TargetName);
+        }
+
+        foreach (var mapFrom in model.MapFromMappings)
+        {
+            mapFrom.TargetName = Canonical(mapFrom.TargetName);
+        }
+
+        foreach (var mapCollection in model.MapCollectionMappings)
+        {
+            mapCollection.TargetName = Canonical(mapCollection.TargetName);
+        }
+
+        foreach (var mapNested in model.MapNestedMappings)
+        {
+            mapNested.TargetName = Canonical(mapNested.TargetName);
+        }
+
+        model.IgnoredProperties = new EquatableArray<string>([.. model.IgnoredProperties.Select(Canonical)]);
+    }
+
+    // Resolves the source path of every explicit [MapProperty] and reports the entries that
+    // BuildPropertyMappings would otherwise drop without a trace: a source path that does not resolve,
+    // a target that does not exist on the destination, or a target with no setter that no constructor
+    // can assign either.
+    //
+    // Source paths are rewritten to the declared property names so that the mapper's NameComparison is
+    // honoured here, once, and every later stage can keep matching ordinally against the real names.
+    // Target names stay ordinal: they are always spelled explicitly by the caller.
+    //
+    // This also takes the ExplicitPropertyMappings snapshot, since PropertyMappings is rebuilt (and
+    // partly discarded) by BuildPropertyMappings while constructor resolution still needs the renames.
+    internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
+        MapperMethodModel model,
+        ITypeSymbol sourceType,
+        ITypeSymbol destinationType,
+        MethodDeclarationSyntax syntax)
+    {
+        var nameComparison = (StringComparison)model.NameComparison;
+        var destinationProperties = destinationType.GetAllPublicProperties();
+        var effectiveConstructor = GetEffectiveConstructor(model, destinationType);
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            var canonicalSourcePath = PropertyPathHelper.ResolveCanonicalPath(sourceType, mapping.SourcePath, nameComparison);
+            if (canonicalSourcePath is null)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapPropertySourceProperty,
+                    syntax.GetLocation(),
+                    model.MethodName,
+                    mapping.TargetPath,
+                    mapping.SourcePath);
+            }
+
+            mapping.SourcePath = canonicalSourcePath;
+
+            if (mapping.TargetPath.Contains('.'))
+            {
+                if (PropertyPathHelper.ResolvePropertyType(destinationType, mapping.TargetPath) is null)
+                {
+                    return new DiagnosticInfo(
+                        Diagnostics.UnresolvedMapPropertyTargetProperty,
+                        syntax.GetLocation(),
+                        model.MethodName,
+                        mapping.TargetPath);
+                }
+
+                continue;
+            }
+
+            // The target must be assignable: a settable property, or a parameter of the constructor
+            // that construction will actually call. Matching mirrors the argument-binding loop, so
+            // anything accepted here is guaranteed to be consumed rather than silently dropped.
+            var targetProperty = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
+            if (((targetProperty is null) || (targetProperty.SetMethod is null)) &&
+                !IsConstructorParameterTarget(effectiveConstructor, mapping.TargetPath, nameComparison))
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnresolvedMapPropertyTargetProperty,
+                    syntax.GetLocation(),
+                    model.MethodName,
+                    mapping.TargetPath);
+            }
+        }
+
+        model.ExplicitPropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings]);
+
+        return null;
+    }
+
+    // Builds a fully analysed mapping for one target member. Constructor parameters that have no
+    // backing destination property synthesize their mapping through here as well, so an argument is
+    // described exactly like an assignment and picks up the same conversion analysis.
+    private static PropertyMappingModel CreatePropertyMapping(
+        MapperMethodModel model,
+        Dictionary<string, PropertyMappingModel> originalMappings,
+        string targetName,
+        ITypeSymbol targetType,
+        bool isTargetInitOnly,
+        bool isTargetRequired,
+        string sourcePath,
+        ITypeSymbol sourcePropertyType,
+        string? converterMethod,
+        string? conditionMethod)
+    {
+        var sourceTypeName = sourcePropertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var destTypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var isSourceNullable = sourcePropertyType.IsNullableType();
+        var isTargetNullable = targetType.IsNullableType();
+
+        var sourceUnderlyingType = sourcePropertyType.GetUnderlyingType();
+        var targetUnderlyingType = targetType.GetUnderlyingType();
+        var sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var targetUnderlyingTypeName = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        var order = 0;
+        var definitionOrder = 0;
+        var nullBehavior = NullBehaviorType.Default;
+        var nullSubstitute = default(string?);
+        string? propEffectiveCulture;
+        string? propEffectiveDateTimeFormat;
+        string? propEffectiveNumberFormat;
+        if (originalMappings.TryGetValue(targetName, out var origMapping))
+        {
+            order = origMapping.Order;
+            definitionOrder = origMapping.DefinitionOrder;
+            nullBehavior = origMapping.NullBehavior;
+            nullSubstitute = origMapping.NullSubstitute;
+            propEffectiveCulture = origMapping.EffectiveCulture ?? model.Culture;
+            propEffectiveDateTimeFormat = origMapping.EffectiveDateTimeFormat ?? model.DateTimeFormat;
+            propEffectiveNumberFormat = origMapping.EffectiveNumberFormat ?? model.NumberFormat;
+        }
+        else
+        {
+            propEffectiveCulture = model.Culture;
+            propEffectiveDateTimeFormat = model.DateTimeFormat;
+            propEffectiveNumberFormat = model.NumberFormat;
+        }
+
+        var requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName)
+                && (!sourceUnderlyingType.IsAssignableTo(targetUnderlyingType));
+
+        var mapping = new PropertyMappingModel
+        {
+            SourcePath = sourcePath,
+            TargetPath = targetName,
+            SourceType = sourceTypeName,
+            TargetType = destTypeName,
+            SourceUnderlyingType = sourceUnderlyingTypeName,
+            TargetUnderlyingType = targetUnderlyingTypeName,
+            RequiresConversion = requiresConversion,
+            IsSourceNullable = isSourceNullable,
+            IsTargetNullable = isTargetNullable,
+            ConverterMethod = converterMethod,
+            ConditionMethod = conditionMethod,
+            NullBehavior = nullBehavior,
+            NullSubstitute = nullSubstitute,
+            Order = order,
+            DefinitionOrder = definitionOrder,
+            IsTargetInitOnly = isTargetInitOnly,
+            IsTargetRequired = isTargetRequired,
+            EffectiveCulture = propEffectiveCulture,
+            EffectiveDateTimeFormat = propEffectiveDateTimeFormat,
+            EffectiveNumberFormat = propEffectiveNumberFormat
+        };
+
+        DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
+
+        if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter())
+        {
+            var srcUnderlying = sourceUnderlyingType.SpecialType == SpecialType.System_String
+                ? sourceUnderlyingType
+                : null;
+            if ((srcUnderlying is not null) && (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null))
+            {
+                DetectParsableMethodFromSymbol(mapping, targetUnderlyingType);
+            }
+        }
+
+        return mapping;
     }
 
     internal static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
@@ -2111,6 +2492,20 @@ internal static class MapperModelBuilder
             if (mapping.TargetPath.Contains('.') || mapping.SourcePath.Contains('.'))
             {
                 ResolveNestedMapping(mapping, sourceType, destinationType);
+
+                // A dotted source path still lands on a plain destination member, which may be
+                // init-only or required. Without these flags the emitters treat it as an ordinary
+                // assignment and produce code that cannot compile (CS8852).
+                if (!mapping.TargetPath.Contains('.'))
+                {
+                    var nestedTargetProp = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
+                    if (nestedTargetProp is not null)
+                    {
+                        mapping.IsTargetInitOnly = nestedTargetProp.SetMethod?.IsInitOnly == true;
+                        mapping.IsTargetRequired = nestedTargetProp.IsRequired;
+                    }
+                }
+
                 nestedMappings.Add(mapping);
             }
             else
@@ -2122,6 +2517,8 @@ internal static class MapperModelBuilder
         var originalMappings = model.PropertyMappings.ToDictionary(m => m.TargetPath, m => m);
 
         var mappings = new List<PropertyMappingModel>();
+        var effectiveConstructor = GetEffectiveConstructor(model, destinationType);
+        var nameComparison = (StringComparison)model.NameComparison;
 
         foreach (var destProp in destinationProperties)
         {
@@ -2135,7 +2532,12 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            if (destProp.SetMethod is null)
+            // A get-only property is still reachable when the constructor that construction will
+            // call assigns it; that mapping is what carries the conversion metadata for the
+            // argument. Gating on the same constructor and matching as the argument-binding loop is
+            // what keeps this from admitting a mapping nothing consumes (which used to surface as an
+            // assignment to a get-only property, CS0200).
+            if ((destProp.SetMethod is null) && !IsConstructorParameterTarget(effectiveConstructor, destProp.Name, nameComparison))
             {
                 continue;
             }
@@ -2160,7 +2562,6 @@ internal static class MapperModelBuilder
             {
                 if (model.AutoMap)
                 {
-                    var nameComparison = (StringComparison)model.NameComparison;
                     var sourceProp = sourceProperties.FirstOrDefault(p => String.Equals(p.Name, destProp.Name, nameComparison));
                     if (sourceProp is not null)
                     {
@@ -2177,81 +2578,17 @@ internal static class MapperModelBuilder
 
             if ((sourcePropPath is not null) && (sourcePropertyType is not null))
             {
-                var sourceTypeName = sourcePropertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var destTypeName = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var isSourceNullable = sourcePropertyType.IsNullableType();
-                var isTargetNullable = destProp.Type.IsNullableType();
-
-                var sourceUnderlyingType = sourcePropertyType.GetUnderlyingType();
-                var targetUnderlyingType = destProp.Type.GetUnderlyingType();
-                var sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var targetUnderlyingTypeName = targetUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-                var order = 0;
-                var definitionOrder = 0;
-                var nullBehavior = NullBehaviorType.Default;
-                var nullSubstitute = default(string?);
-                string? propEffectiveCulture;
-                string? propEffectiveDateTimeFormat;
-                string? propEffectiveNumberFormat;
-                if (originalMappings.TryGetValue(destProp.Name, out var origMapping))
-                {
-                    order = origMapping.Order;
-                    definitionOrder = origMapping.DefinitionOrder;
-                    nullBehavior = origMapping.NullBehavior;
-                    nullSubstitute = origMapping.NullSubstitute;
-                    propEffectiveCulture = origMapping.EffectiveCulture ?? model.Culture;
-                    propEffectiveDateTimeFormat = origMapping.EffectiveDateTimeFormat ?? model.DateTimeFormat;
-                    propEffectiveNumberFormat = origMapping.EffectiveNumberFormat ?? model.NumberFormat;
-                }
-                else
-                {
-                    propEffectiveCulture = model.Culture;
-                    propEffectiveDateTimeFormat = model.DateTimeFormat;
-                    propEffectiveNumberFormat = model.NumberFormat;
-                }
-
-                var requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName)
-                        && (!sourceUnderlyingType.IsAssignableTo(targetUnderlyingType));
-
-                var mapping = new PropertyMappingModel
-                {
-                    SourcePath = sourcePropPath,
-                    TargetPath = destProp.Name,
-                    SourceType = sourceTypeName,
-                    TargetType = destTypeName,
-                    SourceUnderlyingType = sourceUnderlyingTypeName,
-                    TargetUnderlyingType = targetUnderlyingTypeName,
-                    RequiresConversion = requiresConversion,
-                    IsSourceNullable = isSourceNullable,
-                    IsTargetNullable = isTargetNullable,
-                    ConverterMethod = converterMethod,
-                    ConditionMethod = conditionMethod,
-                    NullBehavior = nullBehavior,
-                    NullSubstitute = nullSubstitute,
-                    Order = order,
-                    DefinitionOrder = definitionOrder,
-                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
-                    IsTargetRequired = destProp.IsRequired,
-                    EffectiveCulture = propEffectiveCulture,
-                    EffectiveDateTimeFormat = propEffectiveDateTimeFormat,
-                    EffectiveNumberFormat = propEffectiveNumberFormat
-                };
-
-                DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
-
-                if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter())
-                {
-                    var srcUnderlying = sourceUnderlyingType.SpecialType == SpecialType.System_String
-                        ? sourceUnderlyingType
-                        : null;
-                    if ((srcUnderlying is not null) && (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null))
-                    {
-                        DetectParsableMethodFromSymbol(mapping, targetUnderlyingType);
-                    }
-                }
-
-                mappings.Add(mapping);
+                mappings.Add(CreatePropertyMapping(
+                    model,
+                    originalMappings,
+                    destProp.Name,
+                    destProp.Type,
+                    destProp.SetMethod?.IsInitOnly == true,
+                    destProp.IsRequired,
+                    sourcePropPath,
+                    sourcePropertyType,
+                    converterMethod,
+                    conditionMethod));
             }
         }
 

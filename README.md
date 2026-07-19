@@ -13,7 +13,7 @@ It automatically generates property-copying code at compile time for `static par
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
 - **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 28 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
+- **Rich diagnostics** - 32 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
 
 ## Installation
 
@@ -83,7 +83,7 @@ public static partial Destination Map(Source source)
 | `[Mapper]` | Marks a method as a mapping method |
 | `[Mapper(AutoMap = false)]` | Disables automatic same-name property mapping |
 | `[Mapper(Strict = true)]` | Emits SMP0501 warning for unmapped destination properties |
-| `[Mapper(NameComparison = ...)]` | Property name comparison mode for auto-mapping (default: `Ordinal`) |
+| `[Mapper(NameComparison = ...)]` | Property name comparison mode, applied to auto-mapping and to the names written in mapping attributes (default: `Ordinal`) |
 | `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
 | `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
 | `[Mapper(NumberFormat = "...")]` | Format string for numeric <-> `string` conversion (use with `Culture`) |
@@ -133,6 +133,39 @@ public static partial void Map(Source source, Destination destination);
 [MapProperty(nameof(Destination.FullName), nameof(Source.Name))]
 public static partial void Map(Source source, Destination destination);
 ```
+
+The source name may be omitted, in which case it defaults to the target name. This is handy when only an option needs to be set on an otherwise same-named pair:
+
+```csharp
+[Mapper]
+[MapProperty(nameof(Destination.Amount), Culture = "en-US", NumberFormat = "C")]
+public static partial void Map(Source source, Destination destination);
+```
+
+`[MapNested]` and `[MapCollection]` follow the same rule.
+
+A name that cannot be resolved is reported (`SMP0213` for the source, `SMP0214` for the target) rather than silently dropped.
+
+### Name comparison (`NameComparison`)
+
+`NameComparison` applies to the names written in mapping attributes, not just to auto-mapping. An exact match always wins; the configured comparison is only a fallback, so the default (`Ordinal`) behaves as before.
+
+```csharp
+public class Src { public int other { get; set; } }
+public class Dst { public int Value { get; set; } }
+
+[Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]
+[MapProperty("value", "Other")]   // neither spelling matches the declaration exactly
+public static partial Dst Map(Src src);
+```
+
+Generated code — both names resolve to the declared members:
+
+```csharp
+destination.Value = src.other;
+```
+
+This holds for every mapping attribute, including target-only ones such as `[MapIgnore]`.
 
 ### Null substitution
 
@@ -233,7 +266,7 @@ private static bool ShouldMapName(string? name) => !string.IsNullOrEmpty(name);
 
 ```csharp
 [Mapper(AutoMap = false)]
-[MapProperty(nameof(Source.Id), nameof(Destination.Id))]
+[MapProperty(nameof(Destination.Id), nameof(Source.Id))]
 public static partial void Map(Source source, Destination destination);
 // Only 'Id' is mapped; other properties are ignored.
 ```
@@ -330,6 +363,8 @@ destination.Child = source.Child is not null ? MapChild(source.Child!) : default
 
 When the destination type is a `record` or has a primary constructor, the generator automatically uses constructor-call syntax.
 
+The parameterized constructor (the longest declared one) is called only when construction requires it: the type is a `record`, some parameter has no settable matching property, or no public parameterless constructor exists. Otherwise the generator emits `new Dst()` plus property assignments, with init-only members assigned in the object initializer. A void mapper never constructs, so a convenience parameterized constructor on the destination does not affect it.
+
 ```csharp
 public record DestModel(int Id, string Name);
 
@@ -348,6 +383,62 @@ public static partial DestModel Map(SrcModel src)
 ```
 
 > `void` mapper is not allowed for `init-only` / `record` destination types (SMP0302).
+
+### Conversion of constructor arguments
+
+Constructor arguments go through the same conversion pipeline as ordinary property assignments, so type conversion, `Converter`, `NullSubstitute` and `Culture` / format settings all apply. The same holds for `init`-only members assigned in the object initializer.
+
+```csharp
+public class Src { public int? Value { get; set; } }
+public record Dst(string Value);
+
+[Mapper]
+public static partial Dst Map(Src src);
+```
+
+Generated code:
+
+```csharp
+var destination = new Dst(src.Value is not null
+    ? DefaultValueConverter.ConvertToString(src.Value.GetValueOrDefault())
+    : default!);
+```
+
+When a nullable source is null, the argument falls back to the destination type's `default` — or to `NullSubstitute` when one is specified, or to `null` when the target is nullable. A nullable intermediate segment in a dotted source path is guarded the same way (`src.Child is not null ? ... : default!`).
+
+Statement-only options cannot apply to a constructor argument: `[MapCondition]` has no way to leave the member unassigned, and `NullBehavior.Skip` has no previous value to keep. Both are rejected with `SMP0215`.
+
+A get-only property assigned through a constructor can also be remapped:
+
+```csharp
+public class Src { public int Other { get; set; } }
+
+public class Dst
+{
+    public string Value { get; }
+    public Dst(string value) { Value = value; }
+}
+
+[Mapper]
+[MapProperty(nameof(Dst.Value), nameof(Src.Other))]
+public static partial Dst Map(Src src);
+```
+
+A constructor parameter with no matching destination property is supported the same way. Target it with `[MapProperty]` using the parameter name to remap it:
+
+```csharp
+public class Src { public int Other { get; set; } }
+
+public class Dst
+{
+    public Dst(string value) { Text = value; }
+    public string Text { get; }
+}
+
+[Mapper]
+[MapProperty("value", nameof(Src.Other))]   // "value" is the constructor parameter name
+public static partial Dst Map(Src src);
+```
 
 ---
 
@@ -492,6 +583,10 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 | SMP0210 | `MapCollection` element mapper method not found or signature mismatch | Error |
 | SMP0211 | `MapNested` mapper method not found or signature mismatch | Error |
 | SMP0212 | `[MapCollection]` / `[MapNested]` cannot target an init-only / required member | Error |
+| SMP0213 | `[MapProperty]` source property not found on source type | Error |
+| SMP0214 | `[MapProperty]` target property not found on destination type, or not assignable | Error |
+| SMP0215 | `[MapCondition]` / `NullBehavior.Skip` applied to a constructor- or initializer-assigned target | Error |
+| SMP0216 | `[MapIgnore]` applied to a member assigned through a constructor | Error |
 | SMP0301 | Constructor parameter has no matching source property | Error |
 | SMP0302 | `void` mapper cannot be used with `init-only` / `record` destination | Error |
 | SMP0303 | `required` member is not mapped | Error |

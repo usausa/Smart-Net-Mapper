@@ -158,7 +158,7 @@ internal static class MapperSourceBuilder
             if (method.UseConstructorMapping)
             {
                 var initOnlyMappings = method.PropertyMappings
-                    .Where(pm => pm.IsTargetInitOnly || pm.IsTargetRequired)
+                    .Where(pm => (pm.IsTargetInitOnly || pm.IsTargetRequired) && !pm.IsConstructorParameter)
                     .ToList();
 
                 // Explicit feature mappings (constant/expression/using/from) that target init-only or
@@ -201,7 +201,12 @@ internal static class MapperSourceBuilder
                     {
                         builder.Append(", ");
                     }
-                    builder.Append(ctorParameters[i].SourceExpression);
+
+                    // BuildConstructorParameterMappings guarantees a mapping exists for every
+                    // argument; First is deliberate so a broken invariant fails the build loudly
+                    // instead of emitting an empty argument.
+                    var ctorMapping = method.PropertyMappings.First(pm => pm.TargetPath == ctorParameters[i].TargetPath);
+                    AppendPropertyValue(builder, ctorMapping, method.SourceParameterName, method, nullChecked: false);
                 }
                 builder.Append(")");
 
@@ -212,7 +217,9 @@ internal static class MapperSourceBuilder
                     builder.IndentLevel++;
                     foreach (var pm in initOnlyMappings)
                     {
-                        builder.Indent().Append(pm.TargetPath).Append(" = ").Append(pm.SourcePath.Contains('.') ? pm.SourcePath : $"{method.SourceParameterName}.{pm.SourcePath}").Append(",").NewLine();
+                        builder.Indent().Append(pm.TargetPath).Append(" = ");
+                        AppendPropertyValue(builder, pm, method.SourceParameterName, method, nullChecked: false);
+                        builder.Append(",").NewLine();
                     }
                     foreach (var (_, _, target, value) in featureInitEntries.OrderBy(static x => x.Order).ThenBy(static x => x.DefinitionOrder))
                     {
@@ -267,7 +274,7 @@ internal static class MapperSourceBuilder
         }
 
         var effectiveMappings = method.UseConstructorMapping
-            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly && !m.IsTargetRequired).ToList()
+            ? method.PropertyMappings.Where(m => !m.IsTargetInitOnly && !m.IsTargetRequired && !m.IsConstructorParameter).ToList()
             : method.PropertyMappings.ToList();
         var sortedMappings = effectiveMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder).ToList();
         var mappingsWithoutNullCheck = sortedMappings.Where(m => !m.RequiresNullCheck()).ToList();
@@ -1064,6 +1071,41 @@ internal static class MapperSourceBuilder
     {
         builder.Indent();
         builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
+        AppendPropertyValue(builder, mapping, sourceParamName, method, nullChecked);
+        builder.Append(";").NewLine();
+    }
+
+    // Appends the right-hand side of a mapping as a single expression: converter call, type
+    // conversion, or a plain accessor with null substitution / unwrapping.
+    //
+    // Constructor arguments and object-initializer entries reuse this so that they go through the
+    // same conversion pipeline as ordinary property assignments. They cannot use the statement-based
+    // paths (BuildSkipAssignment / BuildNullableSourceConversion), which is why the value has to be
+    // expressible on its own.
+    internal static void AppendPropertyValue(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, MapperMethodModel method, bool nullChecked)
+    {
+        // Statement contexts guard nullable intermediate path segments with a grouped `if` and pass
+        // nullChecked: true; expression contexts cannot, so the guard becomes a conditional here.
+        // Without it a dotted source such as src.Child!.Val dereferences a null intermediate.
+        if (!nullChecked && mapping.RequiresNullCheck())
+        {
+            builder.Append(GetNullCheckCondition(mapping, sourceParamName)).Append(" ? ");
+            AppendPropertyValueCore(builder, mapping, sourceParamName, method, nullChecked: true);
+            builder.Append(" : ");
+            AppendNullFallback(builder, mapping);
+            return;
+        }
+
+        AppendPropertyValueCore(builder, mapping, sourceParamName, method, nullChecked);
+    }
+
+    private static void AppendPropertyValueCore(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, MapperMethodModel method, bool nullChecked)
+    {
+        if (!mapping.HasConverter() && mapping.IsSourceNullable && mapping.RequiresConversion)
+        {
+            AppendNullableSourceConversionValue(builder, mapping, sourceParamName, method, nullChecked);
+            return;
+        }
 
         if (mapping.HasConverter())
         {
@@ -1108,8 +1150,48 @@ internal static class MapperSourceBuilder
                 }
             }
         }
+    }
 
-        builder.Append(";").NewLine();
+    // Appends a nullable source that needs converting as one expression:
+    //   <source> is not null ? <converted> : <fallback>
+    // The fallback follows the destination: an explicit NullSubstitute, null for a nullable target,
+    // otherwise the target type's default.
+    internal static void AppendNullableSourceConversionValue(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, MapperMethodModel method, bool nullChecked)
+    {
+        var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+        var isNullableValueType = mapping.SourceType.Contains("?") || mapping.SourceType.Contains("Nullable<");
+
+        builder.Append(sourceAccessor).Append(" is not null ? ");
+
+        if (isNullableValueType)
+        {
+            BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
+        }
+        else
+        {
+            BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+        }
+
+        builder.Append(" : ");
+        AppendNullFallback(builder, mapping);
+    }
+
+    // The value emitted when a null source leaves nothing to convert: an explicit NullSubstitute,
+    // null for a nullable target, otherwise the target type's default.
+    private static void AppendNullFallback(SourceBuilder builder, PropertyMappingModel mapping)
+    {
+        if (mapping.HasNullSubstitute())
+        {
+            builder.Append(mapping.NullSubstitute!);
+        }
+        else if (mapping.IsTargetNullable)
+        {
+            builder.Append("null");
+        }
+        else
+        {
+            builder.Append("default!");
+        }
     }
 
     internal static void BuildNullableSourceConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, string destVarName, MapperMethodModel method, bool nullChecked)
@@ -1138,59 +1220,12 @@ internal static class MapperSourceBuilder
             builder.Append(";").NewLine();
             builder.EndScope();
         }
-        else if (mapping.HasNullSubstitute())
+        else
         {
             builder.Indent();
             builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
-            builder.Append(sourceAccessor).Append(" is not null ? ");
-
-            if (isNullableValueType)
-            {
-                BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
-            }
-            else
-            {
-                BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
-            }
-
-            builder.Append(" : ").Append(mapping.NullSubstitute!).Append(";").NewLine();
-        }
-        else
-        {
-            if (mapping.IsTargetNullable)
-            {
-                builder.Indent();
-                builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
-                builder.Append(sourceAccessor).Append(" is not null ? ");
-
-                if (isNullableValueType)
-                {
-                    BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
-                }
-                else
-                {
-                    BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
-                }
-
-                builder.Append(" : null;").NewLine();
-            }
-            else
-            {
-                builder.Indent();
-                builder.Append(destVarName).Append(".").Append(mapping.TargetPath).Append(" = ");
-                builder.Append(sourceAccessor).Append(" is not null ? ");
-
-                if (isNullableValueType)
-                {
-                    BuildTypeConversionWithValueAccess(builder, mapping, sourceAccessor, method);
-                }
-                else
-                {
-                    BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
-                }
-
-                builder.Append(" : default!;").NewLine();
-            }
+            AppendNullableSourceConversionValue(builder, mapping, sourceParamName, method, nullChecked);
+            builder.Append(";").NewLine();
         }
     }
 

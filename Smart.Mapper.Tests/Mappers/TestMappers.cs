@@ -494,6 +494,38 @@ internal static partial class PrimaryConstructorMappers
     [MapProperty(nameof(MapPropertyOverrideDestination.Id), nameof(MapPropertyOverrideSource.Identifier))]
     [MapProperty(nameof(MapPropertyOverrideDestination.Name), nameof(MapPropertyOverrideSource.FullName))]
     public static partial MapPropertyOverrideDestination MapWithPropertyOverride(MapPropertyOverrideSource source);
+
+    // コンストラクタ引数にも型変換・Converter・NullSubstitute が適用される
+    // Type conversion, Converter and NullSubstitute apply to constructor arguments too
+    [Mapper(Culture = "en-US")]
+    [MapProperty(nameof(CtorConversionDestination.Raw), nameof(CtorConversionSource.Raw), Converter = nameof(FormatRaw))]
+    [MapProperty<int>(nameof(CtorConversionDestination.Quantity), nameof(CtorConversionSource.Quantity), NullSubstitute = 99)]
+    public static partial CtorConversionDestination MapCtorConversion(CtorConversionSource source);
+
+    private static string FormatRaw(int value) => $"#{value}";
+
+    // セッターの無いプロパティへのリネーム + 型変換
+    // Rename plus type conversion onto a get-only property
+    [Mapper]
+    [MapProperty(nameof(CtorGetOnlyDestination.Value), nameof(CtorGetOnlySource.Other))]
+    public static partial CtorGetOnlyDestination MapCtorGetOnly(CtorGetOnlySource source);
+
+    // null 許容ソース + 型変換。null はターゲット型の default になる
+    // Nullable source plus conversion; null yields the destination type's default
+    [Mapper(Culture = "en-US")]
+    public static partial CtorNullableConversionDestination MapCtorNullableConversion(CtorNullableConversionSource source);
+
+    // 対応する destination プロパティを持たない引数へのリネーム + 型変換
+    // Rename plus type conversion onto a parameter with no backing destination property
+    [Mapper]
+    [MapProperty("value", nameof(CtorNoPropertySource.Other))]
+    public static partial CtorNoPropertyDestination MapCtorNoProperty(CtorNoPropertySource source);
+
+    // null 許容な中間セグメントを持つドット記法ソース + コンストラクタ引数
+    // Dotted source with a nullable intermediate segment feeding a constructor argument
+    [Mapper]
+    [MapProperty(nameof(CtorNestedGuardDestination.Value), "Child.Val")]
+    public static partial CtorNestedGuardDestination MapCtorNestedGuard(CtorNestedGuardSource source);
 }
 
 // C2: InPlace, D4: readonly struct

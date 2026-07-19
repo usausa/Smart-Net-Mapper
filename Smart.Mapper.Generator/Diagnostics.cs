@@ -191,6 +191,38 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor UnresolvedMapPropertySourceProperty = new(
+        id: "SMP0213",
+        title: "Unresolved MapProperty source property",
+        messageFormat: "Source property specified in [MapProperty] was not found on the source type. method=[{0}], target=[{1}], source=[{2}].",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnresolvedMapPropertyTargetProperty = new(
+        id: "SMP0214",
+        title: "Unresolved MapProperty target property",
+        messageFormat: "Target property specified in [MapProperty] was not found on the destination type, or has no setter and is not assigned by a constructor. method=[{0}], target=[{1}].",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnsupportedConstructorAssignedOption = new(
+        id: "SMP0215",
+        title: "Unsupported option for a constructor-assigned target",
+        messageFormat: "[MapCondition] and NullBehavior.Skip require a property assignment and cannot apply to a member assigned through a constructor or object initializer. method=[{0}], target=[{1}], option=[{2}].",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor IgnoredConstructorParameter = new(
+        id: "SMP0216",
+        title: "Ignored member is assigned through a constructor",
+        messageFormat: "An ignored member is assigned through a constructor, which requires a value for it; remove [MapIgnore] or provide the value explicitly. method=[{0}], target=[{1}].",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     // ==================================================================
     // SMP03xx — construction (constructor parameters, init-only / required members)
     // ==================================================================

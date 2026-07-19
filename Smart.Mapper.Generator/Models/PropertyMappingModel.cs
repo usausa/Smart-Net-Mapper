@@ -56,6 +56,11 @@ internal sealed record PropertyMappingModel
     public bool IsTargetInitOnly { get; set; }
     public bool IsTargetRequired { get; set; }
     public bool HasExplicitMapping { get; set; }
+
+    // Set when this mapping supplies a constructor argument instead of an assignment. The mapping
+    // stays in PropertyMappings so it still goes through every analysis pass, but the emitters skip
+    // it when writing assignments and object-initializer entries.
+    public bool IsConstructorParameter { get; set; }
     public int Order { get; set; }
     public int DefinitionOrder { get; set; }
 

@@ -54,8 +54,8 @@ internal static partial class ObjectMapper
     public static partial Destination Map(Source source);
 
     [Mapper]
-    [MapProperty("SourceId", "DestId")]
-    [MapProperty("SourceName", "DestName")]
+    [MapProperty("DestId", "SourceId")]
+    [MapProperty("DestName", "SourceName")]
     public static partial void Map(DiffSource source, DiffDestination destination);
 
     [Mapper]

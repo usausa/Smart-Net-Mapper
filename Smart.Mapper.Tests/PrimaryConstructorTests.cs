@@ -88,4 +88,104 @@ public class PrimaryConstructorTests
         Assert.Equal(99, destination.Id);
         Assert.Equal("Overridden", destination.Name);
     }
+
+    // 対応5: コンストラクタ引数に型変換・Converter・NullSubstitute が適用されること。
+    // Fix 5: type conversion, Converter and NullSubstitute are applied to constructor arguments.
+    [Fact]
+    public void MapCtorConversion_AppliesConversionPipeline()
+    {
+        var source = new CtorConversionSource { Value = 42, Raw = 7, Quantity = null };
+
+        var destination = PrimaryConstructorMappers.MapCtorConversion(source);
+
+        Assert.Equal("42", destination.Value);
+        Assert.Equal("#7", destination.Raw);
+        Assert.Equal(99, destination.Quantity);
+    }
+
+    // 対応5: NullSubstitute を使わない場合は元の値が渡ること。
+    // Fix 5: the original value is passed through when the substitute is not needed.
+    [Fact]
+    public void MapCtorConversion_KeepsValueWhenNotNull()
+    {
+        var source = new CtorConversionSource { Value = 1, Raw = 2, Quantity = 5 };
+
+        var destination = PrimaryConstructorMappers.MapCtorConversion(source);
+
+        Assert.Equal(5, destination.Quantity);
+    }
+
+    // 対応4/5: セッターの無いプロパティへのリネームと型変換。
+    // Fix 4/5: rename plus type conversion onto a get-only property.
+    [Fact]
+    public void MapCtorGetOnly_AppliesRenameAndConversion()
+    {
+        var source = new CtorGetOnlySource { Other = 123 };
+
+        var destination = PrimaryConstructorMappers.MapCtorGetOnly(source);
+
+        Assert.Equal("123", destination.Value);
+    }
+
+    // 対応5: null 許容ソース + 型変換。値がある場合は変換される。
+    // Fix 5: a nullable source needing conversion is converted when it has a value.
+    [Fact]
+    public void MapCtorNullableConversion_ConvertsWhenNotNull()
+    {
+        var source = new CtorNullableConversionSource { Value = 7, Text = "42" };
+
+        var destination = PrimaryConstructorMappers.MapCtorNullableConversion(source);
+
+        Assert.Equal("7", destination.Value);
+        Assert.Equal(42, destination.Text);
+    }
+
+    // 対応5: null の場合はターゲット型の default になる。
+    // Fix 5: null yields the destination type's default.
+    [Fact]
+    public void MapCtorNullableConversion_UsesDestinationDefaultWhenNull()
+    {
+        var source = new CtorNullableConversionSource { Value = null, Text = null };
+
+        var destination = PrimaryConstructorMappers.MapCtorNullableConversion(source);
+
+        Assert.Null(destination.Value);
+        Assert.Equal(0, destination.Text);
+    }
+
+    // 残作業1: 対応する destination プロパティを持たない引数にもリネームと型変換が適用される。
+    // Remaining item 1: rename and conversion apply to a parameter with no backing property.
+    [Fact]
+    public void MapCtorNoProperty_AppliesRenameAndConversion()
+    {
+        var source = new CtorNoPropertySource { Other = 55 };
+
+        var destination = PrimaryConstructorMappers.MapCtorNoProperty(source);
+
+        Assert.Equal("55", destination.Text);
+    }
+
+    // null 許容な中間セグメントは、値がある場合は辿って変換される。
+    // A nullable intermediate segment is traversed and converted when it has a value.
+    [Fact]
+    public void MapCtorNestedGuard_ConvertsWhenIntermediateNotNull()
+    {
+        var source = new CtorNestedGuardSource { Child = new CtorNestedGuardSourceChild { Val = 7 } };
+
+        var destination = PrimaryConstructorMappers.MapCtorNestedGuard(source);
+
+        Assert.Equal("7", destination.Value);
+    }
+
+    // null 許容な中間セグメントが null の場合、NRE にならずターゲット型の default になる。
+    // A null intermediate segment yields the destination type's default instead of an NRE.
+    [Fact]
+    public void MapCtorNestedGuard_UsesDefaultWhenIntermediateNull()
+    {
+        var source = new CtorNestedGuardSource { Child = null };
+
+        var destination = PrimaryConstructorMappers.MapCtorNestedGuard(source);
+
+        Assert.Null(destination.Value);
+    }
 }

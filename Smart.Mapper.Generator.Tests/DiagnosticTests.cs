@@ -975,4 +975,324 @@ public class DiagnosticTests
             d.Id == "SMP0403" &&
             d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }
+
+    // -----------------------------------------------------------------------
+    // SMP0213 — [MapProperty] のソースプロパティ名が typo
+    // SMP0213 — source property name in [MapProperty] is a typo
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0213_MapProperty_UnresolvedSourceProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Name", "ValueTypo")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string? Name { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0213");
+    }
+
+    // ドット記法のソースパスが解決できない場合も同じ診断となる。
+    // An unresolvable dotted source path reports the same diagnostic.
+    [Fact]
+    public void SMP0213_MapProperty_UnresolvedNestedSourcePath_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Name", "Child.ValueTypo")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class SrcChild { public int Value { get; set; } }
+            public class Src { public SrcChild Child { get; set; } = new(); }
+            public class Dest { public string? Name { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0213");
+    }
+
+    // Source を省略した場合はターゲット名がソース名として扱われるため、
+    // When Source is omitted the target name is used as the source name, so a destination-only
+    // ソース側に存在しない名前であれば同じく報告される。
+    // property name is reported the same way.
+    [Fact]
+    public void SMP0213_MapProperty_OmittedSourceNotOnSourceType_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Name")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string? Name { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0213");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0214 — [MapProperty] のターゲットプロパティ名が typo、または代入不可
+    // SMP0214 — target property name in [MapProperty] is a typo, or is not assignable
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0214_MapProperty_UnresolvedTargetProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("NameTypo", "Value")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string? Name { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0214");
+    }
+
+    // セッターが無くコンストラクタでも代入されないターゲットは代入不可として報告される。
+    // A target with no setter that no constructor assigns is reported as not assignable.
+    [Fact]
+    public void SMP0214_MapProperty_UnassignableTargetProperty_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Name", "Value")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest { public string? Name { get; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0214");
+    }
+
+    // コンストラクタ引数との照合は引数バインドと同じ規則で行うため、既定（Ordinal）では
+    // Matching against constructor parameters follows the argument-binding rules, so under the
+    // 大小文字違いのターゲットは受理されず SMP0214 で報告される（無言破棄の防止）。
+    // default (Ordinal) comparison a miscased target is rejected instead of silently dropped.
+    [Fact]
+    public void SMP0214_MapProperty_MiscasedConstructorTarget_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("VALUE", "Other")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public int Other { get; set; } public int Value { get; set; } }
+            public class Dest
+            {
+                public Dest(int value) { Value = value; }
+                public int Value { get; set; }
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0214");
+    }
+
+    // 基底インターフェイスから継承したメンバーへのドット記法ソースパスは解決できる。
+    // A dotted source path through a member inherited from a base interface resolves.
+    [Fact]
+    public void SMP0213_InterfaceInheritedMember_DoesNotEmitDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Total", "Items.Count")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public System.Collections.Generic.IReadOnlyList<int> Items { get; set; } = System.Array.Empty<int>(); }
+            public class Dest { public int Total { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0215 — コンストラクタ経由で代入されるターゲットに文ベースのオプションを指定
+    // SMP0215 — statement-based options applied to a constructor-assigned target
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0215_MapConditionOnConstructorParameter_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCondition("Value", nameof(Cond))]
+                public static partial Dest Map(Src src);
+
+                private static bool Cond(int v) => v > 0;
+            }
+
+            public class Src { public int Value { get; set; } }
+            public record Dest(int Value);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0215");
+    }
+
+    [Fact]
+    public void SMP0215_NullBehaviorSkipOnConstructorParameter_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Value", NullBehavior = NullBehavior.Skip)]
+                public static partial Dest Map(Src src);
+            }
+
+            public class Src { public int? Value { get; set; } }
+            public record Dest(int Value);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0215");
+    }
+
+    // オブジェクト初期化子で代入される init 専用メンバーへの条件指定も SMP0215 となる。
+    // A condition on an init-only member assigned via the object initializer is also SMP0215.
+    [Fact]
+    public void SMP0215_MapConditionOnInitOnlyInitializerTarget_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapCondition("Number", nameof(Cond))]
+                public static partial Dest Map(Src src);
+
+                private static bool Cond(int v) => v > 0;
+            }
+
+            public class Src { public int Id { get; set; } public int Number { get; set; } }
+            public class Dest
+            {
+                public Dest(int id) { Id = id; }
+                public int Id { get; }
+                public int Number { get; init; }
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0215");
+    }
+
+    // -----------------------------------------------------------------------
+    // SMP0216 — コンストラクタ引数となるメンバーへの [MapIgnore]
+    // SMP0216 — [MapIgnore] on a member assigned through a constructor
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void SMP0216_MapIgnoreOnConstructorParameter_EmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapIgnore("Value")]
+                public static partial Dest Map(Src src);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public record Dest(int Value);
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0216");
+    }
+
+    // セッターが無くてもコンストラクタで代入されるターゲットは報告しない。
+    // A target with no setter is not reported when a constructor assigns it.
+    [Fact]
+    public void SMP0214_MapProperty_ConstructorAssignedTarget_DoesNotEmitDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapProperty("Name", "Value")]
+                public static partial Dest Map(Src src);
+            }
+
+            public class Src { public int Value { get; set; } }
+            public class Dest
+            {
+                public int Name { get; }
+                public Dest(int name) { Name = name; }
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0214");
+    }
 }

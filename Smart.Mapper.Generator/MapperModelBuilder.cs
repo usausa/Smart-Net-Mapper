@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Generator;
+namespace Smart.Mapper.Generator;
 
 using System;
 using System.Collections.Generic;
@@ -265,7 +265,7 @@ internal static class MapperModelBuilder
         return Results.Success(model);
     }
 
-    internal static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -298,7 +298,7 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static ConverterMatchResult FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
+    private static ConverterMatchResult FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
@@ -352,7 +352,7 @@ internal static class MapperModelBuilder
         return ConverterMatchResult.NoMatch;
     }
 
-    internal static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -2371,8 +2371,7 @@ internal static class MapperModelBuilder
             // that construction will actually call. Matching mirrors the argument-binding loop, so
             // anything accepted here is guaranteed to be consumed rather than silently dropped.
             var targetProperty = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
-            if (((targetProperty is null) || (targetProperty.SetMethod is null)) &&
-                !IsConstructorParameterTarget(effectiveConstructor, mapping.TargetPath, nameComparison))
+            if ((targetProperty?.SetMethod is null) && !IsConstructorParameterTarget(effectiveConstructor, mapping.TargetPath, nameComparison))
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapPropertyTargetProperty,

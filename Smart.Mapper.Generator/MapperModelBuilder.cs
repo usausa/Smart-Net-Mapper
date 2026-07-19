@@ -14,25 +14,6 @@ using SourceGenerateHelper;
 
 internal static class MapperModelBuilder
 {
-    internal const string MapperAttributeName = "Smart.Mapper.MapperAttribute";
-    internal const string MapPropertyAttributeName = "Smart.Mapper.MapPropertyAttribute";
-    internal const string MapIgnoreAttributeName = "Smart.Mapper.MapIgnoreAttribute";
-    internal const string MapConstantAttributeName = "Smart.Mapper.MapConstantAttribute";
-    internal const string MapExpressionAttributeName = "Smart.Mapper.MapExpressionAttribute";
-    internal const string BeforeMapAttributeName = "Smart.Mapper.BeforeMapAttribute";
-    internal const string AfterMapAttributeName = "Smart.Mapper.AfterMapAttribute";
-    internal const string MapConditionAttributeName = "Smart.Mapper.MapConditionAttribute";
-    internal const string MapUsingAttributeName = "Smart.Mapper.MapUsingAttribute";
-    internal const string MapFromAttributeName = "Smart.Mapper.MapFromAttribute";
-    internal const string MapCollectionAttributeName = "Smart.Mapper.MapCollectionAttribute";
-    internal const string MapNestedAttributeName = "Smart.Mapper.MapNestedAttribute";
-    internal const string ValueConverterAttributeName = "Smart.Mapper.ValueConverterAttribute";
-    internal const string CollectionConverterAttributeName = "Smart.Mapper.CollectionConverterAttribute";
-    internal const string MapperProfileAttributeName = "Smart.Mapper.MapperProfileAttribute";
-
-    internal const string DefaultValueConverterTypeName = "global::Smart.Mapper.DefaultValueConverter";
-    internal const string DefaultCollectionConverterTypeName = "global::Smart.Mapper.DefaultCollectionConverter";
-
     internal static Result<MapperMethodModel> BuildModel(GeneratorAttributeSyntaxContext context)
     {
         var syntax = (MethodDeclarationSyntax)context.TargetNode;
@@ -604,7 +585,7 @@ internal static class MapperModelBuilder
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == MapperAttributeName)
+            if (attributeName == Names.MapperAttribute)
             {
                 foreach (var namedArg in attribute.NamedArguments)
                 {
@@ -637,9 +618,9 @@ internal static class MapperModelBuilder
                     }
                 }
             }
-            else if ((attributeName == MapPropertyAttributeName) ||
+            else if ((attributeName == Names.MapPropertyAttribute) ||
                      (attribute.AttributeClass?.IsGenericType == true &&
-                      attribute.AttributeClass.OriginalDefinition.ToDisplayString() == "Smart.Mapper.MapPropertyAttribute<T>"))
+                      attribute.AttributeClass.OriginalDefinition.ToDisplayString() == Names.MapPropertyAttributeGeneric))
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
@@ -708,7 +689,7 @@ internal static class MapperModelBuilder
                     propertyMappings.Add(mapping);
                 }
             }
-            else if (attributeName == MapIgnoreAttributeName)
+            else if (attributeName == Names.MapIgnoreAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
@@ -716,8 +697,8 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if ((attributeName == MapConstantAttributeName) ||
-                     (attributeName is not null && attributeName.StartsWith("Smart.Mapper.MapConstantAttribute<", StringComparison.Ordinal)))
+            else if ((attributeName == Names.MapConstantAttribute) ||
+                     (attributeName is not null && attributeName.StartsWith(Names.MapConstantAttributeGenericPrefix, StringComparison.Ordinal)))
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -745,7 +726,7 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if (attributeName == MapExpressionAttributeName)
+            else if (attributeName == Names.MapExpressionAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -772,21 +753,21 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if (attributeName == BeforeMapAttributeName)
+            else if (attributeName == Names.BeforeMapAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
                     model.BeforeMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
                 }
             }
-            else if (attributeName == AfterMapAttributeName)
+            else if (attributeName == Names.AfterMapAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
                     model.AfterMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
                 }
             }
-            else if (attributeName == MapConditionAttributeName)
+            else if (attributeName == Names.MapConditionAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -798,7 +779,7 @@ internal static class MapperModelBuilder
                     }
                 }
             }
-            else if (attributeName == MapUsingAttributeName)
+            else if (attributeName == Names.MapUsingAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -825,7 +806,7 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if (attributeName == MapFromAttributeName)
+            else if (attributeName == Names.MapFromAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -852,7 +833,7 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if (attributeName == MapCollectionAttributeName)
+            else if (attributeName == Names.MapCollectionAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
@@ -902,7 +883,7 @@ internal static class MapperModelBuilder
                     ignoredProperties.Add(targetName);
                 }
             }
-            else if (attributeName == MapNestedAttributeName)
+            else if (attributeName == Names.MapNestedAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
@@ -968,7 +949,7 @@ internal static class MapperModelBuilder
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if (attributeName == ValueConverterAttributeName)
+            if (attributeName == Names.ValueConverterAttribute)
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
@@ -984,7 +965,7 @@ internal static class MapperModelBuilder
                     }
                 }
             }
-            else if (attributeName == CollectionConverterAttributeName)
+            else if (attributeName == Names.CollectionConverterAttribute)
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
@@ -999,7 +980,7 @@ internal static class MapperModelBuilder
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if ((attributeName == ValueConverterAttributeName) && (model.MapConverterTypeName is null))
+            if ((attributeName == Names.ValueConverterAttribute) && (model.MapConverterTypeName is null))
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
@@ -1015,7 +996,7 @@ internal static class MapperModelBuilder
                     }
                 }
             }
-            else if ((attributeName == CollectionConverterAttributeName) && (model.CollectionConverterTypeName is null))
+            else if ((attributeName == Names.CollectionConverterAttribute) && (model.CollectionConverterTypeName is null))
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
@@ -1023,7 +1004,7 @@ internal static class MapperModelBuilder
                     model.CollectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 }
             }
-            else if (attributeName == MapperProfileAttributeName)
+            else if (attributeName == Names.MapperProfileAttribute)
             {
                 foreach (var namedArg in attribute.NamedArguments)
                 {
@@ -3038,7 +3019,7 @@ internal static class MapperModelBuilder
 
     internal static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
     {
-        var converterType = FindConverterType(mapperMethod, model.MapConverterTypeName ?? "Smart.Mapper.DefaultValueConverter");
+        var converterType = FindConverterType(mapperMethod, model.MapConverterTypeName ?? Names.DefaultValueConverter);
         if (converterType is null)
         {
             return;

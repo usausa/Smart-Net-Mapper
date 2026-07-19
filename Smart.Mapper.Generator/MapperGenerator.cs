@@ -25,7 +25,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
     {
         var methodProvider = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                MapperModelBuilder.MapperAttributeName,
+                Names.MapperAttribute,
                 static (syntax, _) => IsMethodSyntax(syntax),
                 static (context, _) => MapperModelBuilder.BuildModel(context))
             .Collect();

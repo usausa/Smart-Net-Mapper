@@ -86,7 +86,7 @@ internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
         foreach (var attr in method.GetAttributes())
         {
             var name = attr.AttributeClass?.ToDisplayString();
-            if (name == "Smart.Mapper.MapperAttribute")
+            if (name == Names.MapperAttribute)
             {
                 return true;
             }

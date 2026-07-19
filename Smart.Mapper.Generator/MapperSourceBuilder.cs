@@ -440,7 +440,7 @@ internal static class MapperSourceBuilder
             }
         }
 
-        var collectionConverterTypeName = method.CollectionConverterTypeName ?? MapperModelBuilder.DefaultCollectionConverterTypeName;
+        var collectionConverterTypeName = method.CollectionConverterTypeName ?? Names.QualifiedDefaultCollectionConverter;
         foreach (var mapCollection in method.MapCollectionMappings.OrderBy(m => m.Order).ThenBy(m => m.DefinitionOrder))
         {
             EmitCollectionMapping(builder, mapCollection, method, destVarName, collectionConverterTypeName);
@@ -1250,7 +1250,7 @@ internal static class MapperSourceBuilder
             return;
         }
 
-        var converterTypeName = method.MapConverterTypeName ?? MapperModelBuilder.DefaultValueConverterTypeName;
+        var converterTypeName = method.MapConverterTypeName ?? Names.QualifiedDefaultValueConverter;
 
         if (mapping.HasSpecializedConverter())
         {
@@ -1394,7 +1394,7 @@ internal static class MapperSourceBuilder
             return;
         }
 
-        var converterTypeName = method.MapConverterTypeName ?? MapperModelBuilder.DefaultValueConverterTypeName;
+        var converterTypeName = method.MapConverterTypeName ?? Names.QualifiedDefaultValueConverter;
 
         if (mapping.HasSpecializedConverter())
         {

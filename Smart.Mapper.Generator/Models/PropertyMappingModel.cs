@@ -70,7 +70,7 @@ internal sealed record PropertyMappingModel
     public string? ConditionMethod { get; set; }
     public bool ConditionAcceptsCustomParameters { get; set; }
     public NullBehaviorType NullBehavior { get; set; } = NullBehaviorType.Default;
-    public string? NullSubstitute { get; set; }
+    public string? NullValue { get; set; }
     public string? EffectiveCulture { get; set; }
     public string? EffectiveDateTimeFormat { get; set; }
     public string? EffectiveNumberFormat { get; set; }
@@ -108,7 +108,7 @@ internal static class PropertyMappingModelExtensions
 
     public static bool HasCondition(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.ConditionMethod);
 
-    public static bool HasNullSubstitute(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.NullSubstitute);
+    public static bool HasNullValue(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.NullValue);
 
     public static bool HasCulture(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.EffectiveCulture);
 
@@ -116,5 +116,5 @@ internal static class PropertyMappingModelExtensions
         m.SourcePathSegments.Any(s => s.IsNullable);
 
     public static bool RequiresNullCoalescing(this PropertyMappingModel m) =>
-        m.IsSourceNullable && !m.IsTargetNullable && m.NullBehavior == NullBehaviorType.Default && !m.HasNullSubstitute();
+        m.IsSourceNullable && !m.IsTargetNullable && m.NullBehavior == NullBehaviorType.Default && !m.HasNullValue();
 }

@@ -89,8 +89,8 @@ public class PrimaryConstructorTests
         Assert.Equal("Overridden", destination.Name);
     }
 
-    // 対応5: コンストラクタ引数に型変換・Converter・NullSubstitute が適用されること。
-    // Fix 5: type conversion, Converter and NullSubstitute are applied to constructor arguments.
+    // 対応5: コンストラクタ引数に型変換・Converter・NullValue が適用されること。
+    // Fix 5: type conversion, Converter and NullValue are applied to constructor arguments.
     [Fact]
     public void MapCtorConversion_AppliesConversionPipeline()
     {
@@ -103,7 +103,7 @@ public class PrimaryConstructorTests
         Assert.Equal(99, destination.Quantity);
     }
 
-    // 対応5: NullSubstitute を使わない場合は元の値が渡ること。
+    // 対応5: NullValue を使わない場合は元の値が渡ること。
     // Fix 5: the original value is passed through when the substitute is not needed.
     [Fact]
     public void MapCtorConversion_KeepsValueWhenNotNull()

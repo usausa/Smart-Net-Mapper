@@ -354,11 +354,11 @@ internal static partial class TestMappers
     [ValueConverter(typeof(SpecializedConverter))]
     public static partial void MapWithSpecializedConverter(SpecializedConverterSource source, SpecializedConverterDestination destination);
 
-    // A1: NullSubstitute – string and int with fallback values when source is null
+    // A1: NullValue – string and int with fallback values when source is null
     [Mapper]
-    [MapProperty(nameof(NullSubstituteDestination.Name), nameof(NullSubstituteSource.Name), NullSubstitute = "(none)")]
-    [MapProperty(nameof(NullSubstituteDestination.Count), nameof(NullSubstituteSource.Count), NullSubstitute = -1)]
-    public static partial void MapWithNullSubstitute(NullSubstituteSource source, NullSubstituteDestination destination);
+    [MapProperty(nameof(NullValueDestination.Name), nameof(NullValueSource.Name), NullValue = "(none)")]
+    [MapProperty(nameof(NullValueDestination.Count), nameof(NullValueSource.Count), NullValue = -1)]
+    public static partial void MapWithNullValue(NullValueSource source, NullValueDestination destination);
 
     // B1: DateOnly / TimeOnly / DateTimeOffset / TimeSpan -> string
     [Mapper]
@@ -495,11 +495,11 @@ internal static partial class PrimaryConstructorMappers
     [MapProperty(nameof(MapPropertyOverrideDestination.Name), nameof(MapPropertyOverrideSource.FullName))]
     public static partial MapPropertyOverrideDestination MapWithPropertyOverride(MapPropertyOverrideSource source);
 
-    // コンストラクタ引数にも型変換・Converter・NullSubstitute が適用される
-    // Type conversion, Converter and NullSubstitute apply to constructor arguments too
+    // コンストラクタ引数にも型変換・Converter・NullValue が適用される
+    // Type conversion, Converter and NullValue apply to constructor arguments too
     [Mapper(Culture = "en-US")]
     [MapProperty(nameof(CtorConversionDestination.Raw), nameof(CtorConversionSource.Raw), Converter = nameof(FormatRaw))]
-    [MapProperty<int>(nameof(CtorConversionDestination.Quantity), nameof(CtorConversionSource.Quantity), NullSubstitute = 99)]
+    [MapProperty<int>(nameof(CtorConversionDestination.Quantity), nameof(CtorConversionSource.Quantity), NullValue = 99)]
     public static partial CtorConversionDestination MapCtorConversion(CtorConversionSource source);
 
     private static string FormatRaw(int value) => $"#{value}";

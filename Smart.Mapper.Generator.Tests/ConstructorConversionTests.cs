@@ -68,10 +68,10 @@ public class ConstructorConversionTests
         Assert.Contains("Conv(src.Other)", generated, StringComparison.Ordinal);
     }
 
-    // NullSubstitute がコンストラクタ引数にも適用される。
-    // A NullSubstitute is applied to a constructor argument as well.
+    // NullValue がコンストラクタ引数にも適用される。
+    // A NullValue is applied to a constructor argument as well.
     [Fact]
-    public void ConstructorParameterAppliesNullSubstitute()
+    public void ConstructorParameterAppliesNullValue()
     {
         var source = """
             using Smart.Mapper;
@@ -81,7 +81,7 @@ public class ConstructorConversionTests
             public partial class M
             {
                 [Mapper]
-                [MapProperty<int>("Value", NullSubstitute = 99)]
+                [MapProperty<int>("Value", NullValue = 99)]
                 public static partial Dst Map(Src src);
             }
             """;

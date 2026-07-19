@@ -648,7 +648,7 @@ internal static class MapperModelBuilder
                     string? converter = null;
                     var nullBehavior = NullBehaviorType.Default;
                     var order = 0;
-                    string? nullSubstitute = null;
+                    string? nullValue = null;
                     string? propCulture = null;
                     string? propDateTimeFormat = null;
                     string? propNumberFormat = null;
@@ -672,9 +672,9 @@ internal static class MapperModelBuilder
                         {
                             order = ord;
                         }
-                        else if (namedArg.Key == "NullSubstitute")
+                        else if (namedArg.Key == "NullValue")
                         {
-                            nullSubstitute = FormatConstantValue(namedArg.Value.Value);
+                            nullValue = FormatConstantValue(namedArg.Value.Value);
                         }
                         else if ((namedArg.Key == "Culture") && (namedArg.Value.Value is string pc))
                         {
@@ -699,7 +699,7 @@ internal static class MapperModelBuilder
                         Order = order,
                         DefinitionOrder = definitionOrder++,
                         HasExplicitMapping = true,
-                        NullSubstitute = nullSubstitute,
+                        NullValue = nullValue,
                         EffectiveCulture = propCulture,
                         EffectiveDateTimeFormat = propDateTimeFormat,
                         EffectiveNumberFormat = propNumberFormat
@@ -2414,7 +2414,7 @@ internal static class MapperModelBuilder
         var order = 0;
         var definitionOrder = 0;
         var nullBehavior = NullBehaviorType.Default;
-        var nullSubstitute = default(string?);
+        var nullValue = default(string?);
         string? propEffectiveCulture;
         string? propEffectiveDateTimeFormat;
         string? propEffectiveNumberFormat;
@@ -2423,7 +2423,7 @@ internal static class MapperModelBuilder
             order = origMapping.Order;
             definitionOrder = origMapping.DefinitionOrder;
             nullBehavior = origMapping.NullBehavior;
-            nullSubstitute = origMapping.NullSubstitute;
+            nullValue = origMapping.NullValue;
             propEffectiveCulture = origMapping.EffectiveCulture ?? model.Culture;
             propEffectiveDateTimeFormat = origMapping.EffectiveDateTimeFormat ?? model.DateTimeFormat;
             propEffectiveNumberFormat = origMapping.EffectiveNumberFormat ?? model.NumberFormat;
@@ -2452,7 +2452,7 @@ internal static class MapperModelBuilder
             ConverterMethod = converterMethod,
             ConditionMethod = conditionMethod,
             NullBehavior = nullBehavior,
-            NullSubstitute = nullSubstitute,
+            NullValue = nullValue,
             Order = order,
             DefinitionOrder = definitionOrder,
             IsTargetInitOnly = isTargetInitOnly,

@@ -36,7 +36,7 @@ internal sealed record MapperMethodModel
     // Snapshot of the parsed [MapProperty] mappings, taken by ValidateExplicitPropertyMappings.
     // BuildPropertyMappings rebuilds PropertyMappings from the destination members and drops anything
     // with no matching property, so constructor resolution reads the renames and their options
-    // (Converter, NullSubstitute, Culture, Order) from here instead.
+    // (Converter, NullValue, Culture, Order) from here instead.
     public EquatableArray<PropertyMappingModel> ExplicitPropertyMappings { get; set; } = new([]);
 
     public EquatableArray<string> IgnoredProperties { get; set; } = new([]);

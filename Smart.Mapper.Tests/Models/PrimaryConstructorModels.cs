@@ -44,8 +44,8 @@ public class MapPropertyOverrideSource
 
 public record MapPropertyOverrideDestination(int Id, string Name);
 
-// コンストラクタ引数に対する型変換 / Converter / NullSubstitute の適用を検証するためのモデル。
-// Models used to verify type conversion, Converter and NullSubstitute on constructor arguments.
+// コンストラクタ引数に対する型変換 / Converter / NullValue の適用を検証するためのモデル。
+// Models used to verify type conversion, Converter and NullValue on constructor arguments.
 public class CtorConversionSource
 {
     public int Value { get; set; }

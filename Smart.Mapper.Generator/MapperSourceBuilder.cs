@@ -1131,9 +1131,9 @@ internal static class MapperSourceBuilder
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
             builder.Append(sourceAccessor);
 
-            if (mapping.HasNullSubstitute() && mapping.IsSourceNullable)
+            if (mapping.HasNullValue() && mapping.IsSourceNullable)
             {
-                builder.Append(" ?? ").Append(mapping.NullSubstitute!);
+                builder.Append(" ?? ").Append(mapping.NullValue!);
             }
             else if (mapping.RequiresNullCoalescing())
             {
@@ -1154,7 +1154,7 @@ internal static class MapperSourceBuilder
 
     // Appends a nullable source that needs converting as one expression:
     //   <source> is not null ? <converted> : <fallback>
-    // The fallback follows the destination: an explicit NullSubstitute, null for a nullable target,
+    // The fallback follows the destination: an explicit NullValue, null for a nullable target,
     // otherwise the target type's default.
     internal static void AppendNullableSourceConversionValue(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, MapperMethodModel method, bool nullChecked)
     {
@@ -1176,13 +1176,13 @@ internal static class MapperSourceBuilder
         AppendNullFallback(builder, mapping);
     }
 
-    // The value emitted when a null source leaves nothing to convert: an explicit NullSubstitute,
+    // The value emitted when a null source leaves nothing to convert: an explicit NullValue,
     // null for a nullable target, otherwise the target type's default.
     private static void AppendNullFallback(SourceBuilder builder, PropertyMappingModel mapping)
     {
-        if (mapping.HasNullSubstitute())
+        if (mapping.HasNullValue())
         {
-            builder.Append(mapping.NullSubstitute!);
+            builder.Append(mapping.NullValue!);
         }
         else if (mapping.IsTargetNullable)
         {

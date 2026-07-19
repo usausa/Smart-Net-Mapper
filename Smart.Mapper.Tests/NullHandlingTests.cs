@@ -106,24 +106,24 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void MapWithNullSubstitute_WhenSourceIsNull_UsesFallbackValues()
+    public void MapWithNullValue_WhenSourceIsNull_UsesFallbackValues()
     {
-        var source = new NullSubstituteSource { Name = null, Count = null };
-        var destination = new NullSubstituteDestination();
+        var source = new NullValueSource { Name = null, Count = null };
+        var destination = new NullValueDestination();
 
-        TestMappers.MapWithNullSubstitute(source, destination);
+        TestMappers.MapWithNullValue(source, destination);
 
         Assert.Equal("(none)", destination.Name);
         Assert.Equal(-1, destination.Count);
     }
 
     [Fact]
-    public void MapWithNullSubstitute_WhenSourceHasValues_UsesSourceValues()
+    public void MapWithNullValue_WhenSourceHasValues_UsesSourceValues()
     {
-        var source = new NullSubstituteSource { Name = "hello", Count = 5 };
-        var destination = new NullSubstituteDestination();
+        var source = new NullValueSource { Name = "hello", Count = 5 };
+        var destination = new NullValueDestination();
 
-        TestMappers.MapWithNullSubstitute(source, destination);
+        TestMappers.MapWithNullValue(source, destination);
 
         Assert.Equal("hello", destination.Name);
         Assert.Equal(5, destination.Count);

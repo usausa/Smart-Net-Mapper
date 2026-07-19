@@ -53,14 +53,14 @@ public class NullableIntToStringDestination
     public string IntValue { get; set; } = "original";
 }
 
-// A1: NullSubstitute
-public class NullSubstituteSource
+// A1: NullValue
+public class NullValueSource
 {
     public string? Name { get; set; }
     public int? Count { get; set; }
 }
 
-public class NullSubstituteDestination
+public class NullValueDestination
 {
     public string Name { get; set; } = default!;
     public int Count { get; set; }

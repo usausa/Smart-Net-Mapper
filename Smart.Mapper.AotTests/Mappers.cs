@@ -97,11 +97,11 @@ internal static partial class AotMappers
     [Mapper]
     public static partial void Map(EnumSource src, EnumDest dst);
 
-    // Null handling with NullSubstitute
+    // Null handling with NullValue
 
     [Mapper]
-    [MapProperty(nameof(NullDest.Name), nameof(NullSource.Name), NullSubstitute = "")]
-    [MapProperty(nameof(NullDest.Count), nameof(NullSource.Count), NullSubstitute = 0)]
+    [MapProperty(nameof(NullDest.Name), nameof(NullSource.Name), NullValue = "")]
+    [MapProperty(nameof(NullDest.Count), nameof(NullSource.Count), NullValue = 0)]
     public static partial void Map(NullSource src, NullDest dst);
 
     // Nested property

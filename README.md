@@ -1,4 +1,4 @@
-﻿# Smart.Mapper
+# Smart.Mapper
 
 [![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
 [![NuGet](https://img.shields.io/nuget/dt/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
@@ -87,7 +87,7 @@ public static partial Destination Map(Source source)
 | `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
 | `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
 | `[Mapper(NumberFormat = "...")]` | Format string for numeric <-> `string` conversion (use with `Culture`) |
-| `[MapProperty]` | Explicit property-to-property mapping; supports `NullSubstitute`, `Culture`, `DateTimeFormat`, `NumberFormat`, `Converter` |
+| `[MapProperty]` | Explicit property-to-property mapping; supports `NullValue`, `Culture`, `DateTimeFormat`, `NumberFormat`, `Converter` |
 | `[MapProperty<T>]` | Type-safe variant of `[MapProperty]` (C# 11+) |
 | `[MapUsing]` | Calculates a value via a static method (custom-parameter aware) |
 | `[MapFrom]` | Maps from a source instance-method call or dot-notation property path |
@@ -167,12 +167,12 @@ destination.Value = src.other;
 
 This holds for every mapping attribute, including target-only ones such as `[MapIgnore]`.
 
-### Null substitution
+### Null substitution (`NullValue`)
 
 ```csharp
 [Mapper]
-[MapProperty(nameof(Destination.Name),  nameof(Source.Name),  NullSubstitute = "Unknown")]
-[MapProperty(nameof(Destination.Count), nameof(Source.Count), NullSubstitute = 0)]
+[MapProperty(nameof(Destination.Name),  nameof(Source.Name),  NullValue = "Unknown")]
+[MapProperty(nameof(Destination.Count), nameof(Source.Count), NullValue = 0)]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -386,7 +386,7 @@ public static partial DestModel Map(SrcModel src)
 
 ### Conversion of constructor arguments
 
-Constructor arguments go through the same conversion pipeline as ordinary property assignments, so type conversion, `Converter`, `NullSubstitute` and `Culture` / format settings all apply. The same holds for `init`-only members assigned in the object initializer.
+Constructor arguments go through the same conversion pipeline as ordinary property assignments, so type conversion, `Converter`, `NullValue` and `Culture` / format settings all apply. The same holds for `init`-only members assigned in the object initializer.
 
 ```csharp
 public class Src { public int? Value { get; set; } }
@@ -404,7 +404,7 @@ var destination = new Dst(src.Value is not null
     : default!);
 ```
 
-When a nullable source is null, the argument falls back to the destination type's `default` — or to `NullSubstitute` when one is specified, or to `null` when the target is nullable. A nullable intermediate segment in a dotted source path is guarded the same way (`src.Child is not null ? ... : default!`).
+When a nullable source is null, the argument falls back to the destination type's `default` — or to `NullValue` when one is specified, or to `null` when the target is nullable. A nullable intermediate segment in a dotted source path is guarded the same way (`src.Child is not null ? ... : default!`).
 
 Statement-only options cannot apply to a constructor argument: `[MapCondition]` has no way to leave the member unassigned, and `NullBehavior.Skip` has no previous value to keep. Both are rejected with `SMP0215`.
 

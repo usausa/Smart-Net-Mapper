@@ -1,4 +1,4 @@
-﻿# Smart.Mapper
+# Smart.Mapper
 
 [![NuGet](https://img.shields.io/nuget/v/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
 [![NuGet](https://img.shields.io/nuget/dt/Usa.Smart.Mapper.svg)](https://www.nuget.org/packages/Usa.Smart.Mapper/)
@@ -87,7 +87,7 @@ public static partial Destination Map(Source source)
 | `[Mapper(Culture = "...")]` | 型変換時に使用するカルチャ（例: `"ja-JP"`） |
 | `[Mapper(DateTimeFormat = "...")]` | `DateTime` <-> `string` 変換時のフォーマット（`Culture` と共に使用） |
 | `[Mapper(NumberFormat = "...")]` | 数値型 <-> `string` 変換時のフォーマット（`Culture` と共に使用） |
-| `[MapProperty]` | プロパティ間の明示的マッピング。`NullSubstitute`・`Culture`・`DateTimeFormat`・`NumberFormat`・`Converter` 対応 |
+| `[MapProperty]` | プロパティ間の明示的マッピング。`NullValue`・`Culture`・`DateTimeFormat`・`NumberFormat`・`Converter` 対応 |
 | `[MapProperty<T>]` | 型安全版 `[MapProperty]`（C# 11+） |
 | `[MapUsing]` | 静的メソッドによる値の計算（カスタムパラメーター対応） |
 | `[MapFrom]` | ソースオブジェクトのインスタンスメソッド呼び出し、またはドット記法プロパティパス |
@@ -167,12 +167,12 @@ destination.Value = src.other;
 
 `[MapIgnore]` のようにターゲット名のみを取る属性を含め、すべてのマッピング属性が対象です。
 
-### Null 代替値
+### Null 代替値（`NullValue`）
 
 ```csharp
 [Mapper]
-[MapProperty(nameof(Destination.Name),  nameof(Source.Name),  NullSubstitute = "Unknown")]
-[MapProperty(nameof(Destination.Count), nameof(Source.Count), NullSubstitute = 0)]
+[MapProperty(nameof(Destination.Name),  nameof(Source.Name),  NullValue = "Unknown")]
+[MapProperty(nameof(Destination.Count), nameof(Source.Count), NullValue = 0)]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -386,7 +386,7 @@ public static partial DestModel Map(SrcModel src)
 
 ### コンストラクタ引数の変換
 
-コンストラクタ引数は通常のプロパティ代入と同じ変換パイプラインを通るため、型変換・`Converter`・`NullSubstitute`・`Culture` / フォーマット指定がすべて適用されます。オブジェクト初期化子で代入される `init` 専用メンバーも同様です。
+コンストラクタ引数は通常のプロパティ代入と同じ変換パイプラインを通るため、型変換・`Converter`・`NullValue`・`Culture` / フォーマット指定がすべて適用されます。オブジェクト初期化子で代入される `init` 専用メンバーも同様です。
 
 ```csharp
 public class Src { public int? Value { get; set; } }
@@ -404,7 +404,7 @@ var destination = new Dst(src.Value is not null
     : default!);
 ```
 
-null 許容ソースが null の場合、引数はターゲット型の `default` になります（`NullSubstitute` 指定時はその値、ターゲットが null 許容なら `null`）。ドット記法ソースパスの null 許容な中間セグメントも同様にガードされます（`src.Child is not null ? ... : default!`）。
+null 許容ソースが null の場合、引数はターゲット型の `default` になります（`NullValue` 指定時はその値、ターゲットが null 許容なら `null`）。ドット記法ソースパスの null 許容な中間セグメントも同様にガードされます（`src.Child is not null ? ... : default!`）。
 
 文ベースのオプションはコンストラクタ引数には適用できません。`[MapCondition]` はメンバーを未代入のまま残す手段がなく、`NullBehavior.Skip` は保持すべき既存値がないためです。いずれも `SMP0215` で拒否されます。
 

@@ -13,7 +13,7 @@ public sealed class MapPropertyAttribute : Attribute
 
     public int Order { get; set; }
 
-    public object? NullSubstitute { get; set; }
+    public object? NullValue { get; set; }
 
     // Culture name override for this property's string conversion (e.g. "en-US").
     public string? Culture { get; set; }
@@ -49,7 +49,7 @@ public sealed class MapPropertyAttribute<T> : Attribute
 
     public int Order { get; set; }
 
-    public T NullSubstitute { get; set; } = default!;
+    public T NullValue { get; set; } = default!;
 
     // Culture name override for this property's string conversion (e.g. "en-US").
     public string? Culture { get; set; }

@@ -86,14 +86,6 @@ internal sealed record PropertyMappingModel
     public EquatableArray<string> DestEnumMembers { get; set; } = new([]);
 }
 
-// Represents a segment in a nested property path.
-internal sealed record NestedPathSegment
-{
-    public string Path { get; set; } = default!;
-    public string TypeName { get; set; } = default!;
-    public bool IsNullable { get; set; }
-}
-
 internal static class PropertyMappingModelExtensions
 {
     public static bool IsEnumMapping(this PropertyMappingModel m) => m.EnumMappingKind != EnumMappingKind.None;

@@ -5,56 +5,52 @@ using Microsoft.CodeAnalysis;
 using SourceGenerateHelper;
 
 // Represents a mapper method model.
-internal sealed record MapperMethodModel
-{
-    public string Namespace { get; set; } = default!;
-    public string ClassName { get; set; } = default!;
-    public bool IsValueType { get; set; }
-    public Accessibility MethodAccessibility { get; set; }
-    public string MethodName { get; set; } = default!;
-    public string SourceTypeName { get; set; } = default!;
-    public string SourceParameterName { get; set; } = default!;
-    public string DestinationTypeName { get; set; } = default!;
-    public string? DestinationParameterName { get; set; }
-    public bool ReturnsDestination { get; set; }
-    public bool AutoMap { get; set; } = true;
-    public bool Strict { get; set; }
-    public bool StrictExplicitlySet { get; set; }
-    public int NameComparison { get; set; }
-    public bool NameComparisonExplicitlySet { get; set; }
-    public string? Culture { get; set; }
-    public bool CultureExplicitlySet { get; set; }
-    public string? DateTimeFormat { get; set; }
-    public string? NumberFormat { get; set; }
-    public bool IsSourceReadOnlyStruct { get; set; }
-    public string? MapConverterTypeName { get; set; }
-    public string MapConverterMethodName { get; set; } = "Convert";
-    public string? CollectionConverterTypeName { get; set; }
-    public EquatableArray<CustomParameterModel> CustomParameters { get; set; } = new([]);
-    public EquatableArray<PropertyMappingModel> PropertyMappings { get; set; } = new([]);
-
+internal sealed record MapperMethodModel(
+    string Namespace,
+    string ClassName,
+    bool IsValueType,
+    Accessibility MethodAccessibility,
+    string MethodName,
+    string SourceTypeName,
+    string SourceParameterName,
+    string DestinationTypeName,
+    string? DestinationParameterName,
+    bool ReturnsDestination,
+    bool AutoMap,
+    bool Strict,
+    bool StrictExplicitlySet,
+    int NameComparison,
+    bool NameComparisonExplicitlySet,
+    string? Culture,
+    bool CultureExplicitlySet,
+    string? DateTimeFormat,
+    string? NumberFormat,
+    bool IsSourceReadOnlyStruct,
+    string? MapConverterTypeName,
+    string MapConverterMethodName,
+    string? CollectionConverterTypeName,
+    EquatableArray<CustomParameterModel> CustomParameters,
+    EquatableArray<PropertyMappingModel> PropertyMappings,
     // Snapshot of the parsed [MapProperty] mappings, taken by ValidateExplicitPropertyMappings.
     // BuildPropertyMappings rebuilds PropertyMappings from the destination members and drops anything
     // with no matching property, so constructor resolution reads the renames and their options
     // (Converter, NullValue, Culture, Order) from here instead.
-    public EquatableArray<PropertyMappingModel> ExplicitPropertyMappings { get; set; } = new([]);
-
-    public EquatableArray<string> IgnoredProperties { get; set; } = new([]);
-    public EquatableArray<PropertyConditionModel> PropertyConditions { get; set; } = new([]);
-    public EquatableArray<ConstantMappingModel> ConstantMappings { get; set; } = new([]);
-    public EquatableArray<ExpressionMappingModel> ExpressionMappings { get; set; } = new([]);
-    public EquatableArray<MapUsingModel> MapUsingMappings { get; set; } = new([]);
-    public EquatableArray<MapFromModel> MapFromMappings { get; set; } = new([]);
-    public EquatableArray<MapCollectionModel> MapCollectionMappings { get; set; } = new([]);
-    public EquatableArray<MapNestedModel> MapNestedMappings { get; set; } = new([]);
-    public string? BeforeMapMethod { get; set; }
-    public bool BeforeMapAcceptsCustomParameters { get; set; }
-    public string? AfterMapMethod { get; set; }
-    public bool AfterMapAcceptsCustomParameters { get; set; }
-    public bool UseConstructorMapping { get; set; }
+    EquatableArray<PropertyMappingModel> ExplicitPropertyMappings,
+    EquatableArray<string> IgnoredProperties,
+    EquatableArray<PropertyConditionModel> PropertyConditions,
+    EquatableArray<ConstantMappingModel> ConstantMappings,
+    EquatableArray<ExpressionMappingModel> ExpressionMappings,
+    EquatableArray<MapUsingModel> MapUsingMappings,
+    EquatableArray<MapFromModel> MapFromMappings,
+    EquatableArray<MapCollectionModel> MapCollectionMappings,
+    EquatableArray<MapNestedModel> MapNestedMappings,
+    string? BeforeMapMethod,
+    bool BeforeMapAcceptsCustomParameters,
+    string? AfterMapMethod,
+    bool AfterMapAcceptsCustomParameters,
+    bool UseConstructorMapping,
     // TargetPath names the PropertyMappings entry that supplies the argument, carrying its
     // conversion metadata. BuildConstructorParameterMappings guarantees the entry exists: it either
     // flags an existing mapping or synthesizes one under the parameter's own name.
-    public EquatableArray<(string ParamName, string TargetPath)> ConstructorParameters { get; set; } = new([]);
-    public EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> Warnings { get; set; } = new([]);
-}
+    EquatableArray<(string ParamName, string TargetPath)> ConstructorParameters,
+    EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> Warnings);

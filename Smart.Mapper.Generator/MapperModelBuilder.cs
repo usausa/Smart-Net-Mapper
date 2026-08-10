@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using Smart.Mapper.Generator.Drafts;
 using Smart.Mapper.Generator.Helpers;
 using Smart.Mapper.Generator.Models;
 
@@ -37,7 +38,7 @@ internal static class MapperModelBuilder
             ? string.Empty
             : containingType.ContainingNamespace.ToDisplayString();
 
-        var model = new MapperMethodModel
+        var model = new MapperMethodDraft
         {
             Namespace = ns,
             ClassName = containingType.GetClassName(),
@@ -82,11 +83,9 @@ internal static class MapperModelBuilder
         for (var i = customParamStartIndex; i < symbol.Parameters.Length; i++)
         {
             var param = symbol.Parameters[i];
-            customParameters.Add(new CustomParameterModel
-            {
-                Name = param.Name,
-                TypeName = param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-            });
+            customParameters.Add(new CustomParameterModel(
+                param.Name,
+                param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
         }
 
         var duplicateType = customParameters
@@ -243,10 +242,10 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(typeConverterError);
         }
 
-        return Results.Success(model);
+        return Results.Success(model.ToModel());
     }
 
-    private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -279,7 +278,7 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    private static ConverterMatchResult FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
+    private static ConverterMatchResult FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingDraft mapping, MapperMethodDraft model)
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
@@ -333,7 +332,7 @@ internal static class MapperModelBuilder
         return ConverterMatchResult.NoMatch;
     }
 
-    private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -391,7 +390,7 @@ internal static class MapperModelBuilder
         ReturnTypeMismatch
     }
 
-    internal static ConverterMatchResult FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
+    internal static ConverterMatchResult FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingDraft mapping, MapperMethodDraft model)
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
@@ -469,7 +468,7 @@ internal static class MapperModelBuilder
         return ConverterMatchResult.NoMatch;
     }
 
-    internal static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -513,7 +512,7 @@ internal static class MapperModelBuilder
         MatchWithCustomParams
     }
 
-    internal static CallbackMatchResult FindMatchingCallbackMethod(List<IMethodSymbol> candidates, MapperMethodModel model)
+    internal static CallbackMatchResult FindMatchingCallbackMethod(List<IMethodSymbol> candidates, MapperMethodDraft model)
     {
         var hasMatchWithCustomParams = false;
         var hasMatchWithoutCustomParams = false;
@@ -568,18 +567,18 @@ internal static class MapperModelBuilder
         return CallbackMatchResult.NoMatch;
     }
 
-    internal static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
+    internal static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodDraft model)
     {
         var definitionOrder = 0;
-        var propertyMappings = new List<PropertyMappingModel>();
+        var propertyMappings = new List<PropertyMappingDraft>();
         var ignoredProperties = new List<string>();
-        var propertyConditions = new List<PropertyConditionModel>();
-        var constantMappings = new List<ConstantMappingModel>();
-        var expressionMappings = new List<ExpressionMappingModel>();
-        var mapUsingMappings = new List<MapUsingModel>();
-        var mapFromMappings = new List<MapFromModel>();
-        var mapCollectionMappings = new List<MapCollectionModel>();
-        var mapNestedMappings = new List<MapNestedModel>();
+        var propertyConditions = new List<PropertyConditionDraft>();
+        var constantMappings = new List<ConstantMappingDraft>();
+        var expressionMappings = new List<ExpressionMappingDraft>();
+        var mapUsingMappings = new List<MapUsingDraft>();
+        var mapFromMappings = new List<MapFromDraft>();
+        var mapCollectionMappings = new List<MapCollectionDraft>();
+        var mapNestedMappings = new List<MapNestedDraft>();
 
         foreach (var attribute in symbol.GetAttributes())
         {
@@ -671,7 +670,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    var mapping = new PropertyMappingModel
+                    var mapping = new PropertyMappingDraft
                     {
                         TargetPath = targetName,
                         SourcePath = sourceName ?? targetName,
@@ -714,7 +713,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    var constantMapping = new ConstantMappingModel
+                    var constantMapping = new ConstantMappingDraft
                     {
                         TargetName = targetName,
                         Value = FormatConstantValue(value),
@@ -742,7 +741,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    expressionMappings.Add(new ExpressionMappingModel
+                    expressionMappings.Add(new ExpressionMappingDraft
                     {
                         TargetName = targetName,
                         Expression = expression,
@@ -775,7 +774,7 @@ internal static class MapperModelBuilder
                     var conditionName = attribute.ConstructorArguments[1].Value?.ToString();
                     if (!String.IsNullOrEmpty(targetName) && (conditionName is not null))
                     {
-                        propertyConditions.Add(new PropertyConditionModel { TargetName = targetName, ConditionMethod = conditionName });
+                        propertyConditions.Add(new PropertyConditionDraft { TargetName = targetName, ConditionMethod = conditionName });
                     }
                 }
             }
@@ -795,7 +794,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapUsingMappings.Add(new MapUsingModel
+                    mapUsingMappings.Add(new MapUsingDraft
                     {
                         TargetName = targetName,
                         Method = methodName,
@@ -822,7 +821,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapFromMappings.Add(new MapFromModel
+                    mapFromMappings.Add(new MapFromDraft
                     {
                         TargetName = targetName,
                         Member = member,
@@ -869,7 +868,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapCollectionMappings.Add(new MapCollectionModel
+                    mapCollectionMappings.Add(new MapCollectionDraft
                     {
                         TargetName = targetName,
                         SourceName = sourceName ?? targetName,
@@ -909,7 +908,7 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapNestedMappings.Add(new MapNestedModel
+                    mapNestedMappings.Add(new MapNestedDraft
                     {
                         TargetName = targetName,
                         SourceName = sourceName ?? targetName,
@@ -932,18 +931,18 @@ internal static class MapperModelBuilder
             }
         }
 
-        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. propertyMappings]);
+        model.PropertyMappings = new EquatableArray<PropertyMappingDraft>([.. propertyMappings]);
         model.IgnoredProperties = new EquatableArray<string>([.. ignoredProperties]);
-        model.PropertyConditions = new EquatableArray<PropertyConditionModel>([.. propertyConditions]);
-        model.ConstantMappings = new EquatableArray<ConstantMappingModel>([.. constantMappings]);
-        model.ExpressionMappings = new EquatableArray<ExpressionMappingModel>([.. expressionMappings]);
-        model.MapUsingMappings = new EquatableArray<MapUsingModel>([.. mapUsingMappings]);
-        model.MapFromMappings = new EquatableArray<MapFromModel>([.. mapFromMappings]);
-        model.MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. mapCollectionMappings]);
-        model.MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings]);
+        model.PropertyConditions = new EquatableArray<PropertyConditionDraft>([.. propertyConditions]);
+        model.ConstantMappings = new EquatableArray<ConstantMappingDraft>([.. constantMappings]);
+        model.ExpressionMappings = new EquatableArray<ExpressionMappingDraft>([.. expressionMappings]);
+        model.MapUsingMappings = new EquatableArray<MapUsingDraft>([.. mapUsingMappings]);
+        model.MapFromMappings = new EquatableArray<MapFromDraft>([.. mapFromMappings]);
+        model.MapCollectionMappings = new EquatableArray<MapCollectionDraft>([.. mapCollectionMappings]);
+        model.MapNestedMappings = new EquatableArray<MapNestedDraft>([.. mapNestedMappings]);
     }
 
-    internal static void ParseConverterAttributes(IMethodSymbol symbol, MapperMethodModel model)
+    internal static void ParseConverterAttributes(IMethodSymbol symbol, MapperMethodDraft model)
     {
         foreach (var attribute in symbol.GetAttributes())
         {
@@ -1055,7 +1054,7 @@ internal static class MapperModelBuilder
         };
     }
 
-    internal static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
+    internal static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodDraft model)
     {
         var destinationProperties = destinationType.GetAllPublicProperties();
 
@@ -1081,7 +1080,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static DiagnosticInfo? ValidateDuplicateTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateDuplicateTargets(MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         var targetMappings = new Dictionary<string, List<string>>();
 
@@ -1148,7 +1147,7 @@ internal static class MapperModelBuilder
 
     internal static DiagnosticInfo? ValidateAndBuildMapUsingMappings(
         IMethodSymbol mapperMethod,
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -1219,7 +1218,7 @@ internal static class MapperModelBuilder
 
     internal static MapUsingMatchInfo FindMatchingMapUsingMethod(
         List<IMethodSymbol> candidates,
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol targetType)
     {
@@ -1303,7 +1302,7 @@ internal static class MapperModelBuilder
     }
 
     internal static DiagnosticInfo? ValidateAndBuildMapFromMappings(
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -1389,7 +1388,7 @@ internal static class MapperModelBuilder
 
     internal static DiagnosticInfo? ValidateAndBuildMapCollectionMappings(
         IMethodSymbol mapperMethod,
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -1489,7 +1488,7 @@ internal static class MapperModelBuilder
 
     internal static DiagnosticInfo? ValidateAndBuildMapNestedMappings(
         IMethodSymbol mapperMethod,
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -1732,7 +1731,7 @@ internal static class MapperModelBuilder
         return CollectionTargetShape.List;
     }
 
-    internal static List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectStrictModeWarnings(MapperMethodModel model, ITypeSymbol destinationType)
+    internal static List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectStrictModeWarnings(MapperMethodDraft model, ITypeSymbol destinationType)
     {
         var warnings = new List<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>();
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
@@ -1793,7 +1792,7 @@ internal static class MapperModelBuilder
         return warnings;
     }
 
-    internal static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         if (String.IsNullOrEmpty(model.Culture) && (!String.IsNullOrEmpty(model.DateTimeFormat) || !String.IsNullOrEmpty(model.NumberFormat)))
         {
@@ -1812,7 +1811,7 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         if (model.MapConverterTypeName is not null)
         {
@@ -1893,7 +1892,7 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectMapExpressionReflectionWarnings(MapperMethodModel model)
+    internal static IEnumerable<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> CollectMapExpressionReflectionWarnings(MapperMethodDraft model)
     {
         foreach (var expression in model.ExpressionMappings)
         {
@@ -1910,7 +1909,7 @@ internal static class MapperModelBuilder
 
     // A void mapper assigns properties on a caller-supplied instance, so init-only targets can never
     // be set. Reports SMP0302 when any mapping (automap or explicit feature) targets an init-only member.
-    internal static DiagnosticInfo? ValidateVoidMapperInitOnlyTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateVoidMapperInitOnlyTargets(MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         if (model.ReturnsDestination)
         {
@@ -1929,7 +1928,7 @@ internal static class MapperModelBuilder
             : null;
     }
 
-    internal static DiagnosticInfo? ValidateRequiredMembers(MapperMethodModel model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateRequiredMembers(MapperMethodDraft model, ITypeSymbol destinationType, MethodDeclarationSyntax syntax)
     {
         var mappedTargets = new HashSet<string>(StringComparer.Ordinal);
 
@@ -1990,7 +1989,7 @@ internal static class MapperModelBuilder
     }
 
     internal static DiagnosticInfo? BuildConstructorParameterMappings(
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol destinationType,
         ITypeSymbol sourceType,
         MethodDeclarationSyntax syntax)
@@ -2031,7 +2030,7 @@ internal static class MapperModelBuilder
         var nameComparison = (StringComparison)model.NameComparison;
         var sourceProperties = sourceType.GetAllPublicProperties();
         var ctorParams = new List<(string ParamName, string TargetPath)>();
-        var synthesizedMappings = new List<PropertyMappingModel>();
+        var synthesizedMappings = new List<PropertyMappingDraft>();
 
         foreach (var param in bestCtor.Parameters)
         {
@@ -2089,7 +2088,7 @@ internal static class MapperModelBuilder
                 sourcePropertyType = srcProp.Type;
             }
 
-            var options = new Dictionary<string, PropertyMappingModel>(StringComparer.Ordinal);
+            var options = new Dictionary<string, PropertyMappingDraft>(StringComparer.Ordinal);
             if (explicitMapping is not null)
             {
                 options[param.Name] = explicitMapping;
@@ -2121,7 +2120,7 @@ internal static class MapperModelBuilder
 
         if (synthesizedMappings.Count > 0)
         {
-            model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings, .. synthesizedMappings]);
+            model.PropertyMappings = new EquatableArray<PropertyMappingDraft>([.. model.PropertyMappings, .. synthesizedMappings]);
         }
 
         return null;
@@ -2175,7 +2174,7 @@ internal static class MapperModelBuilder
     // The constructor whose parameters generated construction will bind, or null when construction
     // is parameterless or never happens. Admission of get-only / parameter-only targets and their
     // consumption in BuildConstructorParameterMappings must agree on this single answer.
-    internal static IMethodSymbol? GetEffectiveConstructor(MapperMethodModel model, ITypeSymbol destinationType)
+    internal static IMethodSymbol? GetEffectiveConstructor(MapperMethodDraft model, ITypeSymbol destinationType)
     {
         var bestCtor = SelectBestConstructor(destinationType);
         return (bestCtor is not null) && WillUseConstructor(bestCtor, destinationType, (StringComparison)model.NameComparison, model.ReturnsDestination)
@@ -2203,7 +2202,7 @@ internal static class MapperModelBuilder
     // unassigned, and NullBehavior.Skip has no previous value to keep. Rejecting them loudly beats
     // silently ignoring the attribute. Runs after BuildConstructorParameterMappings so that both
     // flagged and synthesized constructor mappings are covered.
-    internal static DiagnosticInfo? ValidateExpressionAssignedTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateExpressionAssignedTargets(MapperMethodDraft model, MethodDeclarationSyntax syntax)
     {
         foreach (var mapping in model.PropertyMappings)
         {
@@ -2245,7 +2244,7 @@ internal static class MapperModelBuilder
     // Doing it once here keeps every later stage matching ordinally against real member names, which
     // also means the emitted code carries the correct casing. Names that do not resolve are left
     // untouched so the existing "not found" diagnostics still fire.
-    internal static void CanonicalizeTargetNames(MapperMethodModel model, ITypeSymbol destinationType)
+    internal static void CanonicalizeTargetNames(MapperMethodDraft model, ITypeSymbol destinationType)
     {
         var nameComparison = (StringComparison)model.NameComparison;
 
@@ -2310,7 +2309,7 @@ internal static class MapperModelBuilder
     // This also takes the ExplicitPropertyMappings snapshot, since PropertyMappings is rebuilt (and
     // partly discarded) by BuildPropertyMappings while constructor resolution still needs the renames.
     internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
-        MapperMethodModel model,
+        MapperMethodDraft model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -2362,7 +2361,7 @@ internal static class MapperModelBuilder
             }
         }
 
-        model.ExplicitPropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings]);
+        model.ExplicitPropertyMappings = new EquatableArray<PropertyMappingDraft>([.. model.PropertyMappings]);
 
         return null;
     }
@@ -2370,9 +2369,9 @@ internal static class MapperModelBuilder
     // Builds a fully analysed mapping for one target member. Constructor parameters that have no
     // backing destination property synthesize their mapping through here as well, so an argument is
     // described exactly like an assignment and picks up the same conversion analysis.
-    private static PropertyMappingModel CreatePropertyMapping(
-        MapperMethodModel model,
-        Dictionary<string, PropertyMappingModel> originalMappings,
+    private static PropertyMappingDraft CreatePropertyMapping(
+        MapperMethodDraft model,
+        Dictionary<string, PropertyMappingDraft> originalMappings,
         string targetName,
         ITypeSymbol targetType,
         bool isTargetInitOnly,
@@ -2419,7 +2418,7 @@ internal static class MapperModelBuilder
         var requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName)
                 && (!sourceUnderlyingType.IsAssignableTo(targetUnderlyingType));
 
-        var mapping = new PropertyMappingModel
+        var mapping = new PropertyMappingDraft
         {
             SourcePath = sourcePath,
             TargetPath = targetName,
@@ -2459,13 +2458,13 @@ internal static class MapperModelBuilder
         return mapping;
     }
 
-    internal static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
+    internal static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodDraft model)
     {
         var sourceProperties = sourceType.GetAllPublicProperties();
         var destinationProperties = destinationType.GetAllPublicProperties();
 
         var customMappings = new Dictionary<string, string>(StringComparer.Ordinal);
-        var nestedMappings = new List<PropertyMappingModel>();
+        var nestedMappings = new List<PropertyMappingDraft>();
 
         foreach (var mapping in model.PropertyMappings)
         {
@@ -2496,7 +2495,7 @@ internal static class MapperModelBuilder
 
         var originalMappings = model.PropertyMappings.ToDictionary(m => m.TargetPath, m => m);
 
-        var mappings = new List<PropertyMappingModel>();
+        var mappings = new List<PropertyMappingDraft>();
         var effectiveConstructor = GetEffectiveConstructor(model, destinationType);
         var nameComparison = (StringComparison)model.NameComparison;
 
@@ -2574,7 +2573,7 @@ internal static class MapperModelBuilder
 
         mappings.AddRange(nestedMappings);
 
-        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. mappings]);
+        model.PropertyMappings = new EquatableArray<PropertyMappingDraft>([.. mappings]);
 
         foreach (var mapping in model.PropertyMappings)
         {
@@ -2586,7 +2585,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
+    internal static void DetectEnumMappingKind(PropertyMappingDraft mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
     {
         var sourceIsEnum = sourceUnderlying.TypeKind == TypeKind.Enum;
         var targetIsEnum = targetUnderlying.TypeKind == TypeKind.Enum;
@@ -2659,7 +2658,7 @@ internal static class MapperModelBuilder
         return names;
     }
 
-    internal static void DetectParsableMethodFromSymbol(PropertyMappingModel mapping, ITypeSymbol targetType)
+    internal static void DetectParsableMethodFromSymbol(PropertyMappingDraft mapping, ITypeSymbol targetType)
     {
         const string spanParsableMetadataName = "ISpanParsable`1";
         const string parsableMetadataName = "IParsable`1";
@@ -2692,7 +2691,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void ResolveNestedMapping(PropertyMappingModel mapping, ITypeSymbol sourceType, ITypeSymbol destinationType)
+    internal static void ResolveNestedMapping(PropertyMappingDraft mapping, ITypeSymbol sourceType, ITypeSymbol destinationType)
     {
         var sourceParts = mapping.SourcePath.Split('.');
         if (sourceParts.Length > 1)
@@ -2710,12 +2709,10 @@ internal static class MapperModelBuilder
                 if (prop is not null)
                 {
                     var isNullable = prop.Type.IsNullableType();
-                    sourceSegments.Add(new NestedPathSegment
-                    {
-                        Path = String.Join(".", pathBuilder),
-                        TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        IsNullable = isNullable
-                    });
+                    sourceSegments.Add(new NestedPathSegment(
+                        String.Join(".", pathBuilder),
+                        prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        isNullable));
                     currentType = prop.Type;
                 }
             }
@@ -2757,11 +2754,10 @@ internal static class MapperModelBuilder
                 var prop = currentTargetType.GetAllPublicProperties().FirstOrDefault(p => p.Name == part);
                 if (prop is not null)
                 {
-                    targetSegments.Add(new NestedPathSegment
-                    {
-                        Path = String.Join(".", pathBuilder),
-                        TypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    });
+                    targetSegments.Add(new NestedPathSegment(
+                        String.Join(".", pathBuilder),
+                        prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        false));
                     currentTargetType = prop.Type;
                 }
             }
@@ -2806,7 +2802,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void DetectParsableMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
+    internal static void DetectParsableMethods(MapperMethodDraft model, IMethodSymbol mapperMethod)
     {
         if (model.MapConverterTypeName is not null)
         {
@@ -2884,7 +2880,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void DetectUserDefinedConversions(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType, ITypeSymbol destinationType)
+    internal static void DetectUserDefinedConversions(MapperMethodDraft model, IMethodSymbol mapperMethod, ITypeSymbol sourceType, ITypeSymbol destinationType)
     {
         if (model.MapConverterTypeName is not null)
         {
@@ -2939,7 +2935,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void DetectFormattableMethod(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType)
+    internal static void DetectFormattableMethod(MapperMethodDraft model, IMethodSymbol mapperMethod, ITypeSymbol sourceType)
     {
         if (model.MapConverterTypeName is not null)
         {
@@ -3017,7 +3013,7 @@ internal static class MapperModelBuilder
         }
     }
 
-    internal static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
+    internal static void DetectSpecializedConverterMethods(MapperMethodDraft model, IMethodSymbol mapperMethod)
     {
         var converterType = FindConverterType(mapperMethod, model.MapConverterTypeName ?? Names.DefaultValueConverter);
         if (converterType is null)

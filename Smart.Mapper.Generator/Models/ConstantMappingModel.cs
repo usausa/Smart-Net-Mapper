@@ -1,13 +1,11 @@
-﻿namespace Smart.Mapper.Generator.Models;
+namespace Smart.Mapper.Generator.Models;
 
 // Represents a constant value mapping configuration.
-internal sealed record ConstantMappingModel
-{
-    public string TargetName { get; set; } = default!;
-    public string TargetType { get; set; } = default!;
-    public string? Value { get; set; }
-    public int Order { get; set; }
-    public int DefinitionOrder { get; set; }
-    public bool IsTargetInitOnly { get; set; }
-    public bool IsTargetRequired { get; set; }
-}
+internal sealed record ConstantMappingModel(
+    string TargetName,
+    string TargetType,
+    string? Value,
+    int Order,
+    int DefinitionOrder,
+    bool IsTargetInitOnly,
+    bool IsTargetRequired);

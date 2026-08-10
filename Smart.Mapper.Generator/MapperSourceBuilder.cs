@@ -1236,17 +1236,9 @@ internal static class MapperSourceBuilder
             // Guarded by the surrounding `is not null` check, so GetValueOrDefault skips the
             // redundant HasValue re-check (and throw path) that .Value would perform.
             var valueAccessor = sourceAccessor + ".GetValueOrDefault()";
-            var enumMapping = new PropertyMappingModel
-            {
-                EnumMappingKind = mapping.EnumMappingKind,
-                SourceUnderlyingType = mapping.SourceUnderlyingType,
-                TargetUnderlyingType = mapping.TargetUnderlyingType,
-                SourceType = mapping.SourceType,
-                TargetType = mapping.TargetType,
-                SourceEnumMembers = mapping.SourceEnumMembers,
-                DestEnumMembers = mapping.DestEnumMembers
-            };
-            BuildEnumConversion(builder, enumMapping, valueAccessor);
+            // BuildEnumConversion reads only the enum-conversion members, which this mapping already
+            // carries; the copy it used to take here held exactly those same values.
+            BuildEnumConversion(builder, mapping, valueAccessor);
             return;
         }
 

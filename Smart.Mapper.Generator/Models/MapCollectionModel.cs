@@ -26,28 +26,26 @@ internal enum CollectionTargetShape
 }
 
 // Represents a MapCollection mapping (collection property mapped using a mapper method).
-internal sealed record MapCollectionModel
-{
-    public string SourceName { get; set; } = default!;
-    public string SourceType { get; set; } = default!;
-    public string SourceElementType { get; set; } = default!;
-    public string TargetName { get; set; } = default!;
-    public string TargetType { get; set; } = default!;
-    public string TargetElementType { get; set; } = default!;
-    public string? Mapper { get; set; }
-    public int Order { get; set; }
-    public int DefinitionOrder { get; set; }
-    public CollectionSourceShape SourceShape { get; set; } = CollectionSourceShape.Enumerable;
-    public CollectionTargetShape TargetShape { get; set; } = CollectionTargetShape.List;
-    public string TargetCollectionMethod { get; set; } = "ToList";
-    public bool MapperReturnsValue { get; set; }
-    public bool IsSourceNullable { get; set; }
-    public bool TargetIsArray { get; set; }
-    public bool UseHelperPath { get; set; }
-    public string? Converter { get; set; }
-    public bool InPlace { get; set; }
-    public string? InPlaceFallbackTypeName { get; set; }
-}
+internal sealed record MapCollectionModel(
+    string SourceName,
+    string SourceType,
+    string SourceElementType,
+    string TargetName,
+    string TargetType,
+    string TargetElementType,
+    string? Mapper,
+    int Order,
+    int DefinitionOrder,
+    CollectionSourceShape SourceShape,
+    CollectionTargetShape TargetShape,
+    string TargetCollectionMethod,
+    bool MapperReturnsValue,
+    bool IsSourceNullable,
+    bool TargetIsArray,
+    bool UseHelperPath,
+    string? Converter,
+    bool InPlace,
+    string? InPlaceFallbackTypeName);
 
 internal static class MapCollectionModelExtensions
 {

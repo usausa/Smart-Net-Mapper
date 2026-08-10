@@ -1,12 +1,10 @@
-﻿namespace Smart.Mapper.Generator.Models;
+namespace Smart.Mapper.Generator.Models;
 
 // Represents an expression mapping configuration.
-internal sealed record ExpressionMappingModel
-{
-    public string TargetName { get; set; } = default!;
-    public string Expression { get; set; } = default!;
-    public int Order { get; set; }
-    public int DefinitionOrder { get; set; }
-    public bool IsTargetInitOnly { get; set; }
-    public bool IsTargetRequired { get; set; }
-}
+internal sealed record ExpressionMappingModel(
+    string TargetName,
+    string Expression,
+    int Order,
+    int DefinitionOrder,
+    bool IsTargetInitOnly,
+    bool IsTargetRequired);

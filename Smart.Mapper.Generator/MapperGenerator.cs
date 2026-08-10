@@ -1,12 +1,9 @@
 namespace Smart.Mapper.Generator;
 
-using System;
 using System.Collections.Immutable;
-using System.Text;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 using Smart.Mapper.Generator.Models;
 
@@ -81,30 +78,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var builder = new SourceBuilder();
         MapperSourceBuilder.BuildSource(builder, group.Methods.ToList());
 
-        var filename = MakeFilename(group.Namespace, group.ClassName);
-        var source = builder.ToString();
-        context.AddSource(filename, SourceText.From(source, Encoding.UTF8));
-    }
-
-    // ------------------------------------------------------------
-    // Helper / ヘルパー
-    // ------------------------------------------------------------
-
-    // 名前空間とクラス名から生成ファイル名（.g.cs ファイル名）を生成する。
-    // Generates the output file name (e.g., "MyNamespace_MyClass.g.cs") from namespace and class name.
-    private static string MakeFilename(string ns, string className)
-    {
-        var buffer = new StringBuilder();
-
-        if (!String.IsNullOrEmpty(ns))
-        {
-            buffer.Append(ns.Replace('.', '_'));
-            buffer.Append('_');
-        }
-
-        buffer.Append(className.Replace('<', '[').Replace('>', ']'));
-        buffer.Append(".g.cs");
-
-        return buffer.ToString();
+        context.AddSource(HintNameBuilder.Build(group.Namespace, group.ClassName), builder);
     }
 }

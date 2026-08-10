@@ -2454,6 +2454,7 @@ internal static class MapperModelBuilder
             IgnoredProperties = ignoredUpdated is null ? ignoredProperties : new EquatableArray<string>(ignoredUpdated)
         };
     }
+
     internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
         ref MapperMethodModel model,
         ITypeSymbol sourceType,

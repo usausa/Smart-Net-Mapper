@@ -37,23 +37,13 @@ internal static class MapperModelBuilder
             ? string.Empty
             : containingType.ContainingNamespace.ToDisplayString();
 
-        var model = new MapperMethodModel
-        {
-            Namespace = ns,
-            ClassName = containingType.GetClassName(),
-            IsValueType = containingType.IsValueType,
-            MethodAccessibility = symbol.DeclaredAccessibility,
-            MethodName = symbol.Name
-        };
-
         var sourceParam = symbol.Parameters[0];
-        model.SourceTypeName = sourceParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        model.SourceParameterName = sourceParam.Name;
-        model.IsSourceReadOnlyStruct = sourceParam.Type.IsValueType &&
-                                       sourceParam.Type is INamedTypeSymbol { IsReadOnly: true };
 
         ITypeSymbol destinationType;
         int customParamStartIndex;
+        string destinationTypeName;
+        string? destinationParameterName;
+        bool returnsDestination;
 
         if (symbol.ReturnsVoid)
         {
@@ -63,17 +53,17 @@ internal static class MapperModelBuilder
             }
 
             var destParam = symbol.Parameters[1];
-            model.DestinationTypeName = destParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            model.DestinationParameterName = destParam.Name;
-            model.ReturnsDestination = false;
+            destinationTypeName = destParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            destinationParameterName = destParam.Name;
+            returnsDestination = false;
             destinationType = destParam.Type;
             customParamStartIndex = 2;
         }
         else
         {
-            model.DestinationTypeName = symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            model.DestinationParameterName = null;
-            model.ReturnsDestination = true;
+            destinationTypeName = symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            destinationParameterName = null;
+            returnsDestination = true;
             destinationType = symbol.ReturnType;
             customParamStartIndex = 1;
         }
@@ -100,13 +90,28 @@ internal static class MapperModelBuilder
                 duplicateType.Key));
         }
 
-        model.CustomParameters = new EquatableArray<CustomParameterModel>([.. customParameters]);
+        var isSourceReadOnlyStruct = sourceParam.Type.IsValueType &&
+                                     sourceParam.Type is INamedTypeSymbol { IsReadOnly: true };
 
-        ParseMappingAttributes(symbol, model);
+        var model = new MapperMethodModel(
+            Namespace: ns,
+            ClassName: containingType.GetClassName(),
+            IsValueType: containingType.IsValueType,
+            MethodAccessibility: symbol.DeclaredAccessibility,
+            MethodName: symbol.Name,
+            SourceTypeName: sourceParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            SourceParameterName: sourceParam.Name,
+            IsSourceReadOnlyStruct: isSourceReadOnlyStruct,
+            DestinationTypeName: destinationTypeName,
+            DestinationParameterName: destinationParameterName,
+            ReturnsDestination: returnsDestination,
+            CustomParameters: new EquatableArray<CustomParameterModel>([.. customParameters]));
+
+        model = ParseMappingAttributes(symbol, model);
 
         // Runs before the duplicate check so that two attributes naming the same member with
         // different casing are recognised as the duplicate they are.
-        CanonicalizeTargetNames(model, destinationType);
+        model = CanonicalizeTargetNames(model, destinationType);
 
         var duplicateTargetError = ValidateDuplicateTargets(model, syntax);
         if (duplicateTargetError is not null)
@@ -114,9 +119,9 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(duplicateTargetError);
         }
 
-        ParseConverterAttributes(symbol, model);
+        model = ParseConverterAttributes(symbol, model);
 
-        var validationError = ValidateCallbackMethods(symbol, model, syntax);
+        var validationError = ValidateCallbackMethods(symbol, ref model, syntax);
         if (validationError is not null)
         {
             return Results.Error<MapperMethodModel>(validationError);
@@ -124,17 +129,17 @@ internal static class MapperModelBuilder
 
         var sourceType = symbol.Parameters[0].Type;
 
-        var explicitMappingError = ValidateExplicitPropertyMappings(model, sourceType, destinationType, syntax);
+        var explicitMappingError = ValidateExplicitPropertyMappings(ref model, sourceType, destinationType, syntax);
         if (explicitMappingError is not null)
         {
             return Results.Error<MapperMethodModel>(explicitMappingError);
         }
 
-        BuildPropertyMappings(sourceType, destinationType, model);
+        model = BuildPropertyMappings(sourceType, destinationType, model);
 
         // Runs before the detection passes below so that mappings synthesized for constructor
         // parameters are analysed alongside the ones built from destination properties.
-        var constructorError = BuildConstructorParameterMappings(model, destinationType, sourceType, syntax);
+        var constructorError = BuildConstructorParameterMappings(ref model, destinationType, sourceType, syntax);
         if (constructorError is not null)
         {
             return Results.Error<MapperMethodModel>(constructorError);
@@ -146,42 +151,30 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(expressionTargetError);
         }
 
-        DetectSpecializedConverterMethods(model, symbol);
-
-        DetectParsableMethods(model, symbol);
-
-        DetectUserDefinedConversions(model, symbol, sourceType, destinationType);
-
-        DetectFormattableMethod(model, symbol, sourceType);
-
-        foreach (var mapping in model.PropertyMappings)
+        model = model with
         {
-            if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter() &&
-                !mapping.HasSpecializedConverter() && !mapping.HasParsableMethod() &&
-                !mapping.HasUserDefinedExplicit() && !mapping.UseFormattable)
-            {
-                var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
-                var effectiveDest = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-                if (TypeNameHelper.IsExplicitNumericConversion(effectiveSource, effectiveDest))
-                {
-                    mapping.RequiresExplicitNumericCast = true;
-                }
-            }
-        }
+            PropertyMappings = AnalyzeConversions(
+                model.PropertyMappings,
+                symbol,
+                sourceType,
+                destinationType,
+                model.MapConverterTypeName,
+                model.MapConverterMethodName)
+        };
 
-        var converterError = ValidateConverterMethods(symbol, model, syntax);
+        var converterError = ValidateConverterMethods(symbol, ref model, syntax);
         if (converterError is not null)
         {
             return Results.Error<MapperMethodModel>(converterError);
         }
 
-        var propertyConditionError = ValidatePropertyConditionMethods(symbol, model, syntax);
+        var propertyConditionError = ValidatePropertyConditionMethods(symbol, ref model, syntax);
         if (propertyConditionError is not null)
         {
             return Results.Error<MapperMethodModel>(propertyConditionError);
         }
 
-        BuildConstantMappings(destinationType, model);
+        model = BuildConstantMappings(destinationType, model);
 
         var mapUsingError = ValidateAndBuildMapUsingMappings(symbol, ref model, sourceType, destinationType, syntax);
         if (mapUsingError is not null)
@@ -195,13 +188,13 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(mapFromError);
         }
 
-        var mapCollectionError = ValidateAndBuildMapCollectionMappings(symbol, model, sourceType, destinationType, syntax);
+        var mapCollectionError = ValidateAndBuildMapCollectionMappings(symbol, ref model, sourceType, destinationType, syntax);
         if (mapCollectionError is not null)
         {
             return Results.Error<MapperMethodModel>(mapCollectionError);
         }
 
-        var mapNestedError = ValidateAndBuildMapNestedMappings(symbol, model, sourceType, destinationType, syntax);
+        var mapNestedError = ValidateAndBuildMapNestedMappings(symbol, ref model, sourceType, destinationType, syntax);
         if (mapNestedError is not null)
         {
             return Results.Error<MapperMethodModel>(mapNestedError);
@@ -215,7 +208,7 @@ internal static class MapperModelBuilder
 
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
 
-        model.Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>([.. warnings]);
+        model = model with { Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>([.. warnings]) };
 
         var voidInitOnlyError = ValidateVoidMapperInitOnlyTargets(model, syntax);
         if (voidInitOnlyError is not null)
@@ -235,7 +228,7 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(cultureFormatError);
         }
 
-        var typeConverterError = ValidateNoTypeConverterFallback(model, syntax);
+        var typeConverterError = ValidateNoTypeConverterFallback(ref model, syntax);
         if (typeConverterError is not null)
         {
             return Results.Error<MapperMethodModel>(typeConverterError);
@@ -244,14 +237,16 @@ internal static class MapperModelBuilder
         return Results.Success(model);
     }
 
-    private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
+        var resolved = new List<PropertyMappingModel>(model.PropertyMappings.Count);
         foreach (var mapping in model.PropertyMappings)
         {
             if (String.IsNullOrEmpty(mapping.ConditionMethod))
             {
+                resolved.Add(mapping);
                 continue;
             }
 
@@ -271,9 +266,10 @@ internal static class MapperModelBuilder
                     mapping.TargetPath);
             }
 
-            mapping.ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams;
+            resolved.Add(mapping with { ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
+        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
         return null;
     }
 
@@ -331,14 +327,16 @@ internal static class MapperModelBuilder
         return ConverterMatchResult.NoMatch;
     }
 
-    private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
+        var resolved = new List<PropertyMappingModel>(model.PropertyMappings.Count);
         foreach (var mapping in model.PropertyMappings)
         {
             if (String.IsNullOrEmpty(mapping.ConverterMethod))
             {
+                resolved.Add(mapping);
                 continue;
             }
 
@@ -375,9 +373,10 @@ internal static class MapperModelBuilder
                     mapping.TargetPath);
             }
 
-            mapping.ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams;
+            resolved.Add(mapping with { ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
+        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
         return null;
     }
 
@@ -467,7 +466,7 @@ internal static class MapperModelBuilder
         return ConverterMatchResult.NoMatch;
     }
 
-    internal static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
 
@@ -483,7 +482,7 @@ internal static class MapperModelBuilder
             {
                 return new DiagnosticInfo(Diagnostics.InvalidBeforeMapSignature, syntax.GetLocation(), mapperMethod.Name, model.BeforeMapMethod!);
             }
-            model.BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams;
+            model = model with { BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams };
         }
 
         if (!String.IsNullOrEmpty(model.AfterMapMethod))
@@ -498,7 +497,7 @@ internal static class MapperModelBuilder
             {
                 return new DiagnosticInfo(Diagnostics.InvalidAfterMapSignature, syntax.GetLocation(), mapperMethod.Name, model.AfterMapMethod!);
             }
-            model.AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams;
+            model = model with { AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams };
         }
 
         return null;
@@ -566,8 +565,22 @@ internal static class MapperModelBuilder
         return CallbackMatchResult.NoMatch;
     }
 
-    internal static void ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
+    internal static MapperMethodModel ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
+        // Options come from named arguments scattered over several attributes, so they are
+        // gathered into locals and applied together with the parsed collections at the end.
+        var autoMapOption = model.AutoMap;
+        var strictOption = model.Strict;
+        var strictExplicitlySet = model.StrictExplicitlySet;
+        var nameComparisonOption = model.NameComparison;
+        var nameComparisonExplicitlySet = model.NameComparisonExplicitlySet;
+        var cultureOption = model.Culture;
+        var cultureExplicitlySet = model.CultureExplicitlySet;
+        var dateTimeFormatOption = model.DateTimeFormat;
+        var numberFormatOption = model.NumberFormat;
+        var beforeMapMethod = model.BeforeMapMethod;
+        var afterMapMethod = model.AfterMapMethod;
+
         var definitionOrder = 0;
         var propertyMappings = new List<PropertyMappingModel>();
         var ignoredProperties = new List<string>();
@@ -589,30 +602,30 @@ internal static class MapperModelBuilder
                 {
                     if ((namedArg.Key == "AutoMap") && (namedArg.Value.Value is bool autoMap))
                     {
-                        model.AutoMap = autoMap;
+                        autoMapOption = autoMap;
                     }
                     else if ((namedArg.Key == "Strict") && (namedArg.Value.Value is bool strict))
                     {
-                        model.Strict = strict;
-                        model.StrictExplicitlySet = true;
+                        strictOption = strict;
+                        strictExplicitlySet = true;
                     }
                     else if ((namedArg.Key == "NameComparison") && (namedArg.Value.Value is int nc))
                     {
-                        model.NameComparison = nc;
-                        model.NameComparisonExplicitlySet = true;
+                        nameComparisonOption = nc;
+                        nameComparisonExplicitlySet = true;
                     }
                     else if ((namedArg.Key == "Culture") && (namedArg.Value.Value is string culture))
                     {
-                        model.Culture = culture;
-                        model.CultureExplicitlySet = true;
+                        cultureOption = culture;
+                        cultureExplicitlySet = true;
                     }
                     else if ((namedArg.Key == "DateTimeFormat") && (namedArg.Value.Value is string dtFmt))
                     {
-                        model.DateTimeFormat = dtFmt;
+                        dateTimeFormatOption = dtFmt;
                     }
                     else if ((namedArg.Key == "NumberFormat") && (namedArg.Value.Value is string numFmt))
                     {
-                        model.NumberFormat = numFmt;
+                        numberFormatOption = numFmt;
                     }
                 }
             }
@@ -669,20 +682,18 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    var mapping = new PropertyMappingModel
-                    {
-                        TargetPath = targetName,
-                        SourcePath = sourceName ?? targetName,
-                        ConverterMethod = converter,
-                        NullBehavior = nullBehavior,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++,
-                        HasExplicitMapping = true,
-                        NullValue = nullValue,
-                        EffectiveCulture = propCulture,
-                        EffectiveDateTimeFormat = propDateTimeFormat,
-                        EffectiveNumberFormat = propNumberFormat
-                    };
+                    var mapping = new PropertyMappingModel(
+                        TargetPath: targetName,
+                        SourcePath: sourceName ?? targetName,
+                        ConverterMethod: converter,
+                        NullBehavior: nullBehavior,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++,
+                        HasExplicitMapping: true,
+                        NullValue: nullValue,
+                        EffectiveCulture: propCulture,
+                        EffectiveDateTimeFormat: propDateTimeFormat,
+                        EffectiveNumberFormat: propNumberFormat);
 
                     propertyMappings.Add(mapping);
                 }
@@ -712,13 +723,11 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    var constantMapping = new ConstantMappingModel
-                    {
-                        TargetName = targetName,
-                        Value = FormatConstantValue(value),
-                        Order = order,
-                        DefinitionOrder = definitionOrder++
-                    };
+                    var constantMapping = new ConstantMappingModel(
+                        TargetName: targetName,
+                        Value: FormatConstantValue(value),
+                        Order: order,
+                        DefinitionOrder: definitionOrder++);
 
                     constantMappings.Add(constantMapping);
                     ignoredProperties.Add(targetName);
@@ -740,13 +749,11 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    expressionMappings.Add(new ExpressionMappingModel
-                    {
-                        TargetName = targetName,
-                        Expression = expression,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++
-                    });
+                    expressionMappings.Add(new ExpressionMappingModel(
+                        TargetName: targetName,
+                        Expression: expression,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++));
 
                     ignoredProperties.Add(targetName);
                 }
@@ -755,14 +762,14 @@ internal static class MapperModelBuilder
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
-                    model.BeforeMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
+                    beforeMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
                 }
             }
             else if (attributeName == Names.AfterMapAttribute)
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
-                    model.AfterMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
+                    afterMapMethod = attribute.ConstructorArguments[0].Value?.ToString();
                 }
             }
             else if (attributeName == Names.MapConditionAttribute)
@@ -793,13 +800,11 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapUsingMappings.Add(new MapUsingModel
-                    {
-                        TargetName = targetName,
-                        Method = methodName,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++
-                    });
+                    mapUsingMappings.Add(new MapUsingModel(
+                        TargetName: targetName,
+                        Method: methodName,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++));
 
                     ignoredProperties.Add(targetName);
                 }
@@ -820,13 +825,11 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapFromMappings.Add(new MapFromModel
-                    {
-                        TargetName = targetName,
-                        Member = member,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++
-                    });
+                    mapFromMappings.Add(new MapFromModel(
+                        TargetName: targetName,
+                        Member: member,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++));
 
                     ignoredProperties.Add(targetName);
                 }
@@ -867,16 +870,14 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapCollectionMappings.Add(new MapCollectionModel
-                    {
-                        TargetName = targetName,
-                        SourceName = sourceName ?? targetName,
-                        Mapper = mapper,
-                        Converter = converter,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++,
-                        InPlace = inPlace
-                    });
+                    mapCollectionMappings.Add(new MapCollectionModel(
+                        TargetName: targetName,
+                        SourceName: sourceName ?? targetName,
+                        Mapper: mapper,
+                        Converter: converter,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++,
+                        InPlace: inPlace));
 
                     ignoredProperties.Add(targetName);
                 }
@@ -907,42 +908,65 @@ internal static class MapperModelBuilder
                         }
                     }
 
-                    mapNestedMappings.Add(new MapNestedModel
-                    {
-                        TargetName = targetName,
-                        SourceName = sourceName ?? targetName,
-                        Mapper = mapper,
-                        Order = order,
-                        DefinitionOrder = definitionOrder++
-                    });
+                    mapNestedMappings.Add(new MapNestedModel(
+                        TargetName: targetName,
+                        SourceName: sourceName ?? targetName,
+                        Mapper: mapper,
+                        Order: order,
+                        DefinitionOrder: definitionOrder++));
 
                     ignoredProperties.Add(targetName);
                 }
             }
         }
 
-        foreach (var mapping in propertyMappings)
+        for (var i = 0; i < propertyMappings.Count; i++)
         {
-            var condition = propertyConditions.FirstOrDefault(c => String.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            var condition = propertyConditions.FirstOrDefault(c => String.Equals(c.TargetName, propertyMappings[i].TargetPath, StringComparison.Ordinal));
             if (condition is not null)
             {
-                mapping.ConditionMethod = condition.ConditionMethod;
+                propertyMappings[i] = propertyMappings[i] with { ConditionMethod = condition.ConditionMethod };
             }
         }
 
-        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. propertyMappings]);
-        model.IgnoredProperties = new EquatableArray<string>([.. ignoredProperties]);
-        model.PropertyConditions = new EquatableArray<PropertyConditionModel>([.. propertyConditions]);
-        model.ConstantMappings = new EquatableArray<ConstantMappingModel>([.. constantMappings]);
-        model.ExpressionMappings = new EquatableArray<ExpressionMappingModel>([.. expressionMappings]);
-        model.MapUsingMappings = new EquatableArray<MapUsingModel>([.. mapUsingMappings]);
-        model.MapFromMappings = new EquatableArray<MapFromModel>([.. mapFromMappings]);
-        model.MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. mapCollectionMappings]);
-        model.MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings]);
+        return model with
+        {
+            AutoMap = autoMapOption,
+            Strict = strictOption,
+            StrictExplicitlySet = strictExplicitlySet,
+            NameComparison = nameComparisonOption,
+            NameComparisonExplicitlySet = nameComparisonExplicitlySet,
+            Culture = cultureOption,
+            CultureExplicitlySet = cultureExplicitlySet,
+            DateTimeFormat = dateTimeFormatOption,
+            NumberFormat = numberFormatOption,
+            BeforeMapMethod = beforeMapMethod,
+            AfterMapMethod = afterMapMethod,
+            PropertyMappings = new EquatableArray<PropertyMappingModel>([.. propertyMappings]),
+            IgnoredProperties = new EquatableArray<string>([.. ignoredProperties]),
+            PropertyConditions = new EquatableArray<PropertyConditionModel>([.. propertyConditions]),
+            ConstantMappings = new EquatableArray<ConstantMappingModel>([.. constantMappings]),
+            ExpressionMappings = new EquatableArray<ExpressionMappingModel>([.. expressionMappings]),
+            MapUsingMappings = new EquatableArray<MapUsingModel>([.. mapUsingMappings]),
+            MapFromMappings = new EquatableArray<MapFromModel>([.. mapFromMappings]),
+            MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. mapCollectionMappings]),
+            MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings])
+        };
     }
 
-    internal static void ParseConverterAttributes(IMethodSymbol symbol, MapperMethodModel model)
+    internal static MapperMethodModel ParseConverterAttributes(IMethodSymbol symbol, MapperMethodModel model)
     {
+        // The method attributes win over the containing type's, so the values are collected in
+        // order into locals and applied once at the end.
+        var mapConverterTypeName = model.MapConverterTypeName;
+        var mapConverterMethodName = model.MapConverterMethodName;
+        var collectionConverterTypeName = model.CollectionConverterTypeName;
+        var strictOption = model.Strict;
+        var nameComparisonOption = model.NameComparison;
+        var cultureOption = model.Culture;
+        var dateTimeFormatOption = model.DateTimeFormat;
+        var numberFormatOption = model.NumberFormat;
+
         foreach (var attribute in symbol.GetAttributes())
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
@@ -952,13 +976,13 @@ internal static class MapperModelBuilder
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
                 {
-                    model.MapConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    mapConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
                         if (namedArg.Key == "Method" && namedArg.Value.Value is string methodName)
                         {
-                            model.MapConverterMethodName = methodName;
+                            mapConverterMethodName = methodName;
                         }
                     }
                 }
@@ -968,7 +992,7 @@ internal static class MapperModelBuilder
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
                 {
-                    model.CollectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    collectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 }
             }
         }
@@ -978,28 +1002,28 @@ internal static class MapperModelBuilder
         {
             var attributeName = attribute.AttributeClass?.ToDisplayString();
 
-            if ((attributeName == Names.ValueConverterAttribute) && (model.MapConverterTypeName is null))
+            if ((attributeName == Names.ValueConverterAttribute) && (mapConverterTypeName is null))
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
                 {
-                    model.MapConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    mapConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
                         if (namedArg.Key == "Method" && namedArg.Value.Value is string methodName)
                         {
-                            model.MapConverterMethodName = methodName;
+                            mapConverterMethodName = methodName;
                         }
                     }
                 }
             }
-            else if ((attributeName == Names.CollectionConverterAttribute) && (model.CollectionConverterTypeName is null))
+            else if ((attributeName == Names.CollectionConverterAttribute) && (collectionConverterTypeName is null))
             {
                 if ((attribute.ConstructorArguments.Length >= 1) &&
                     (attribute.ConstructorArguments[0].Value is INamedTypeSymbol converterType))
                 {
-                    model.CollectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    collectionConverterTypeName = converterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 }
             }
             else if (attributeName == Names.MapperProfileAttribute)
@@ -1008,27 +1032,39 @@ internal static class MapperModelBuilder
                 {
                     if ((namedArg.Key == "Strict") && (namedArg.Value.Value is bool strict) && (!model.StrictExplicitlySet))
                     {
-                        model.Strict = strict;
+                        strictOption = strict;
                     }
                     else if ((namedArg.Key == "NameComparison") && (namedArg.Value.Value is int nc) && (!model.NameComparisonExplicitlySet))
                     {
-                        model.NameComparison = nc;
+                        nameComparisonOption = nc;
                     }
                     else if ((namedArg.Key == "Culture") && (namedArg.Value.Value is string profileCulture) && (!model.CultureExplicitlySet))
                     {
-                        model.Culture = profileCulture;
+                        cultureOption = profileCulture;
                     }
                     else if ((namedArg.Key == "DateTimeFormat") && (namedArg.Value.Value is string profileDtFmt) && (!model.CultureExplicitlySet))
                     {
-                        model.DateTimeFormat = profileDtFmt;
+                        dateTimeFormatOption = profileDtFmt;
                     }
                     else if ((namedArg.Key == "NumberFormat") && (namedArg.Value.Value is string profileNumFmt) && (!model.CultureExplicitlySet))
                     {
-                        model.NumberFormat = profileNumFmt;
+                        numberFormatOption = profileNumFmt;
                     }
                 }
             }
         }
+
+        return model with
+        {
+            MapConverterTypeName = mapConverterTypeName,
+            MapConverterMethodName = mapConverterMethodName,
+            CollectionConverterTypeName = collectionConverterTypeName,
+            Strict = strictOption,
+            NameComparison = nameComparisonOption,
+            Culture = cultureOption,
+            DateTimeFormat = dateTimeFormatOption,
+            NumberFormat = numberFormatOption
+        };
     }
 
     internal static string? FormatConstantValue(object? value)
@@ -1053,30 +1089,44 @@ internal static class MapperModelBuilder
         };
     }
 
-    internal static void BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
+    internal static MapperMethodModel BuildConstantMappings(ITypeSymbol destinationType, MapperMethodModel model)
     {
         var destinationProperties = destinationType.GetAllPublicProperties();
 
-        foreach (var constantMapping in model.ConstantMappings)
+        var constants = new ConstantMappingModel[model.ConstantMappings.Count];
+        for (var i = 0; i < constants.Length; i++)
         {
+            var constantMapping = model.ConstantMappings[i];
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == constantMapping.TargetName);
-            if (destProp is not null)
-            {
-                constantMapping.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                constantMapping.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
-                constantMapping.IsTargetRequired = destProp.IsRequired;
-            }
+            constants[i] = destProp is not null
+                ? constantMapping with
+                {
+                    TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
+                    IsTargetRequired = destProp.IsRequired
+                }
+                : constantMapping;
         }
 
-        foreach (var expressionMapping in model.ExpressionMappings)
+        var expressions = new ExpressionMappingModel[model.ExpressionMappings.Count];
+        for (var i = 0; i < expressions.Length; i++)
         {
+            var expressionMapping = model.ExpressionMappings[i];
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == expressionMapping.TargetName);
-            if (destProp is not null)
-            {
-                expressionMapping.IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true;
-                expressionMapping.IsTargetRequired = destProp.IsRequired;
-            }
+            expressions[i] = destProp is not null
+                ? expressionMapping with
+                {
+                    IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
+                    IsTargetRequired = destProp.IsRequired
+                }
+                : expressionMapping;
         }
+
+        return model with
+        {
+            ConstantMappings = new EquatableArray<ConstantMappingModel>(constants),
+            ExpressionMappings = new EquatableArray<ExpressionMappingModel>(expressions)
+        };
     }
 
     internal static DiagnosticInfo? ValidateDuplicateTargets(MapperMethodModel model, MethodDeclarationSyntax syntax)
@@ -1462,22 +1512,6 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
-            mapCollection.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapCollection.SourceElementType = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapCollection.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapCollection.TargetElementType = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapCollection.IsSourceNullable = sourceProp.Type.IsNullableType();
-            mapCollection.TargetIsArray = destProp.Type is IArrayTypeSymbol;
-            mapCollection.TargetCollectionMethod = DetermineCollectionMethod(destProp.Type);
-            mapCollection.SourceShape = DetermineSourceShape(sourceProp.Type);
-            mapCollection.TargetShape = DetermineTargetShape(destProp.Type);
-            mapCollection.UseHelperPath = (model.CollectionConverterTypeName is not null) || mapCollection.HasCustomConverter();
-
-            if (mapCollection.InPlace)
-            {
-                mapCollection.InPlaceFallbackTypeName = DetermineInPlaceFallbackTypeName(destProp.Type, targetElementType);
-            }
-
             var mapperMethodResult = FindMapperMethod(containingType, mapCollection.Mapper!, sourceElementType, targetElementType);
             if (mapperMethodResult is null)
             {
@@ -1489,15 +1523,32 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
-            mapCollection.MapperReturnsValue = mapperMethodResult.Value;
+            resolvedCollections.Add(mapCollection with
+            {
+                SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                SourceElementType = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TargetElementType = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                IsSourceNullable = sourceProp.Type.IsNullableType(),
+                TargetIsArray = destProp.Type is IArrayTypeSymbol,
+                TargetCollectionMethod = DetermineCollectionMethod(destProp.Type),
+                SourceShape = DetermineSourceShape(sourceProp.Type),
+                TargetShape = DetermineTargetShape(destProp.Type),
+                UseHelperPath = (model.CollectionConverterTypeName is not null) || mapCollection.HasCustomConverter(),
+                InPlaceFallbackTypeName = mapCollection.InPlace
+                    ? DetermineInPlaceFallbackTypeName(destProp.Type, targetElementType)
+                    : mapCollection.InPlaceFallbackTypeName,
+                MapperReturnsValue = mapperMethodResult.Value
+            });
         }
 
+        model = model with { MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. resolvedCollections]) };
         return null;
     }
 
     internal static DiagnosticInfo? ValidateAndBuildMapNestedMappings(
         IMethodSymbol mapperMethod,
-        MapperMethodModel model,
+        ref MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -1505,21 +1556,22 @@ internal static class MapperModelBuilder
         var containingType = mapperMethod.ContainingType;
         var destinationProperties = destinationType.GetAllPublicProperties();
 
-        foreach (var mapNested in model.MapNestedMappings)
+        var resolvedNested = new List<MapNestedModel>(model.MapNestedMappings.Count);
+        foreach (var declared in model.MapNestedMappings)
         {
-            var sourceProp = PropertyPathHelper.ResolveProperty(sourceType, mapNested.SourceName, (StringComparison)model.NameComparison);
+            var sourceProp = PropertyPathHelper.ResolveProperty(sourceType, declared.SourceName, (StringComparison)model.NameComparison);
             if (sourceProp is null)
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapCollectionSourceProperty,
                     syntax.GetLocation(),
                     mapperMethod.Name,
-                    mapNested.SourceName);
+                    declared.SourceName);
             }
 
             // The name is emitted verbatim, so adopt the declared casing when NameComparison matched
             // a source property that the attribute spelled differently.
-            mapNested.SourceName = sourceProp.Name;
+            var mapNested = declared with { SourceName = sourceProp.Name };
 
             var destProp = destinationProperties.FirstOrDefault(p => p.Name == mapNested.TargetName);
             if (destProp is null)
@@ -1540,10 +1592,6 @@ internal static class MapperModelBuilder
                     mapperMethod.Name,
                     mapNested.TargetName);
             }
-
-            mapNested.SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapNested.TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            mapNested.IsSourceNullable = sourceProp.Type.IsNullableType();
 
             var sourceUnderlyingType = sourceProp.Type;
             if ((sourceProp.Type.NullableAnnotation == NullableAnnotation.Annotated) &&
@@ -1572,9 +1620,16 @@ internal static class MapperModelBuilder
                     mapNested.TargetName);
             }
 
-            mapNested.MapperReturnsValue = mapperMethodResult.Value;
+            resolvedNested.Add(mapNested with
+            {
+                SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                IsSourceNullable = sourceProp.Type.IsNullableType(),
+                MapperReturnsValue = mapperMethodResult.Value
+            });
         }
 
+        model = model with { MapNestedMappings = new EquatableArray<MapNestedModel>([.. resolvedNested]) };
         return null;
     }
 
@@ -1820,15 +1875,19 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         if (model.MapConverterTypeName is not null)
         {
             return null;
         }
 
-        foreach (var mapping in model.PropertyMappings)
+        // Seeded with every mapping so that the many `continue` paths cannot drop one; only the
+        // entries this pass actually rewrites are replaced.
+        var resolved = new List<PropertyMappingModel>(model.PropertyMappings);
+        for (var i = 0; i < resolved.Count; i++)
         {
+            var mapping = resolved[i];
             if (mapping.HasConverter())
             {
                 continue;
@@ -1881,7 +1940,7 @@ internal static class MapperModelBuilder
                     var lcSourceType = !String.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
                     if (!TypeNameHelper.IsBuiltInNumericOrDateType(lcSourceType))
                     {
-                        mapping.UseFormattable = true;
+                        resolved[i] = mapping with { UseFormattable = true };
                         continue;
                     }
                 }
@@ -1898,6 +1957,7 @@ internal static class MapperModelBuilder
             return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), model.MethodName, mapping.TargetPath);
         }
 
+        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
         return null;
     }
 
@@ -1998,7 +2058,7 @@ internal static class MapperModelBuilder
     }
 
     internal static DiagnosticInfo? BuildConstructorParameterMappings(
-        MapperMethodModel model,
+        ref MapperMethodModel model,
         ITypeSymbol destinationType,
         ITypeSymbol sourceType,
         MethodDeclarationSyntax syntax)
@@ -2019,7 +2079,7 @@ internal static class MapperModelBuilder
             if (model.ReturnsDestination &&
                 destinationType.GetAllPublicProperties().Any(p => (p.SetMethod?.IsInitOnly == true) || p.IsRequired))
             {
-                model.UseConstructorMapping = true;
+                model = model with { UseConstructorMapping = true };
             }
 
             return null;
@@ -2034,7 +2094,11 @@ internal static class MapperModelBuilder
                 namedDest.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
 
-        model.UseConstructorMapping = true;
+        model = model with { UseConstructorMapping = true };
+
+        // Mappings that supply a constructor argument are flagged in place; the flagged copies plus
+        // any synthesized ones replace the collection at the end.
+        var flagged = new List<PropertyMappingModel>(model.PropertyMappings);
 
         var nameComparison = (StringComparison)model.NameComparison;
         var sourceProperties = sourceType.GetAllPublicProperties();
@@ -2058,11 +2122,11 @@ internal static class MapperModelBuilder
             // Prefer the property mapping built for this member: it carries the converter, null
             // handling and culture/format metadata that the argument has to be emitted with. The
             // mapping is flagged rather than removed so it keeps flowing through the analysis passes.
-            var mapping = model.PropertyMappings.FirstOrDefault(pm => MatchesConstructorParameter(param, pm.TargetPath, nameComparison));
-            if (mapping is not null)
+            var index = flagged.FindIndex(pm => MatchesConstructorParameter(param, pm.TargetPath, nameComparison));
+            if (index >= 0)
             {
-                mapping.IsConstructorParameter = true;
-                ctorParams.Add((param.Name, mapping.TargetPath));
+                flagged[index] = flagged[index] with { IsConstructorParameter = true };
+                ctorParams.Add((param.Name, flagged[index].TargetPath));
                 continue;
             }
 
@@ -2119,18 +2183,15 @@ internal static class MapperModelBuilder
                 sourcePropertyType,
                 explicitMapping?.ConverterMethod,
                 paramCondition?.ConditionMethod);
-            synthesized.IsConstructorParameter = true;
-
-            synthesizedMappings.Add(synthesized);
+            synthesizedMappings.Add(synthesized with { IsConstructorParameter = true });
             ctorParams.Add((param.Name, param.Name));
         }
 
-        model.ConstructorParameters = new EquatableArray<(string ParamName, string TargetPath)>([.. ctorParams]);
-
-        if (synthesizedMappings.Count > 0)
+        model = model with
         {
-            model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings, .. synthesizedMappings]);
-        }
+            ConstructorParameters = new EquatableArray<(string ParamName, string TargetPath)>([.. ctorParams]),
+            PropertyMappings = new EquatableArray<PropertyMappingModel>([.. flagged, .. synthesizedMappings])
+        };
 
         return null;
     }
@@ -2246,14 +2307,14 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    // Rewrites every attribute target name to the destination member's declared name, so that the
+    // Canonicalizes every attribute target name to the destination member's declared name, so that the
     // mapper's NameComparison is honoured on the target side too. Auto-mapping already matched names
     // that way; without this, an explicit attribute would only accept the exact spelling.
     //
     // Doing it once here keeps every later stage matching ordinally against real member names, which
     // also means the emitted code carries the correct casing. Names that do not resolve are left
     // untouched so the existing "not found" diagnostics still fire.
-    internal static void CanonicalizeTargetNames(MapperMethodModel model, ITypeSymbol destinationType)
+    internal static MapperMethodModel CanonicalizeTargetNames(MapperMethodModel model, ITypeSymbol destinationType)
     {
         var nameComparison = (StringComparison)model.NameComparison;
 
@@ -2263,62 +2324,138 @@ internal static class MapperModelBuilder
                 : PropertyPathHelper.ResolveProperty(destinationType, targetName, nameComparison)?.Name)
             ?? targetName;
 
-        foreach (var mapping in model.PropertyMappings)
+        var changed = false;
+
+        // Each collection is walked once and an entry is rebuilt only when its name actually
+        // differs, so a model whose names are already canonical allocates nothing at all.
+        EquatableArray<T> CanonicalizeAll<T>(EquatableArray<T> source, Func<T, T> canonicalize)
         {
-            mapping.TargetPath = Canonical(mapping.TargetPath);
+            T[]? updated = null;
+            for (var i = 0; i < source.Count; i++)
+            {
+                var item = source[i];
+                var replaced = canonicalize(item);
+
+                if (updated is not null)
+                {
+                    updated[i] = replaced;
+                    continue;
+                }
+
+                if (ReferenceEquals(replaced, item))
+                {
+                    continue;
+                }
+
+                updated = new T[source.Count];
+                for (var j = 0; j < i; j++)
+                {
+                    updated[j] = source[j];
+                }
+                updated[i] = replaced;
+            }
+
+            if (updated is null)
+            {
+                return source;
+            }
+
+            changed = true;
+            return new EquatableArray<T>(updated);
         }
 
-        foreach (var condition in model.PropertyConditions)
+        var propertyMappings = CanonicalizeAll(model.PropertyMappings, m =>
         {
-            condition.TargetName = Canonical(condition.TargetName);
+            var canonical = Canonical(m.TargetPath);
+            return canonical == m.TargetPath ? m : m with { TargetPath = canonical };
+        });
+
+        var propertyConditions = CanonicalizeAll(model.PropertyConditions, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var constantMappings = CanonicalizeAll(model.ConstantMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var expressionMappings = CanonicalizeAll(model.ExpressionMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var mapUsingMappings = CanonicalizeAll(model.MapUsingMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var mapFromMappings = CanonicalizeAll(model.MapFromMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var mapCollectionMappings = CanonicalizeAll(model.MapCollectionMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var mapNestedMappings = CanonicalizeAll(model.MapNestedMappings, m =>
+        {
+            var canonical = Canonical(m.TargetName);
+            return canonical == m.TargetName ? m : m with { TargetName = canonical };
+        });
+
+        var ignoredProperties = model.IgnoredProperties;
+        string[]? ignoredUpdated = null;
+        for (var i = 0; i < ignoredProperties.Count; i++)
+        {
+            var canonical = Canonical(ignoredProperties[i]);
+            if (ignoredUpdated is not null)
+            {
+                ignoredUpdated[i] = canonical;
+                continue;
+            }
+
+            if (canonical == ignoredProperties[i])
+            {
+                continue;
+            }
+
+            ignoredUpdated = new string[ignoredProperties.Count];
+            for (var j = 0; j < i; j++)
+            {
+                ignoredUpdated[j] = ignoredProperties[j];
+            }
+            ignoredUpdated[i] = canonical;
         }
 
-        foreach (var constant in model.ConstantMappings)
+        if (!changed && (ignoredUpdated is null))
         {
-            constant.TargetName = Canonical(constant.TargetName);
+            return model;
         }
 
-        foreach (var expression in model.ExpressionMappings)
+        return model with
         {
-            expression.TargetName = Canonical(expression.TargetName);
-        }
-
-        foreach (var mapUsing in model.MapUsingMappings)
-        {
-            mapUsing.TargetName = Canonical(mapUsing.TargetName);
-        }
-
-        foreach (var mapFrom in model.MapFromMappings)
-        {
-            mapFrom.TargetName = Canonical(mapFrom.TargetName);
-        }
-
-        foreach (var mapCollection in model.MapCollectionMappings)
-        {
-            mapCollection.TargetName = Canonical(mapCollection.TargetName);
-        }
-
-        foreach (var mapNested in model.MapNestedMappings)
-        {
-            mapNested.TargetName = Canonical(mapNested.TargetName);
-        }
-
-        model.IgnoredProperties = new EquatableArray<string>([.. model.IgnoredProperties.Select(Canonical)]);
+            PropertyMappings = propertyMappings,
+            PropertyConditions = propertyConditions,
+            ConstantMappings = constantMappings,
+            ExpressionMappings = expressionMappings,
+            MapUsingMappings = mapUsingMappings,
+            MapFromMappings = mapFromMappings,
+            MapCollectionMappings = mapCollectionMappings,
+            MapNestedMappings = mapNestedMappings,
+            IgnoredProperties = ignoredUpdated is null ? ignoredProperties : new EquatableArray<string>(ignoredUpdated)
+        };
     }
-
-    // Resolves the source path of every explicit [MapProperty] and reports the entries that
-    // BuildPropertyMappings would otherwise drop without a trace: a source path that does not resolve,
-    // a target that does not exist on the destination, or a target with no setter that no constructor
-    // can assign either.
-    //
-    // Source paths are rewritten to the declared property names so that the mapper's NameComparison is
-    // honoured here, once, and every later stage can keep matching ordinally against the real names.
-    // Target names stay ordinal: they are always spelled explicitly by the caller.
-    //
-    // This also takes the ExplicitPropertyMappings snapshot, since PropertyMappings is rebuilt (and
-    // partly discarded) by BuildPropertyMappings while constructor resolution still needs the renames.
     internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
-        MapperMethodModel model,
+        ref MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         MethodDeclarationSyntax syntax)
@@ -2327,20 +2464,22 @@ internal static class MapperModelBuilder
         var destinationProperties = destinationType.GetAllPublicProperties();
         var effectiveConstructor = GetEffectiveConstructor(model, destinationType);
 
-        foreach (var mapping in model.PropertyMappings)
+        var resolved = new List<PropertyMappingModel>(model.PropertyMappings.Count);
+        foreach (var declared in model.PropertyMappings)
         {
-            var canonicalSourcePath = PropertyPathHelper.ResolveCanonicalPath(sourceType, mapping.SourcePath, nameComparison);
+            var canonicalSourcePath = PropertyPathHelper.ResolveCanonicalPath(sourceType, declared.SourcePath, nameComparison);
             if (canonicalSourcePath is null)
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnresolvedMapPropertySourceProperty,
                     syntax.GetLocation(),
                     model.MethodName,
-                    mapping.TargetPath,
-                    mapping.SourcePath);
+                    declared.TargetPath,
+                    declared.SourcePath);
             }
 
-            mapping.SourcePath = canonicalSourcePath;
+            var mapping = declared with { SourcePath = canonicalSourcePath };
+            resolved.Add(mapping);
 
             if (mapping.TargetPath.Contains('.'))
             {
@@ -2370,7 +2509,8 @@ internal static class MapperModelBuilder
             }
         }
 
-        model.ExplicitPropertyMappings = new EquatableArray<PropertyMappingModel>([.. model.PropertyMappings]);
+        var mappings = new EquatableArray<PropertyMappingModel>([.. resolved]);
+        model = model with { PropertyMappings = mappings, ExplicitPropertyMappings = mappings };
 
         return null;
     }
@@ -2427,31 +2567,29 @@ internal static class MapperModelBuilder
         var requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceUnderlyingTypeName, targetUnderlyingTypeName)
                 && (!sourceUnderlyingType.IsAssignableTo(targetUnderlyingType));
 
-        var mapping = new PropertyMappingModel
-        {
-            SourcePath = sourcePath,
-            TargetPath = targetName,
-            SourceType = sourceTypeName,
-            TargetType = destTypeName,
-            SourceUnderlyingType = sourceUnderlyingTypeName,
-            TargetUnderlyingType = targetUnderlyingTypeName,
-            RequiresConversion = requiresConversion,
-            IsSourceNullable = isSourceNullable,
-            IsTargetNullable = isTargetNullable,
-            ConverterMethod = converterMethod,
-            ConditionMethod = conditionMethod,
-            NullBehavior = nullBehavior,
-            NullValue = nullValue,
-            Order = order,
-            DefinitionOrder = definitionOrder,
-            IsTargetInitOnly = isTargetInitOnly,
-            IsTargetRequired = isTargetRequired,
-            EffectiveCulture = propEffectiveCulture,
-            EffectiveDateTimeFormat = propEffectiveDateTimeFormat,
-            EffectiveNumberFormat = propEffectiveNumberFormat
-        };
+        var mapping = new PropertyMappingModel(
+            SourcePath: sourcePath,
+            TargetPath: targetName,
+            SourceType: sourceTypeName,
+            TargetType: destTypeName,
+            SourceUnderlyingType: sourceUnderlyingTypeName,
+            TargetUnderlyingType: targetUnderlyingTypeName,
+            RequiresConversion: requiresConversion,
+            IsSourceNullable: isSourceNullable,
+            IsTargetNullable: isTargetNullable,
+            ConverterMethod: converterMethod,
+            ConditionMethod: conditionMethod,
+            NullBehavior: nullBehavior,
+            NullValue: nullValue,
+            Order: order,
+            DefinitionOrder: definitionOrder,
+            IsTargetInitOnly: isTargetInitOnly,
+            IsTargetRequired: isTargetRequired,
+            EffectiveCulture: propEffectiveCulture,
+            EffectiveDateTimeFormat: propEffectiveDateTimeFormat,
+            EffectiveNumberFormat: propEffectiveNumberFormat);
 
-        DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
+        mapping = DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
 
         if (mapping.RequiresConversion && !mapping.IsEnumMapping() && !mapping.HasConverter())
         {
@@ -2460,14 +2598,14 @@ internal static class MapperModelBuilder
                 : null;
             if ((srcUnderlying is not null) && (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null))
             {
-                DetectParsableMethodFromSymbol(mapping, targetUnderlyingType);
+                mapping = DetectParsableMethodFromSymbol(mapping, targetUnderlyingType);
             }
         }
 
         return mapping;
     }
 
-    internal static void BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
+    internal static MapperMethodModel BuildPropertyMappings(ITypeSymbol sourceType, ITypeSymbol destinationType, MapperMethodModel model)
     {
         var sourceProperties = sourceType.GetAllPublicProperties();
         var destinationProperties = destinationType.GetAllPublicProperties();
@@ -2475,11 +2613,11 @@ internal static class MapperModelBuilder
         var customMappings = new Dictionary<string, string>(StringComparer.Ordinal);
         var nestedMappings = new List<PropertyMappingModel>();
 
-        foreach (var mapping in model.PropertyMappings)
+        foreach (var declared in model.PropertyMappings)
         {
-            if (mapping.TargetPath.Contains('.') || mapping.SourcePath.Contains('.'))
+            if (declared.TargetPath.Contains('.') || declared.SourcePath.Contains('.'))
             {
-                ResolveNestedMapping(mapping, sourceType, destinationType);
+                var mapping = ResolveNestedMapping(declared, sourceType, destinationType);
 
                 // A dotted source path still lands on a plain destination member, which may be
                 // init-only or required. Without these flags the emitters treat it as an ordinary
@@ -2489,8 +2627,11 @@ internal static class MapperModelBuilder
                     var nestedTargetProp = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
                     if (nestedTargetProp is not null)
                     {
-                        mapping.IsTargetInitOnly = nestedTargetProp.SetMethod?.IsInitOnly == true;
-                        mapping.IsTargetRequired = nestedTargetProp.IsRequired;
+                        mapping = mapping with
+                        {
+                            IsTargetInitOnly = nestedTargetProp.SetMethod?.IsInitOnly == true,
+                            IsTargetRequired = nestedTargetProp.IsRequired
+                        };
                     }
                 }
 
@@ -2498,7 +2639,7 @@ internal static class MapperModelBuilder
             }
             else
             {
-                customMappings[mapping.TargetPath] = mapping.SourcePath;
+                customMappings[declared.TargetPath] = declared.SourcePath;
             }
         }
 
@@ -2582,16 +2723,16 @@ internal static class MapperModelBuilder
 
         mappings.AddRange(nestedMappings);
 
-        model.PropertyMappings = new EquatableArray<PropertyMappingModel>([.. mappings]);
-
-        foreach (var mapping in model.PropertyMappings)
+        for (var i = 0; i < mappings.Count; i++)
         {
-            var condition = model.PropertyConditions.FirstOrDefault(c => String.Equals(c.TargetName, mapping.TargetPath, StringComparison.Ordinal));
+            var condition = model.PropertyConditions.FirstOrDefault(c => String.Equals(c.TargetName, mappings[i].TargetPath, StringComparison.Ordinal));
             if (condition is not null)
             {
-                mapping.ConditionMethod = condition.ConditionMethod;
+                mappings[i] = mappings[i] with { ConditionMethod = condition.ConditionMethod };
             }
         }
+
+        return model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. mappings]) };
     }
 
     internal static PropertyMappingModel DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
@@ -2850,257 +2991,174 @@ internal static class MapperModelBuilder
         };
     }
 
-    internal static void DetectParsableMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
+    // Conversion analysis for the property mappings. Each step depends on what the previous ones
+    // decided, so they all run against locals for a single mapping and the rewritten mapping is
+    // built once, at the end of the iteration. Symbol lookups that do not vary per mapping are
+    // resolved before the loop, and the array is only created once a mapping actually changes.
+    internal static EquatableArray<PropertyMappingModel> AnalyzeConversions(
+        EquatableArray<PropertyMappingModel> mappings,
+        IMethodSymbol mapperMethod,
+        ITypeSymbol sourceType,
+        ITypeSymbol destinationType,
+        string? mapConverterTypeName,
+        string mapConverterMethodName)
     {
-        if (model.MapConverterTypeName is not null)
-        {
-            foreach (var mapping in model.PropertyMappings)
-            {
-                mapping.ParseMethod = ParseMethodKind.None;
-            }
-            return;
-        }
+        var hasMapConverter = mapConverterTypeName is not null;
+        var converterType = FindConverterType(mapperMethod, mapConverterTypeName ?? Names.DefaultValueConverter);
 
         INamedTypeSymbol? parsableSymbol = null;
         INamedTypeSymbol? spanParsableSymbol = null;
-
-        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+        INamedTypeSymbol? formattableSymbol = null;
+        if (!hasMapConverter)
         {
-            parsableSymbol ??= reference.GetTypeByMetadataName("System.IParsable`1");
-            spanParsableSymbol ??= reference.GetTypeByMetadataName("System.ISpanParsable`1");
-            if ((parsableSymbol is not null) && (spanParsableSymbol is not null))
+            foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
             {
-                break;
-            }
-        }
-
-        if (parsableSymbol is null)
-        {
-            return;
-        }
-
-        foreach (var mapping in model.PropertyMappings)
-        {
-            if (!mapping.RequiresConversion)
-            {
-                continue;
-            }
-
-            if (mapping.IsEnumMapping() || mapping.HasSpecializedConverter() || mapping.HasConverter())
-            {
-                continue;
-            }
-
-            if ((mapping.EffectiveDateTimeFormat is not null) || (mapping.EffectiveNumberFormat is not null))
-            {
-                continue;
-            }
-
-            var sourceType = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
-            if (sourceType != "global::System.String")
-            {
-                continue;
-            }
-
-            var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-            var targetTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(targetTypeName);
-            if (targetTypeSymbol is null)
-            {
-                continue;
-            }
-
-            if ((spanParsableSymbol is not null) && targetTypeSymbol.IsImplementGenericInterface(spanParsableSymbol))
-            {
-                mapping.ParseMethod = ParseMethodKind.SpanParsable;
-            }
-            else if ((spanParsableSymbol is null) && targetTypeSymbol.IsImplementsInterfaceByName("System.ISpanParsable`1"))
-            {
-                mapping.ParseMethod = ParseMethodKind.SpanParsable;
-            }
-            else if (targetTypeSymbol.IsImplementGenericInterface(parsableSymbol))
-            {
-                mapping.ParseMethod = ParseMethodKind.Parsable;
-            }
-            else if (targetTypeSymbol.IsImplementsInterfaceByName("System.IParsable`1"))
-            {
-                mapping.ParseMethod = ParseMethodKind.Parsable;
-            }
-        }
-    }
-
-    internal static void DetectUserDefinedConversions(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType, ITypeSymbol destinationType)
-    {
-        if (model.MapConverterTypeName is not null)
-        {
-            return;
-        }
-
-        foreach (var mapping in model.PropertyMappings)
-        {
-            if (!mapping.RequiresConversion)
-            {
-                continue;
-            }
-
-            if (mapping.IsEnumMapping() || mapping.HasConverter())
-            {
-                continue;
-            }
-
-            var srcParts = mapping.SourcePath.Split('.');
-            var dstParts = mapping.TargetPath.Split('.');
-            var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts);
-            var dstProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, dstParts);
-
-            var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType();
-            var targetTypeSymbol = dstProp?.Type.GetUnderlyingType();
-
-            if ((sourceTypeSymbol is null) || (targetTypeSymbol is null))
-            {
-                var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
-                var targetTypeName = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-                sourceTypeSymbol ??= mapperMethod.FindTypeByFullyQualifiedName(sourceTypeName);
-                targetTypeSymbol ??= mapperMethod.FindTypeByFullyQualifiedName(targetTypeName);
-            }
-
-            if ((sourceTypeSymbol is null) || (targetTypeSymbol is null))
-            {
-                continue;
-            }
-
-            if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: true))
-            {
-                mapping.UserDefinedConversion = UserDefinedConversionKind.Implicit;
-                if (!mapping.IsSourceNullable)
+                parsableSymbol ??= reference.GetTypeByMetadataName("System.IParsable`1");
+                spanParsableSymbol ??= reference.GetTypeByMetadataName("System.ISpanParsable`1");
+                formattableSymbol ??= reference.GetTypeByMetadataName("System.IFormattable");
+                if ((parsableSymbol is not null) && (spanParsableSymbol is not null) && (formattableSymbol is not null))
                 {
-                    mapping.RequiresConversion = false;
+                    break;
                 }
             }
-            else if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: false))
-            {
-                mapping.UserDefinedConversion = UserDefinedConversionKind.Explicit;
-            }
         }
-    }
 
-    internal static void DetectFormattableMethod(MapperMethodModel model, IMethodSymbol mapperMethod, ITypeSymbol sourceType)
-    {
-        if (model.MapConverterTypeName is not null)
+        PropertyMappingModel[]? analyzed = null;
+
+        for (var i = 0; i < mappings.Count; i++)
         {
-            return;
+            var mapping = mappings[i];
+
+            var specializedConverterMethod = mapping.SpecializedConverterMethod;
+            var parseMethod = mapping.ParseMethod;
+            var userDefinedConversion = mapping.UserDefinedConversion;
+            var requiresConversion = mapping.RequiresConversion;
+            var useFormattable = mapping.UseFormattable;
+            var requiresExplicitNumericCast = mapping.RequiresExplicitNumericCast;
+
+            var isEnumMapping = mapping.IsEnumMapping();
+            var hasConverter = mapping.HasConverter();
+            var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+            var effectiveTarget = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+
+            // Specialized converter method
+            if ((converterType is not null) && requiresConversion && !isEnumMapping)
+            {
+                var specializedMethodName = $"{mapConverterMethodName}To{TypeNameHelper.GetSimpleTypeName(effectiveTarget)}";
+                if (FindSpecializedMethod(converterType, specializedMethodName, effectiveSource, effectiveTarget) is not null)
+                {
+                    specializedConverterMethod = specializedMethodName;
+                    parseMethod = ParseMethodKind.None;
+                }
+            }
+
+            var hasSpecializedConverter = !String.IsNullOrEmpty(specializedConverterMethod);
+
+            // IParsable / ISpanParsable. A user supplied converter takes over the whole conversion,
+            // so parsing is never emitted for it.
+            if (hasMapConverter)
+            {
+                parseMethod = ParseMethodKind.None;
+            }
+            else if ((parsableSymbol is not null) &&
+                     requiresConversion && !isEnumMapping && !hasSpecializedConverter && !hasConverter &&
+                     (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null) &&
+                     (effectiveSource == "global::System.String"))
+            {
+                var targetTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(effectiveTarget);
+                if (targetTypeSymbol is not null)
+                {
+                    if ((spanParsableSymbol is not null)
+                        ? targetTypeSymbol.IsImplementGenericInterface(spanParsableSymbol)
+                        : targetTypeSymbol.IsImplementsInterfaceByName("System.ISpanParsable`1"))
+                    {
+                        parseMethod = ParseMethodKind.SpanParsable;
+                    }
+                    else if (targetTypeSymbol.IsImplementGenericInterface(parsableSymbol) ||
+                             targetTypeSymbol.IsImplementsInterfaceByName("System.IParsable`1"))
+                    {
+                        parseMethod = ParseMethodKind.Parsable;
+                    }
+                }
+            }
+
+            var hasParsableMethod = parseMethod != ParseMethodKind.None;
+
+            // User defined conversion operator
+            if (!hasMapConverter && requiresConversion && !isEnumMapping && !hasConverter)
+            {
+                var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'));
+                var dstProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, mapping.TargetPath.Split('.'));
+                var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveSource);
+                var targetTypeSymbol = dstProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveTarget);
+
+                if ((sourceTypeSymbol is not null) && (targetTypeSymbol is not null))
+                {
+                    if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: true))
+                    {
+                        userDefinedConversion = UserDefinedConversionKind.Implicit;
+                        requiresConversion = mapping.IsSourceNullable && requiresConversion;
+                    }
+                    else if (MapperSymbolExtensions.HasUserDefinedConversion(sourceTypeSymbol, targetTypeSymbol, isImplicit: false))
+                    {
+                        userDefinedConversion = UserDefinedConversionKind.Explicit;
+                    }
+                }
+            }
+
+            var hasUserDefinedExplicit = userDefinedConversion == UserDefinedConversionKind.Explicit;
+
+            // IFormattable, only meaningful when a culture or a format was specified
+            if (!hasMapConverter && requiresConversion && !isEnumMapping && !hasConverter &&
+                !hasSpecializedConverter && !hasParsableMethod && !hasUserDefinedExplicit &&
+                TypeNameHelper.IsStringType(effectiveTarget) &&
+                (mapping.HasCulture() || (mapping.EffectiveDateTimeFormat is not null) || (mapping.EffectiveNumberFormat is not null)))
+            {
+                var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'));
+                var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveSource);
+
+                if (sourceTypeSymbol is not null)
+                {
+                    useFormattable =
+                        ((formattableSymbol is not null) &&
+                         sourceTypeSymbol.AllInterfaces.Any(x =>
+                             SymbolEqualityComparer.Default.Equals(x, formattableSymbol) ||
+                             SymbolEqualityComparer.Default.Equals(x.OriginalDefinition, formattableSymbol))) ||
+                        sourceTypeSymbol.IsImplementsInterfaceByName("System.IFormattable");
+                }
+            }
+
+            // Explicit numeric cast, the fallback when nothing above claimed the conversion
+            if (requiresConversion && !isEnumMapping && !hasConverter &&
+                !hasSpecializedConverter && !hasParsableMethod && !hasUserDefinedExplicit && !useFormattable &&
+                TypeNameHelper.IsExplicitNumericConversion(effectiveSource, effectiveTarget))
+            {
+                requiresExplicitNumericCast = true;
+            }
+
+            if ((specializedConverterMethod == mapping.SpecializedConverterMethod) &&
+                (parseMethod == mapping.ParseMethod) &&
+                (userDefinedConversion == mapping.UserDefinedConversion) &&
+                (requiresConversion == mapping.RequiresConversion) &&
+                (useFormattable == mapping.UseFormattable) &&
+                (requiresExplicitNumericCast == mapping.RequiresExplicitNumericCast))
+            {
+                continue;
+            }
+
+            analyzed ??= mappings.AsSpan().ToArray();
+            analyzed[i] = mapping with
+            {
+                SpecializedConverterMethod = specializedConverterMethod,
+                ParseMethod = parseMethod,
+                UserDefinedConversion = userDefinedConversion,
+                RequiresConversion = requiresConversion,
+                UseFormattable = useFormattable,
+                RequiresExplicitNumericCast = requiresExplicitNumericCast
+            };
         }
 
-        INamedTypeSymbol? formattableSymbol = null;
-        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
-        {
-            formattableSymbol = reference.GetTypeByMetadataName("System.IFormattable");
-            if (formattableSymbol is not null)
-            {
-                break;
-            }
-        }
-
-        foreach (var mapping in model.PropertyMappings)
-        {
-            if (!mapping.RequiresConversion)
-            {
-                continue;
-            }
-
-            var targetType = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
-            if (!TypeNameHelper.IsStringType(targetType))
-            {
-                continue;
-            }
-
-            if (!mapping.HasCulture() && (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null))
-            {
-                continue;
-            }
-
-            if (mapping.IsEnumMapping() || mapping.HasConverter() || mapping.HasSpecializedConverter() || mapping.HasParsableMethod())
-            {
-                continue;
-            }
-
-            if (mapping.HasUserDefinedExplicit())
-            {
-                continue;
-            }
-
-            var srcParts = mapping.SourcePath.Split('.');
-            var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts);
-            var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType();
-
-            if (sourceTypeSymbol is null)
-            {
-                var sourceTypeName = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
-                sourceTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(sourceTypeName);
-            }
-
-            if (sourceTypeSymbol is null)
-            {
-                continue;
-            }
-
-            var implementsFormattable = formattableSymbol is not null
-                ? sourceTypeSymbol.AllInterfaces.Any(i =>
-                    SymbolEqualityComparer.Default.Equals(i, formattableSymbol) ||
-                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, formattableSymbol))
-                : sourceTypeSymbol.IsImplementsInterfaceByName("System.IFormattable");
-
-            if (!implementsFormattable)
-            {
-                implementsFormattable = sourceTypeSymbol.IsImplementsInterfaceByName("System.IFormattable");
-            }
-
-            if (implementsFormattable)
-            {
-                mapping.UseFormattable = true;
-            }
-        }
-    }
-
-    internal static void DetectSpecializedConverterMethods(MapperMethodModel model, IMethodSymbol mapperMethod)
-    {
-        var converterType = FindConverterType(mapperMethod, model.MapConverterTypeName ?? Names.DefaultValueConverter);
-        if (converterType is null)
-        {
-            return;
-        }
-
-        var methodPrefix = model.MapConverterMethodName;
-
-        foreach (var mapping in model.PropertyMappings)
-        {
-            if (!mapping.RequiresConversion)
-            {
-                continue;
-            }
-
-            if (mapping.IsEnumMapping())
-            {
-                continue;
-            }
-
-            var sourceTypeForLookup = !String.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
-            var targetTypeForLookup = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-
-            var targetSimpleName = TypeNameHelper.GetSimpleTypeName(targetTypeForLookup);
-            var specializedMethodName = $"{methodPrefix}To{targetSimpleName}";
-
-            var specializedMethod = FindSpecializedMethod(
-                converterType,
-                specializedMethodName,
-                sourceTypeForLookup,
-                targetTypeForLookup);
-
-            if (specializedMethod is not null)
-            {
-                mapping.SpecializedConverterMethod = specializedMethodName;
-                mapping.ParseMethod = ParseMethodKind.None;
-            }
-        }
+        return analyzed is null ? mappings : new EquatableArray<PropertyMappingModel>(analyzed);
     }
 
     internal static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string converterTypeName)

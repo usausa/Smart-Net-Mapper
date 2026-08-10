@@ -26,28 +26,26 @@ internal enum CollectionTargetShape
 }
 
 // Represents a MapCollection mapping (collection property mapped using a mapper method).
-internal sealed record MapCollectionModel
-{
-    public string SourceName { get; init; } = default!;
-    public string SourceType { get; init; } = default!;
-    public string SourceElementType { get; init; } = default!;
-    public string TargetName { get; init; } = default!;
-    public string TargetType { get; init; } = default!;
-    public string TargetElementType { get; init; } = default!;
-    public string? Mapper { get; init; }
-    public int Order { get; init; }
-    public int DefinitionOrder { get; init; }
-    public CollectionSourceShape SourceShape { get; init; } = CollectionSourceShape.Enumerable;
-    public CollectionTargetShape TargetShape { get; init; } = CollectionTargetShape.List;
-    public string TargetCollectionMethod { get; init; } = "ToList";
-    public bool MapperReturnsValue { get; init; }
-    public bool IsSourceNullable { get; init; }
-    public bool TargetIsArray { get; init; }
-    public bool UseHelperPath { get; init; }
-    public string? Converter { get; init; }
-    public bool InPlace { get; init; }
-    public string? InPlaceFallbackTypeName { get; init; }
-}
+internal sealed record MapCollectionModel(
+    string SourceName = default!,
+    string SourceType = default!,
+    string SourceElementType = default!,
+    string TargetName = default!,
+    string TargetType = default!,
+    string TargetElementType = default!,
+    string? Mapper = default,
+    int Order = default,
+    int DefinitionOrder = default,
+    CollectionSourceShape SourceShape = CollectionSourceShape.Enumerable,
+    CollectionTargetShape TargetShape = CollectionTargetShape.List,
+    string TargetCollectionMethod = "ToList",
+    bool MapperReturnsValue = default,
+    bool IsSourceNullable = default,
+    bool TargetIsArray = default,
+    bool UseHelperPath = default,
+    string? Converter = default,
+    bool InPlace = default,
+    string? InPlaceFallbackTypeName = default);
 
 internal static class MapCollectionModelExtensions
 {

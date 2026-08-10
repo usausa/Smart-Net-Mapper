@@ -37,54 +37,48 @@ internal enum NullBehaviorType
 }
 
 // Represents a property mapping configuration.
-internal sealed record PropertyMappingModel
-{
+internal sealed record PropertyMappingModel(
     // Identity
-    public string SourcePath { get; init; } = default!;
-    public string TargetPath { get; init; } = default!;
-    public string SourceType { get; init; } = default!;
-    public string TargetType { get; init; } = default!;
-    public string SourceUnderlyingType { get; init; } = default!;
-    public string TargetUnderlyingType { get; init; } = default!;
-    public EquatableArray<NestedPathSegment> SourcePathSegments { get; init; } = new([]);
-    public EquatableArray<NestedPathSegment> TargetPathSegments { get; init; } = new([]);
-
+    string SourcePath = default!,
+    string TargetPath = default!,
+    string SourceType = default!,
+    string TargetType = default!,
+    string SourceUnderlyingType = default!,
+    string TargetUnderlyingType = default!,
+    EquatableArray<NestedPathSegment> SourcePathSegments = default,
+    EquatableArray<NestedPathSegment> TargetPathSegments = default,
     // Base analysis flags / ordering
-    public bool RequiresConversion { get; init; }
-    public bool IsSourceNullable { get; init; }
-    public bool IsTargetNullable { get; init; }
-    public bool IsTargetInitOnly { get; init; }
-    public bool IsTargetRequired { get; init; }
-    public bool HasExplicitMapping { get; init; }
-
+    bool RequiresConversion = default,
+    bool IsSourceNullable = default,
+    bool IsTargetNullable = default,
+    bool IsTargetInitOnly = default,
+    bool IsTargetRequired = default,
+    bool HasExplicitMapping = default,
     // Set when this mapping supplies a constructor argument instead of an assignment. The mapping
     // stays in PropertyMappings so it still goes through every analysis pass, but the emitters skip
     // it when writing assignments and object-initializer entries.
-    public bool IsConstructorParameter { get; init; }
-    public int Order { get; init; }
-    public int DefinitionOrder { get; init; }
-
+    bool IsConstructorParameter = default,
+    int Order = default,
+    int DefinitionOrder = default,
     // Optional per-mapping settings
-    public string? ConverterMethod { get; init; }
-    public bool ConverterAcceptsCustomParameters { get; init; }
-    public string? ConditionMethod { get; init; }
-    public bool ConditionAcceptsCustomParameters { get; init; }
-    public NullBehaviorType NullBehavior { get; init; } = NullBehaviorType.Default;
-    public string? NullValue { get; init; }
-    public string? EffectiveCulture { get; init; }
-    public string? EffectiveDateTimeFormat { get; init; }
-    public string? EffectiveNumberFormat { get; init; }
-
+    string? ConverterMethod = default,
+    bool ConverterAcceptsCustomParameters = default,
+    string? ConditionMethod = default,
+    bool ConditionAcceptsCustomParameters = default,
+    NullBehaviorType NullBehavior = NullBehaviorType.Default,
+    string? NullValue = default,
+    string? EffectiveCulture = default,
+    string? EffectiveDateTimeFormat = default,
+    string? EffectiveNumberFormat = default,
     // Conversion-detection results
-    public string? SpecializedConverterMethod { get; init; }
-    public ParseMethodKind ParseMethod { get; init; } = ParseMethodKind.None;
-    public UserDefinedConversionKind UserDefinedConversion { get; init; } = UserDefinedConversionKind.None;
-    public bool RequiresExplicitNumericCast { get; init; }
-    public bool UseFormattable { get; init; }
-    public EnumMappingKind EnumMappingKind { get; init; } = EnumMappingKind.None;
-    public EquatableArray<string> SourceEnumMembers { get; init; } = new([]);
-    public EquatableArray<string> DestEnumMembers { get; init; } = new([]);
-}
+    string? SpecializedConverterMethod = default,
+    ParseMethodKind ParseMethod = ParseMethodKind.None,
+    UserDefinedConversionKind UserDefinedConversion = UserDefinedConversionKind.None,
+    bool RequiresExplicitNumericCast = default,
+    bool UseFormattable = default,
+    EnumMappingKind EnumMappingKind = EnumMappingKind.None,
+    EquatableArray<string> SourceEnumMembers = default,
+    EquatableArray<string> DestEnumMembers = default);
 
 internal static class PropertyMappingModelExtensions
 {

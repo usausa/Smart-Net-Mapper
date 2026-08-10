@@ -37,48 +37,54 @@ internal enum NullBehaviorType
 }
 
 // Represents a property mapping configuration.
-internal sealed record PropertyMappingModel(
+internal sealed record PropertyMappingModel
+{
     // Identity
-    string SourcePath,
-    string TargetPath,
-    string SourceType,
-    string TargetType,
-    string SourceUnderlyingType,
-    string TargetUnderlyingType,
-    EquatableArray<NestedPathSegment> SourcePathSegments,
-    EquatableArray<NestedPathSegment> TargetPathSegments,
+    public string SourcePath { get; init; } = default!;
+    public string TargetPath { get; init; } = default!;
+    public string SourceType { get; init; } = default!;
+    public string TargetType { get; init; } = default!;
+    public string SourceUnderlyingType { get; init; } = default!;
+    public string TargetUnderlyingType { get; init; } = default!;
+    public EquatableArray<NestedPathSegment> SourcePathSegments { get; init; } = new([]);
+    public EquatableArray<NestedPathSegment> TargetPathSegments { get; init; } = new([]);
+
     // Base analysis flags / ordering
-    bool RequiresConversion,
-    bool IsSourceNullable,
-    bool IsTargetNullable,
-    bool IsTargetInitOnly,
-    bool IsTargetRequired,
-    bool HasExplicitMapping,
+    public bool RequiresConversion { get; init; }
+    public bool IsSourceNullable { get; init; }
+    public bool IsTargetNullable { get; init; }
+    public bool IsTargetInitOnly { get; init; }
+    public bool IsTargetRequired { get; init; }
+    public bool HasExplicitMapping { get; init; }
+
     // Set when this mapping supplies a constructor argument instead of an assignment. The mapping
     // stays in PropertyMappings so it still goes through every analysis pass, but the emitters skip
     // it when writing assignments and object-initializer entries.
-    bool IsConstructorParameter,
-    int Order,
-    int DefinitionOrder,
+    public bool IsConstructorParameter { get; init; }
+    public int Order { get; init; }
+    public int DefinitionOrder { get; init; }
+
     // Optional per-mapping settings
-    string? ConverterMethod,
-    bool ConverterAcceptsCustomParameters,
-    string? ConditionMethod,
-    bool ConditionAcceptsCustomParameters,
-    NullBehaviorType NullBehavior,
-    string? NullValue,
-    string? EffectiveCulture,
-    string? EffectiveDateTimeFormat,
-    string? EffectiveNumberFormat,
+    public string? ConverterMethod { get; init; }
+    public bool ConverterAcceptsCustomParameters { get; init; }
+    public string? ConditionMethod { get; init; }
+    public bool ConditionAcceptsCustomParameters { get; init; }
+    public NullBehaviorType NullBehavior { get; init; } = NullBehaviorType.Default;
+    public string? NullValue { get; init; }
+    public string? EffectiveCulture { get; init; }
+    public string? EffectiveDateTimeFormat { get; init; }
+    public string? EffectiveNumberFormat { get; init; }
+
     // Conversion-detection results
-    string? SpecializedConverterMethod,
-    ParseMethodKind ParseMethod,
-    UserDefinedConversionKind UserDefinedConversion,
-    bool RequiresExplicitNumericCast,
-    bool UseFormattable,
-    EnumMappingKind EnumMappingKind,
-    EquatableArray<string> SourceEnumMembers,
-    EquatableArray<string> DestEnumMembers);
+    public string? SpecializedConverterMethod { get; init; }
+    public ParseMethodKind ParseMethod { get; init; } = ParseMethodKind.None;
+    public UserDefinedConversionKind UserDefinedConversion { get; init; } = UserDefinedConversionKind.None;
+    public bool RequiresExplicitNumericCast { get; init; }
+    public bool UseFormattable { get; init; }
+    public EnumMappingKind EnumMappingKind { get; init; } = EnumMappingKind.None;
+    public EquatableArray<string> SourceEnumMembers { get; init; } = new([]);
+    public EquatableArray<string> DestEnumMembers { get; init; } = new([]);
+}
 
 internal static class PropertyMappingModelExtensions
 {

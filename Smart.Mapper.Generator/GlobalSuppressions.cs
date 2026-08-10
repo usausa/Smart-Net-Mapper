@@ -1,2 +1,1 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("MicrosoftCodeAnalysisReleaseTracking", "RS2008:Enable analyzer release tracking", Justification = "Ignore")]
-[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Scope = "type", Target = "~T:Smart.Mapper.Generator.MapperDiagnosticSuppressor", Justification = "Instantiated by Roslyn via [DiagnosticAnalyzer]")]

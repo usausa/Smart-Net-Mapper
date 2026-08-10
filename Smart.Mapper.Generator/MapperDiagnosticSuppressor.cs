@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 // Suppresses CS8618 and CS8602 warnings on partial methods decorated with [Mapper].
 // The Source Generator guarantees that all properties are assigned in the generated implementation,
 // so these nullable warnings are false positives.
+#pragma warning disable CA1812
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
 {
@@ -95,3 +96,4 @@ internal sealed class MapperDiagnosticSuppressor : DiagnosticSuppressor
         return false;
     }
 }
+#pragma warning restore CA1812

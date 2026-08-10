@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 [assembly: CLSCompliant(false)]
 
 // ReSharper disable ArrangeNamespaceBody

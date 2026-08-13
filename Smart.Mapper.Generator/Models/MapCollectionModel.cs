@@ -27,15 +27,19 @@ internal enum CollectionTargetShape
 
 // Represents a MapCollection mapping (collection property mapped using a mapper method).
 internal sealed record MapCollectionModel(
+    // Identity
     string SourceName = default!,
     string SourceType = default!,
     string SourceElementType = default!,
     string TargetName = default!,
     string TargetType = default!,
     string TargetElementType = default!,
+    // Mapper method applied to each element
     string? Mapper = default,
+    // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,
+    // Emit strategy. Shapes pick the optimized loop, UseHelperPath routes through a converter instead
     CollectionSourceShape SourceShape = CollectionSourceShape.Enumerable,
     CollectionTargetShape TargetShape = CollectionTargetShape.List,
     string TargetCollectionMethod = "ToList",
@@ -43,7 +47,9 @@ internal sealed record MapCollectionModel(
     bool IsSourceNullable = default,
     bool TargetIsArray = default,
     bool UseHelperPath = default,
+    // Optional per-mapping settings
     string? Converter = default,
+    // Reuse of an existing target collection instead of building a new one
     bool InPlace = default,
     string? InPlaceFallbackTypeName = default);
 

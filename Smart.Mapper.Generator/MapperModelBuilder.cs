@@ -2324,134 +2324,156 @@ internal static class MapperModelBuilder
                 : PropertyPathHelper.ResolveProperty(destinationType, targetName, nameComparison)?.Name)
             ?? targetName;
 
-        var changed = false;
+        // The nine loops below are the same shape but each one names a different model type and a
+        // different property, so there is nothing C# can factor out without a delegate per collection.
+        // A delegate would be allocated on every call even when no name needs canonicalizing, which is
+        // the common case, so the repetition is deliberate: this way a model that is already canonical
+        // allocates nothing at all, and an array is only taken when an entry actually differs.
 
-        // Each collection is walked once and an entry is rebuilt only when its name actually
-        // differs, so a model whose names are already canonical allocates nothing at all.
-        EquatableArray<T> CanonicalizeAll<T>(EquatableArray<T> source, Func<T, T> canonicalize)
+        PropertyMappingModel[]? updatedMappings = null;
+        for (var i = 0; i < model.PropertyMappings.Count; i++)
         {
-            T[]? updated = null;
-            for (var i = 0; i < source.Count; i++)
-            {
-                var item = source[i];
-                var replaced = canonicalize(item);
-
-                if (updated is not null)
-                {
-                    updated[i] = replaced;
-                    continue;
-                }
-
-                if (ReferenceEquals(replaced, item))
-                {
-                    continue;
-                }
-
-                updated = new T[source.Count];
-                for (var j = 0; j < i; j++)
-                {
-                    updated[j] = source[j];
-                }
-                updated[i] = replaced;
-            }
-
-            if (updated is null)
-            {
-                return source;
-            }
-
-            changed = true;
-            return new EquatableArray<T>(updated);
-        }
-
-        var propertyMappings = CanonicalizeAll(model.PropertyMappings, m =>
-        {
-            var canonical = Canonical(m.TargetPath);
-            return canonical == m.TargetPath ? m : m with { TargetPath = canonical };
-        });
-
-        var propertyConditions = CanonicalizeAll(model.PropertyConditions, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var constantMappings = CanonicalizeAll(model.ConstantMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var expressionMappings = CanonicalizeAll(model.ExpressionMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var mapUsingMappings = CanonicalizeAll(model.MapUsingMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var mapFromMappings = CanonicalizeAll(model.MapFromMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var mapCollectionMappings = CanonicalizeAll(model.MapCollectionMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var mapNestedMappings = CanonicalizeAll(model.MapNestedMappings, m =>
-        {
-            var canonical = Canonical(m.TargetName);
-            return canonical == m.TargetName ? m : m with { TargetName = canonical };
-        });
-
-        var ignoredProperties = model.IgnoredProperties;
-        string[]? ignoredUpdated = null;
-        for (var i = 0; i < ignoredProperties.Count; i++)
-        {
-            var canonical = Canonical(ignoredProperties[i]);
-            if (ignoredUpdated is not null)
-            {
-                ignoredUpdated[i] = canonical;
-                continue;
-            }
-
-            if (canonical == ignoredProperties[i])
+            var item = model.PropertyMappings[i];
+            var canonical = Canonical(item.TargetPath);
+            if (canonical == item.TargetPath)
             {
                 continue;
             }
 
-            ignoredUpdated = new string[ignoredProperties.Count];
-            for (var j = 0; j < i; j++)
-            {
-                ignoredUpdated[j] = ignoredProperties[j];
-            }
-            ignoredUpdated[i] = canonical;
+            updatedMappings ??= model.PropertyMappings.AsSpan().ToArray();
+            updatedMappings[i] = item with { TargetPath = canonical };
         }
 
-        if (!changed && (ignoredUpdated is null))
+        PropertyConditionModel[]? updatedConditions = null;
+        for (var i = 0; i < model.PropertyConditions.Count; i++)
+        {
+            var item = model.PropertyConditions[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedConditions ??= model.PropertyConditions.AsSpan().ToArray();
+            updatedConditions[i] = item with { TargetName = canonical };
+        }
+
+        ConstantMappingModel[]? updatedConstants = null;
+        for (var i = 0; i < model.ConstantMappings.Count; i++)
+        {
+            var item = model.ConstantMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedConstants ??= model.ConstantMappings.AsSpan().ToArray();
+            updatedConstants[i] = item with { TargetName = canonical };
+        }
+
+        ExpressionMappingModel[]? updatedExpressions = null;
+        for (var i = 0; i < model.ExpressionMappings.Count; i++)
+        {
+            var item = model.ExpressionMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedExpressions ??= model.ExpressionMappings.AsSpan().ToArray();
+            updatedExpressions[i] = item with { TargetName = canonical };
+        }
+
+        MapUsingModel[]? updatedMapUsings = null;
+        for (var i = 0; i < model.MapUsingMappings.Count; i++)
+        {
+            var item = model.MapUsingMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedMapUsings ??= model.MapUsingMappings.AsSpan().ToArray();
+            updatedMapUsings[i] = item with { TargetName = canonical };
+        }
+
+        MapFromModel[]? updatedMapFroms = null;
+        for (var i = 0; i < model.MapFromMappings.Count; i++)
+        {
+            var item = model.MapFromMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedMapFroms ??= model.MapFromMappings.AsSpan().ToArray();
+            updatedMapFroms[i] = item with { TargetName = canonical };
+        }
+
+        MapCollectionModel[]? updatedMapCollections = null;
+        for (var i = 0; i < model.MapCollectionMappings.Count; i++)
+        {
+            var item = model.MapCollectionMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedMapCollections ??= model.MapCollectionMappings.AsSpan().ToArray();
+            updatedMapCollections[i] = item with { TargetName = canonical };
+        }
+
+        MapNestedModel[]? updatedMapNesteds = null;
+        for (var i = 0; i < model.MapNestedMappings.Count; i++)
+        {
+            var item = model.MapNestedMappings[i];
+            var canonical = Canonical(item.TargetName);
+            if (canonical == item.TargetName)
+            {
+                continue;
+            }
+
+            updatedMapNesteds ??= model.MapNestedMappings.AsSpan().ToArray();
+            updatedMapNesteds[i] = item with { TargetName = canonical };
+        }
+
+        string[]? updatedIgnored = null;
+        for (var i = 0; i < model.IgnoredProperties.Count; i++)
+        {
+            var item = model.IgnoredProperties[i];
+            var canonical = Canonical(item);
+            if (canonical == item)
+            {
+                continue;
+            }
+
+            updatedIgnored ??= model.IgnoredProperties.AsSpan().ToArray();
+            updatedIgnored[i] = canonical;
+        }
+
+        if ((updatedMappings is null) && (updatedConditions is null) && (updatedConstants is null) &&
+            (updatedExpressions is null) && (updatedMapUsings is null) && (updatedMapFroms is null) &&
+            (updatedMapCollections is null) && (updatedMapNesteds is null) && (updatedIgnored is null))
         {
             return model;
         }
 
         return model with
         {
-            PropertyMappings = propertyMappings,
-            PropertyConditions = propertyConditions,
-            ConstantMappings = constantMappings,
-            ExpressionMappings = expressionMappings,
-            MapUsingMappings = mapUsingMappings,
-            MapFromMappings = mapFromMappings,
-            MapCollectionMappings = mapCollectionMappings,
-            MapNestedMappings = mapNestedMappings,
-            IgnoredProperties = ignoredUpdated is null ? ignoredProperties : new EquatableArray<string>(ignoredUpdated)
+            PropertyMappings = updatedMappings is null ? model.PropertyMappings : new EquatableArray<PropertyMappingModel>(updatedMappings),
+            PropertyConditions = updatedConditions is null ? model.PropertyConditions : new EquatableArray<PropertyConditionModel>(updatedConditions),
+            ConstantMappings = updatedConstants is null ? model.ConstantMappings : new EquatableArray<ConstantMappingModel>(updatedConstants),
+            ExpressionMappings = updatedExpressions is null ? model.ExpressionMappings : new EquatableArray<ExpressionMappingModel>(updatedExpressions),
+            MapUsingMappings = updatedMapUsings is null ? model.MapUsingMappings : new EquatableArray<MapUsingModel>(updatedMapUsings),
+            MapFromMappings = updatedMapFroms is null ? model.MapFromMappings : new EquatableArray<MapFromModel>(updatedMapFroms),
+            MapCollectionMappings = updatedMapCollections is null ? model.MapCollectionMappings : new EquatableArray<MapCollectionModel>(updatedMapCollections),
+            MapNestedMappings = updatedMapNesteds is null ? model.MapNestedMappings : new EquatableArray<MapNestedModel>(updatedMapNesteds),
+            IgnoredProperties = updatedIgnored is null ? model.IgnoredProperties : new EquatableArray<string>(updatedIgnored)
         };
     }
 

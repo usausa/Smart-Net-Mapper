@@ -208,7 +208,7 @@ internal static class MapperModelBuilder
 
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
 
-        model = model with { Warnings = new EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)>([.. warnings]) };
+        model = model with { Warnings = [with([.. warnings])] };
 
         var voidInitOnlyError = ValidateVoidMapperInitOnlyTargets(model, syntax);
         if (voidInitOnlyError is not null)
@@ -269,7 +269,7 @@ internal static class MapperModelBuilder
             resolved.Add(mapping with { ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
-        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
+        model = model with { PropertyMappings = [with([.. resolved])] };
         return null;
     }
 
@@ -376,7 +376,7 @@ internal static class MapperModelBuilder
             resolved.Add(mapping with { ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
-        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
+        model = model with { PropertyMappings = [with([.. resolved])] };
         return null;
     }
 
@@ -942,15 +942,15 @@ internal static class MapperModelBuilder
             NumberFormat = numberFormatOption,
             BeforeMapMethod = beforeMapMethod,
             AfterMapMethod = afterMapMethod,
-            PropertyMappings = new EquatableArray<PropertyMappingModel>([.. propertyMappings]),
-            IgnoredProperties = new EquatableArray<string>([.. ignoredProperties]),
-            PropertyConditions = new EquatableArray<PropertyConditionModel>([.. propertyConditions]),
-            ConstantMappings = new EquatableArray<ConstantMappingModel>([.. constantMappings]),
-            ExpressionMappings = new EquatableArray<ExpressionMappingModel>([.. expressionMappings]),
-            MapUsingMappings = new EquatableArray<MapUsingModel>([.. mapUsingMappings]),
-            MapFromMappings = new EquatableArray<MapFromModel>([.. mapFromMappings]),
-            MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. mapCollectionMappings]),
-            MapNestedMappings = new EquatableArray<MapNestedModel>([.. mapNestedMappings])
+            PropertyMappings = [with([.. propertyMappings])],
+            IgnoredProperties = [with([.. ignoredProperties])],
+            PropertyConditions = [with([.. propertyConditions])],
+            ConstantMappings = [with([.. constantMappings])],
+            ExpressionMappings = [with([.. expressionMappings])],
+            MapUsingMappings = [with([.. mapUsingMappings])],
+            MapFromMappings = [with([.. mapFromMappings])],
+            MapCollectionMappings = [with([.. mapCollectionMappings])],
+            MapNestedMappings = [with([.. mapNestedMappings])]
         };
     }
 
@@ -1124,8 +1124,8 @@ internal static class MapperModelBuilder
 
         return model with
         {
-            ConstantMappings = new EquatableArray<ConstantMappingModel>(constants),
-            ExpressionMappings = new EquatableArray<ExpressionMappingModel>(expressions)
+            ConstantMappings = [with(constants)],
+            ExpressionMappings = [with(expressions)]
         };
     }
 
@@ -1253,7 +1253,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapUsingMappings = new EquatableArray<MapUsingModel>([.. resolved]) };
+        model = model with { MapUsingMappings = [with([.. resolved])] };
         return null;
     }
 
@@ -1440,7 +1440,7 @@ internal static class MapperModelBuilder
                 mapFrom.TargetName);
         }
 
-        model = model with { MapFromMappings = new EquatableArray<MapFromModel>([.. resolved]) };
+        model = model with { MapFromMappings = [with([.. resolved])] };
         return null;
     }
 
@@ -1542,7 +1542,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapCollectionMappings = new EquatableArray<MapCollectionModel>([.. resolvedCollections]) };
+        model = model with { MapCollectionMappings = [with([.. resolvedCollections])] };
         return null;
     }
 
@@ -1629,7 +1629,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapNestedMappings = new EquatableArray<MapNestedModel>([.. resolvedNested]) };
+        model = model with { MapNestedMappings = [with([.. resolvedNested])] };
         return null;
     }
 
@@ -1957,7 +1957,7 @@ internal static class MapperModelBuilder
             return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), model.MethodName, mapping.TargetPath);
         }
 
-        model = model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. resolved]) };
+        model = model with { PropertyMappings = [with([.. resolved])] };
         return null;
     }
 
@@ -2189,8 +2189,8 @@ internal static class MapperModelBuilder
 
         model = model with
         {
-            ConstructorParameters = new EquatableArray<(string ParamName, string TargetPath)>([.. ctorParams]),
-            PropertyMappings = new EquatableArray<PropertyMappingModel>([.. flagged, .. synthesizedMappings])
+            ConstructorParameters = [with([.. ctorParams])],
+            PropertyMappings = [with([.. flagged, .. synthesizedMappings])]
         };
 
         return null;
@@ -2340,7 +2340,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMappings ??= model.PropertyMappings.AsSpan().ToArray();
+            updatedMappings ??= [.. model.PropertyMappings];
             updatedMappings[i] = item with { TargetPath = canonical };
         }
 
@@ -2354,7 +2354,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedConditions ??= model.PropertyConditions.AsSpan().ToArray();
+            updatedConditions ??= [.. model.PropertyConditions];
             updatedConditions[i] = item with { TargetName = canonical };
         }
 
@@ -2368,7 +2368,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedConstants ??= model.ConstantMappings.AsSpan().ToArray();
+            updatedConstants ??= [.. model.ConstantMappings];
             updatedConstants[i] = item with { TargetName = canonical };
         }
 
@@ -2382,7 +2382,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedExpressions ??= model.ExpressionMappings.AsSpan().ToArray();
+            updatedExpressions ??= [.. model.ExpressionMappings];
             updatedExpressions[i] = item with { TargetName = canonical };
         }
 
@@ -2396,7 +2396,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapUsings ??= model.MapUsingMappings.AsSpan().ToArray();
+            updatedMapUsings ??= [.. model.MapUsingMappings];
             updatedMapUsings[i] = item with { TargetName = canonical };
         }
 
@@ -2410,7 +2410,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapFroms ??= model.MapFromMappings.AsSpan().ToArray();
+            updatedMapFroms ??= [.. model.MapFromMappings];
             updatedMapFroms[i] = item with { TargetName = canonical };
         }
 
@@ -2424,7 +2424,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapCollections ??= model.MapCollectionMappings.AsSpan().ToArray();
+            updatedMapCollections ??= [.. model.MapCollectionMappings];
             updatedMapCollections[i] = item with { TargetName = canonical };
         }
 
@@ -2438,7 +2438,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapNesteds ??= model.MapNestedMappings.AsSpan().ToArray();
+            updatedMapNesteds ??= [.. model.MapNestedMappings];
             updatedMapNesteds[i] = item with { TargetName = canonical };
         }
 
@@ -2452,7 +2452,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedIgnored ??= model.IgnoredProperties.AsSpan().ToArray();
+            updatedIgnored ??= [.. model.IgnoredProperties];
             updatedIgnored[i] = canonical;
         }
 
@@ -2463,6 +2463,8 @@ internal static class MapperModelBuilder
             return model;
         }
 
+        // ReSharper disable UseCollectionExpression
+#pragma warning disable IDE0028
         return model with
         {
             PropertyMappings = updatedMappings is null ? model.PropertyMappings : new EquatableArray<PropertyMappingModel>(updatedMappings),
@@ -2475,6 +2477,8 @@ internal static class MapperModelBuilder
             MapNestedMappings = updatedMapNesteds is null ? model.MapNestedMappings : new EquatableArray<MapNestedModel>(updatedMapNesteds),
             IgnoredProperties = updatedIgnored is null ? model.IgnoredProperties : new EquatableArray<string>(updatedIgnored)
         };
+#pragma warning restore IDE0028
+        // ReSharper restore UseCollectionExpression
     }
 
     internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
@@ -2755,7 +2759,7 @@ internal static class MapperModelBuilder
             }
         }
 
-        return model with { PropertyMappings = new EquatableArray<PropertyMappingModel>([.. mappings]) };
+        return model with { PropertyMappings = [with([.. mappings])] };
     }
 
     internal static PropertyMappingModel DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
@@ -2778,9 +2782,8 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.EnumToEnum,
                 RequiresConversion = true,
-                SourceEnumMembers = new EquatableArray<string>([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)]),
-                DestEnumMembers = new EquatableArray<string>(
-                    [.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)])
+                SourceEnumMembers = [with([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)])],
+                DestEnumMembers = [with([.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)])]
             };
         }
 
@@ -2800,7 +2803,7 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.EnumToString,
                 RequiresConversion = true,
-                SourceEnumMembers = new EquatableArray<string>([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)])
+                SourceEnumMembers = [with([.. GetEnumMemberNamesDedupedByValue(sourceUnderlying)])]
             };
         }
 
@@ -2810,8 +2813,7 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.StringToEnum,
                 RequiresConversion = true,
-                DestEnumMembers = new EquatableArray<string>(
-                    [.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)])
+                DestEnumMembers = [with([.. targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name)])]
             };
         }
 
@@ -2915,7 +2917,7 @@ internal static class MapperModelBuilder
                     currentType = prop.Type;
                 }
             }
-            sourcePathSegments = new EquatableArray<NestedPathSegment>([.. sourceSegments]);
+            sourcePathSegments = [with([.. sourceSegments])];
 
             var finalSourceProp = currentType.GetAllPublicProperties().FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
             if (finalSourceProp is not null)
@@ -2960,7 +2962,7 @@ internal static class MapperModelBuilder
                     currentTargetType = prop.Type;
                 }
             }
-            targetPathSegments = new EquatableArray<NestedPathSegment>([.. targetSegments]);
+            targetPathSegments = [with([.. targetSegments])];
 
             var finalProp = currentTargetType.GetAllPublicProperties().FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
             if (finalProp is not null)
@@ -3169,7 +3171,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            analyzed ??= mappings.AsSpan().ToArray();
+            analyzed ??= [.. mappings];
             analyzed[i] = mapping with
             {
                 SpecializedConverterMethod = specializedConverterMethod,
@@ -3181,7 +3183,11 @@ internal static class MapperModelBuilder
             };
         }
 
+        // ReSharper disable UseCollectionExpression
+#pragma warning disable IDE0028
         return analyzed is null ? mappings : new EquatableArray<PropertyMappingModel>(analyzed);
+#pragma warning restore IDE0028
+        // ReSharper restore UseCollectionExpression
     }
 
     internal static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string converterTypeName)

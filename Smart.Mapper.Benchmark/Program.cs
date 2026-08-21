@@ -201,9 +201,7 @@ public class CollectionMapBenchmark
     {
         source = new()
         {
-            Items = Enumerable.Range(1, ItemCount)
-                .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
-                .ToList()
+            Items = [.. Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })]
         };
     }
 
@@ -258,9 +256,7 @@ public class CollectionListMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        sourceItems = Enumerable.Range(1, ItemCount)
-            .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
-            .ToList();
+        sourceItems = [.. Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })];
     }
 
     // 手書き代入（インライン）— 呼び出し側でリスト管理
@@ -324,9 +320,7 @@ public class CollectionWrapperMapBenchmark
     {
         source = new()
         {
-            Items = Enumerable.Range(1, ItemCount)
-                .Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })
-                .ToList()
+            Items = [.. Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" })]
         };
     }
 

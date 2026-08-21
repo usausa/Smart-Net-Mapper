@@ -212,9 +212,11 @@ public class CollectionMapBenchmark
         List<CollectionItemDestination> ret = default!;
         for (var i = 0; i < N; i++)
         {
+            // ReShaper disable UseCollectionExpansion
 #pragma warning disable IDE0028
             ret = new(src.Items.Count);
 #pragma warning restore IDE0028
+            // ReShaper restore UseCollectionExpansion
             foreach (var item in src.Items)
             {
                 ret.Add(new() { Id = item.Id, Label = item.Label });

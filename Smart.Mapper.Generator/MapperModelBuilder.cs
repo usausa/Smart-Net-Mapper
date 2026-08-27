@@ -105,7 +105,7 @@ internal static class MapperModelBuilder
             DestinationTypeName: destinationTypeName,
             DestinationParameterName: destinationParameterName,
             ReturnsDestination: returnsDestination,
-            CustomParameters: new EquatableArray<CustomParameterModel>([.. customParameters]));
+            CustomParameters: new EquatableArray<CustomParameterModel>(customParameters));
 
         model = ParseMappingAttributes(symbol, model);
 
@@ -2536,7 +2536,7 @@ internal static class MapperModelBuilder
             }
         }
 
-        var mappings = new EquatableArray<PropertyMappingModel>([.. resolved]);
+        var mappings = new EquatableArray<PropertyMappingModel>(resolved);
         model = model with { PropertyMappings = mappings, ExplicitPropertyMappings = mappings };
 
         return null;

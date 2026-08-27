@@ -34,7 +34,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var groups = methodProvider.SelectMany(static (methods, _) =>
             methods.SelectValue()
                 .GroupBy(static x => new { x.Namespace, x.ClassName })
-                .Select(static g => new ClassMethodsModel(g.Key.Namespace, g.Key.ClassName, new EquatableArray<MapperMethodModel>(g.ToArray())))
+                .Select(static g => new ClassMethodsModel(g.Key.Namespace, g.Key.ClassName, new EquatableArray<MapperMethodModel>(g)))
                 .ToImmutableArray());
         context.RegisterImplementationSourceOutput(
             groups,

@@ -23,8 +23,8 @@
     <File Path="Directory.Build.targets" />
     <File Path="LICENSE" />
     <File Path="README.md" />
-    <File Path="Smart.Mapper.props" />
     <File Path="Smart.Mapper.sln.DotSettings" />
+    <File Path="Smart.Mapper.targets" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj" />

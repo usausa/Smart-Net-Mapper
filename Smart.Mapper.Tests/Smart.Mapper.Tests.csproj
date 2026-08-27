@@ -17,7 +17,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
-  <Import Project="..\Smart.Mapper.props" />
+  <Import Project="..\Smart.Mapper.targets" />
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />

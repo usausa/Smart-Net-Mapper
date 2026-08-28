@@ -6,15 +6,15 @@ using Microsoft.CodeAnalysis;
 
 // Source Generator が正しい診断（SMP0001〜SMP0402）を発行することを検証するテスト。
 // Tests that verify the source generator emits the correct diagnostics (SMP0001-SMP0402).
-public class DiagnosticTests
+public partial class DiagnosticTest
 {
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0001 — [Mapper] をインスタンスメソッドまたは非 partial メソッドに付与
     // SMP0001 — [Mapper] applied to an instance method or a non-partial method
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0001_NonPartialMethod_EmitsDiagnostic()
+    public void Smp0001NonPartialMethodEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -35,7 +35,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0001_InstanceMethod_EmitsDiagnostic()
+    public void Smp0001InstanceMethodEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -55,13 +55,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0001");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0002 — パラメーターが不足しているメソッド
     // SMP0002 — method with insufficient parameters
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0002_NoParameters_EmitsDiagnostic()
+    public void Smp0002NoParametersEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -78,13 +78,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0002");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0003 — カスタムパラメーターの型が重複
     // SMP0003 — duplicate custom parameter type
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0003_DuplicateCustomParameterType_EmitsDiagnostic()
+    public void Smp0003DuplicateCustomParameterTypeEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -104,13 +104,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0003");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0101 — 同一ターゲットプロパティへの重複マッピング
     // SMP0101 — duplicate mapping to the same target property
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0101_DuplicateTargetMapping_EmitsDiagnostic()
+    public void Smp0101DuplicateTargetMappingEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -132,13 +132,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0101");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0501 — Strict モードで未マッピングの destination プロパティ
     // SMP0501 — unmapped destination property in Strict mode
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0501_StrictMode_UnmappedProperty_EmitsWarning()
+    public void Smp0501StrictModeUnmappedPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -162,7 +162,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0501_StrictMode_AllMapped_NoDiagnostic()
+    public void Smp0501StrictModeAllMappedEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -182,13 +182,13 @@ public class DiagnosticTests
         Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0501");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0303 — required プロパティが未マッピング
     // SMP0303 — required property is unmapped
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0303_UnmappedRequiredProperty_EmitsDiagnostic()
+    public void Smp0303UnmappedRequiredPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -214,13 +214,13 @@ public class DiagnosticTests
             d.GetMessage(CultureInfo.InvariantCulture).Contains("Name", StringComparison.Ordinal));
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0302 — コンストラクタ専用プロパティを持つ型（record）で void mapper を使用
     // SMP0302 — void mapper used for a type with constructor-only properties (record)
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0302_RecordWithVoidMapper_EmitsDiagnostic()
+    public void Smp0302RecordWithVoidMapperEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -242,13 +242,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0302");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0401 — Culture なしで Format 指定
     // SMP0401 — Format specified without Culture
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0401_FormatWithoutCulture_EmitsDiagnostic()
+    public void Smp0401FormatWithoutCultureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -269,7 +269,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0401_FormatWithCulture_NoDiagnostic()
+    public void Smp0401FormatWithCultureEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -289,13 +289,13 @@ public class DiagnosticTests
         Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0401");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0402 — AllowTypeConverter なしで汎用フォールバック使用
     // SMP0402 — generic fallback used without AllowTypeConverter
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0402_TypeConverterFallback_EmitsDiagnostic()
+    public void Smp0402TypeConverterFallbackEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -322,7 +322,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0402_UnsupportedConversion_EmitsDiagnostic()
+    public void Smp0402UnsupportedConversionEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -345,13 +345,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0402");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0104 — Converter メソッドのシグネチャ不一致
     // SMP0104 — Converter method signature mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0104_InvalidConverterSignature_EmitsDiagnostic()
+    public void Smp0104InvalidConverterSignatureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -376,13 +376,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0104");
     }
 
-    // -----------------------------------------------------------------------
-    // SMP0201 — MapFrom メソッドのシグネチャ不一致
-    // SMP0201 — MapFrom method signature mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
+    // SMP0201 — MapUsing メソッドのシグネチャ不一致
+    // SMP0201 — MapUsing method signature mismatch
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0201_InvalidMapFromSignature_EmitsDiagnostic()
+    public void Smp0201InvalidMapUsingSignatureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -390,7 +390,7 @@ public class DiagnosticTests
             internal static partial class Mappers
             {
                 [Mapper]
-                [MapFrom(nameof(Dest.Name), nameof(Build))]
+                [MapUsing(nameof(Dest.Name), nameof(Build))]
                 public static partial void Map(Src src, Dest dst);
 
                 // 引数が int → Src ではない → SMP0201
@@ -404,18 +404,47 @@ public class DiagnosticTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        // 実際に発火される診断 ID を確認（SMP0201 または SMP0204）
-        // Check the diagnostic ID that is actually emitted (SMP0201 or SMP0204)
-        Assert.Contains(diagnostics, d => d.Id is "SMP0201" or "SMP0204");
+        Assert.Contains(diagnostics, d => d.Id == "SMP0201");
     }
 
-    // -----------------------------------------------------------------------
-    // SMP0301 — コンストラクタパラメーターがソースプロパティに解決できない
-    // SMP0301 — constructor parameter cannot be resolved to a source property
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
+    // SMP0204 — MapFrom メンバーのシグネチャ不一致
+    // SMP0204 — MapFrom member signature mismatch
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0301_UnresolvedConstructorParameter_EmitsDiagnostic()
+    public void Smp0204InvalidMapFromSignatureEmitsDiagnostic()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapFrom(nameof(Dest.Name), nameof(Build))]
+                public static partial void Map(Src src, Dest dst);
+
+                // 引数が int → Src ではない → SMP0204
+                // The argument is int → not Src → SMP0204
+                private static string Build(int x) => x.ToString();
+            }
+
+            public class Src { }
+            public class Dest { public string Name { get; set; } = ""; }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0204");
+    }
+
+    // ------------------------------------------------------------
+    // SMP0301 — コンストラクタパラメーターがソースプロパティに解決できない
+    // SMP0301 — constructor parameter cannot be resolved to a source property
+    // ------------------------------------------------------------
+
+    [Fact]
+    public void Smp0301UnresolvedConstructorParameterEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -438,7 +467,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0301_AllConstructorParametersResolved_NoDiagnostic()
+    public void Smp0301AllConstructorParametersResolvedEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -484,13 +513,13 @@ public class DiagnosticTests
         Assert.DoesNotContain(diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0206 — [MapCollection]/[MapNested] のソースプロパティ名が typo
     // SMP0206 — source property name in [MapCollection]/[MapNested] is a typo
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0206_MapCollection_UnresolvedSourceProperty_EmitsDiagnostic()
+    public void Smp0206MapCollectionUnresolvedSourcePropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -517,7 +546,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0206_MapNested_UnresolvedSourceProperty_EmitsDiagnostic()
+    public void Smp0206MapNestedUnresolvedSourcePropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -542,13 +571,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0206");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0207 — [MapCollection]/[MapNested] のターゲットプロパティ名が typo
     // SMP0207 — target property name in [MapCollection]/[MapNested] is a typo
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0207_MapCollection_UnresolvedTargetProperty_EmitsDiagnostic()
+    public void Smp0207MapCollectionUnresolvedTargetPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -575,7 +604,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0207_MapNested_UnresolvedTargetProperty_EmitsDiagnostic()
+    public void Smp0207MapNestedUnresolvedTargetPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -600,13 +629,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0207");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0203 — [MapFrom] のターゲットプロパティ名が typo
     // SMP0203 — target property name in [MapFrom] is a typo
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0203_MapFrom_UnresolvedTargetProperty_EmitsDiagnostic()
+    public void Smp0203MapFromUnresolvedTargetPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -631,13 +660,13 @@ public class DiagnosticTests
             d.GetMessage(CultureInfo.InvariantCulture).Contains("NameTypo", StringComparison.Ordinal));
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0208 — [MapCollection] のソースプロパティがコレクション型でない
     // SMP0208 — source property in [MapCollection] is not a collection type
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0208_MapCollection_SourceNotCollection_EmitsDiagnostic()
+    public void Smp0208MapCollectionSourceNotCollectionEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -661,13 +690,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0208");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0209 — [MapCollection] のターゲットプロパティがコレクション型でない
     // SMP0209 — target property in [MapCollection] is not a collection type
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0209_MapCollection_TargetNotCollection_EmitsDiagnostic()
+    public void Smp0209MapCollectionTargetNotCollectionEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -692,13 +721,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0209");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0102 / SMP0103 — BeforeMap / AfterMap シグネチャ不一致
     // SMP0102 / SMP0103 — BeforeMap / AfterMap signature mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0102_InvalidBeforeMapSignature_EmitsDiagnostic()
+    public void Smp0102InvalidBeforeMapSignatureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -724,7 +753,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0103_InvalidAfterMapSignature_EmitsDiagnostic()
+    public void Smp0103InvalidAfterMapSignatureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -749,13 +778,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0103");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0105 — Converter 戻り値型不一致
     // SMP0105 — Converter return type mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0105_ConverterReturnTypeMismatch_EmitsDiagnostic()
+    public void Smp0105ConverterReturnTypeMismatchEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -780,13 +809,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0105");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0106 — MapCondition シグネチャ不一致
     // SMP0106 — MapCondition signature mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0106_InvalidPropertyConditionSignature_EmitsDiagnostic()
+    public void Smp0106InvalidPropertyConditionSignatureEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -811,13 +840,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0106");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0202 — MapUsing の静的メソッド戻り値型不一致
     // SMP0202 — MapUsing static method return type mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0202_MapUsingReturnTypeMismatch_EmitsDiagnostic()
+    public void Smp0202MapUsingReturnTypeMismatchEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -842,13 +871,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0202");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0204 / SMP0205 — MapFrom のソースメソッド未解決・戻り値型不一致
     // SMP0204 / SMP0205 — MapFrom source method unresolved / return type mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0204_MapFrom_SourceMethodNotFound_EmitsDiagnostic()
+    public void Smp0204MapFromSourceMethodNotFoundEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -870,7 +899,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0205_MapFrom_SourceMethodReturnTypeMismatch_EmitsDiagnostic()
+    public void Smp0205MapFromSourceMethodReturnTypeMismatchEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -893,13 +922,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0205");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0210 / SMP0211 — MapCollection / MapNested のマッパーメソッド不一致
     // SMP0210 / SMP0211 — MapCollection / MapNested mapper method mismatch
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0210_MapCollection_InvalidMapperMethod_EmitsDiagnostic()
+    public void Smp0210MapCollectionInvalidMapperMethodEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -924,7 +953,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0211_MapNested_InvalidMapperMethod_EmitsDiagnostic()
+    public void Smp0211MapNestedInvalidMapperMethodEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -947,13 +976,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0211");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0403 — MapExpression 内のリフレクション使用
     // SMP0403 — reflection used inside MapExpression
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0403_MapExpressionWithReflection_EmitsWarning()
+    public void Smp0403MapExpressionWithReflectionEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -976,13 +1005,13 @@ public class DiagnosticTests
             d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0213 — [MapProperty] のソースプロパティ名が typo
     // SMP0213 — source property name in [MapProperty] is a typo
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0213_MapProperty_UnresolvedSourceProperty_EmitsDiagnostic()
+    public void Smp0213MapPropertyUnresolvedSourcePropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1006,7 +1035,7 @@ public class DiagnosticTests
     // ドット記法のソースパスが解決できない場合も同じ診断となる。
     // An unresolvable dotted source path reports the same diagnostic.
     [Fact]
-    public void SMP0213_MapProperty_UnresolvedNestedSourcePath_EmitsDiagnostic()
+    public void Smp0213MapPropertyUnresolvedNestedSourcePathEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1033,7 +1062,7 @@ public class DiagnosticTests
     // ソース側に存在しない名前であれば同じく報告される。
     // property name is reported the same way.
     [Fact]
-    public void SMP0213_MapProperty_OmittedSourceNotOnSourceType_EmitsDiagnostic()
+    public void Smp0213MapPropertyOmittedSourceNotOnSourceTypeEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1054,13 +1083,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0213");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0214 — [MapProperty] のターゲットプロパティ名が typo、または代入不可
     // SMP0214 — target property name in [MapProperty] is a typo, or is not assignable
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0214_MapProperty_UnresolvedTargetProperty_EmitsDiagnostic()
+    public void Smp0214MapPropertyUnresolvedTargetPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1084,7 +1113,7 @@ public class DiagnosticTests
     // セッターが無くコンストラクタでも代入されないターゲットは代入不可として報告される。
     // A target with no setter that no constructor assigns is reported as not assignable.
     [Fact]
-    public void SMP0214_MapProperty_UnassignableTargetProperty_EmitsDiagnostic()
+    public void Smp0214MapPropertyUnassignableTargetPropertyEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1110,7 +1139,7 @@ public class DiagnosticTests
     // 大小文字違いのターゲットは受理されず SMP0214 で報告される（無言破棄の防止）。
     // default (Ordinal) comparison a miscased target is rejected instead of silently dropped.
     [Fact]
-    public void SMP0214_MapProperty_MiscasedConstructorTarget_EmitsDiagnostic()
+    public void Smp0214MapPropertyMiscasedConstructorTargetEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1159,13 +1188,13 @@ public class DiagnosticTests
         Assert.Empty(diagnostics);
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0215 — コンストラクタ経由で代入されるターゲットに文ベースのオプションを指定
     // SMP0215 — statement-based options applied to a constructor-assigned target
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0215_MapConditionOnConstructorParameter_EmitsDiagnostic()
+    public void Smp0215MapConditionOnConstructorParameterEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1189,7 +1218,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void SMP0215_NullBehaviorSkipOnConstructorParameter_EmitsDiagnostic()
+    public void Smp0215NullBehaviorSkipOnConstructorParameterEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1213,7 +1242,7 @@ public class DiagnosticTests
     // オブジェクト初期化子で代入される init 専用メンバーへの条件指定も SMP0215 となる。
     // A condition on an init-only member assigned via the object initializer is also SMP0215.
     [Fact]
-    public void SMP0215_MapConditionOnInitOnlyInitializerTarget_EmitsDiagnostic()
+    public void Smp0215MapConditionOnInitOnlyInitializerTargetEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1241,13 +1270,13 @@ public class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0215");
     }
 
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
     // SMP0216 — コンストラクタ引数となるメンバーへの [MapIgnore]
     // SMP0216 — [MapIgnore] on a member assigned through a constructor
-    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------
 
     [Fact]
-    public void SMP0216_MapIgnoreOnConstructorParameter_EmitsDiagnostic()
+    public void Smp0216MapIgnoreOnConstructorParameterEmitsDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1271,7 +1300,7 @@ public class DiagnosticTests
     // セッターが無くてもコンストラクタで代入されるターゲットは報告しない。
     // A target with no setter is not reported when a constructor assigns it.
     [Fact]
-    public void SMP0214_MapProperty_ConstructorAssignedTarget_DoesNotEmitDiagnostic()
+    public void Smp0214MapPropertyConstructorAssignedTargetEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -1294,5 +1323,107 @@ public class DiagnosticTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0214");
+    }
+
+    // 解決できないソースを指定した明示マッピングは、名前一致で代替せず SMP0213 で報告する。
+    // An explicit mapping with an unresolvable source is reported as SMP0213 rather than silently
+    // falling back to name matching, even when a same-named source property happens to exist.
+    [Fact]
+    public void Smp0213UnresolvableExplicitRenameEmitsDiagnostic()
+    {
+        var source = """
+            using Smart.Mapper;
+            namespace Test;
+            public class Src { public int Value { get; set; } }
+            public class Dst
+            {
+                public int Value { get; }
+                public Dst(int value) { Value = value; }
+            }
+            public partial class M
+            {
+                [Mapper]
+                [MapProperty("Value", "NoSuchSource")]
+                public static partial Dst Map(Src src);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d => d.Id == "SMP0213");
+    }
+
+    // 綴り違いで同一メンバーを二重指定した場合は重複として検出される。
+    // Two attributes naming the same member with different casing are detected as duplicates.
+    [Fact]
+    public void Smp0101DuplicateTargetIsDetectedAcrossCasingEmitsDiagnostic()
+    {
+        var source = """
+            using Smart.Mapper;
+            using System;
+            namespace Test;
+            public class Src { public int A { get; set; } public int B { get; set; } }
+            public class Dst { public int Value { get; set; } }
+            public partial class M
+            {
+                [Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]
+                [MapProperty("Value", "A")]
+                [MapProperty("value", "B")]
+                public static partial Dst Map(Src src);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0101");
+    }
+
+    // 既定（Ordinal）ではターゲット側の大小文字違いも従来どおり診断となる。
+    // Under the default comparison a target-side case mismatch is still diagnosed.
+    [Fact]
+    public void Smp0214DefaultComparisonStillRejectsTargetCaseMismatchEmitsDiagnostic()
+    {
+        var source = """
+            using Smart.Mapper;
+            namespace Test;
+            public class Src { public int Other { get; set; } }
+            public class Dst { public int Value { get; set; } }
+            public partial class M
+            {
+                [Mapper]
+                [MapProperty("value", "Other")]
+                public static partial Dst Map(Src src);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0214");
+    }
+
+    // 既定（Ordinal）では大小文字違いは解決されず、従来どおり診断となる。
+    // Under the default (Ordinal) comparison a case difference stays unresolved and is diagnosed.
+    [Fact]
+    public void Smp0206DefaultComparisonStillRejectsCaseMismatchEmitsDiagnostic()
+    {
+        var source = """
+            using Smart.Mapper;
+            namespace Test;
+            public class SrcC { public int X { get; set; } }
+            public class DstC { public int X { get; set; } }
+            public class Src { public SrcC? child { get; set; } }
+            public class Dst { public DstC? Child { get; set; } }
+            public partial class M
+            {
+                [Mapper]
+                [MapNested("Child", Mapper = nameof(MapChild))]
+                public static partial Dst Map(Src src);
+                [Mapper]
+                public static partial DstC MapChild(SrcC s);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diagnostics, d => d.Id == "SMP0206");
     }
 }

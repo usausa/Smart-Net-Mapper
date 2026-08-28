@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 //   - constant/expression/using/from × init/required × return mapper: accepted, assigned via object initializer
 //   - any init-only target × void mapper: rejected with SMP0302 (cannot assign init-only on an existing instance)
 //   - MapCollection/MapNested × init-only (or required × return): rejected with SMP0212 (loop cannot run in an initializer)
-public class ExplicitFeatureTargetTests
+public partial class DiagnosticTest
 {
     private static IReadOnlyList<Diagnostic> AllDiagnostics(string source) =>
         GeneratorTestHelper.GetDiagnosticsAll(source);
@@ -67,11 +67,11 @@ public class ExplicitFeatureTargetTests
         AssertCompiles(FeatureSource(propDecl, returns: true, "[global::Smart.Mapper.MapFrom(\"Extra\", \"Name\")]"));
 
     [Fact]
-    public void Constant_On_InitOnly_VoidMapper_IsRejected() =>
+    public void Smp0302ConstantOnInitOnlyVoidMapperIsRejectedEmitsDiagnostic() =>
         AssertRejected(FeatureSource("public string Extra { get; init; } = \"\";", returns: false, "[global::Smart.Mapper.MapConstant(\"Extra\", \"x\")]"), "SMP0302");
 
     [Fact]
-    public void AutoMap_On_InitOnly_VoidMapper_IsRejected() =>
+    public void Smp0302AutoMapOnInitOnlyVoidMapperIsRejectedEmitsDiagnostic() =>
         AssertRejected(
             "#nullable enable\ninternal static partial class M\n{\n" +
             "    [global::Smart.Mapper.Mapper]\n    public static partial void Map(Src src, Dst dst);\n}\n" +
@@ -99,11 +99,11 @@ public class ExplicitFeatureTargetTests
     }
 
     [Fact]
-    public void Collection_On_InitOnly_IsRejected() =>
+    public void Smp0212CollectionOnInitOnlyIsRejectedEmitsDiagnostic() =>
         AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true), "SMP0212");
 
     [Fact]
-    public void Collection_On_Required_ReturnMapper_IsRejected() =>
+    public void Smp0212CollectionOnRequiredReturnMapperIsRejectedEmitsDiagnostic() =>
         AssertRejected(CollectionSource("public required List<E2> Items { get; set; }", returns: true), "SMP0212");
 
     [Fact]

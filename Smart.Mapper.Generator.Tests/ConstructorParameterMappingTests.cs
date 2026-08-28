@@ -306,31 +306,4 @@ public class ConstructorParameterMappingTests
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("new global::Test.Dst(src.Value)", generated, StringComparison.Ordinal);
     }
-
-    // 解決できないソースを指定した明示マッピングは、名前一致で代替せず SMP0213 で報告する。
-    // An explicit mapping with an unresolvable source is reported as SMP0213 rather than silently
-    // falling back to name matching, even when a same-named source property happens to exist.
-    [Fact]
-    public void UnresolvableExplicitRenameIsReported()
-    {
-        var source = """
-            using Smart.Mapper;
-            namespace Test;
-            public class Src { public int Value { get; set; } }
-            public class Dst
-            {
-                public int Value { get; }
-                public Dst(int value) { Value = value; }
-            }
-            public partial class M
-            {
-                [Mapper]
-                [MapProperty("Value", "NoSuchSource")]
-                public static partial Dst Map(Src src);
-            }
-            """;
-
-        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
-        Assert.Contains(diagnostics, d => d.Id == "SMP0213");
-    }
 }

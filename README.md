@@ -558,45 +558,6 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 
 ---
 
-## Diagnostics
-
-| Code | Description | Severity |
-|------|-------------|----------|
-| SMP0001 | Mapper method must be `static partial` | Error |
-| SMP0002 | Invalid parameter count on mapper method | Error |
-| SMP0003 | Duplicate custom parameter type | Error |
-| SMP0101 | Duplicate mapping to the same destination property | Error |
-| SMP0102 | `BeforeMap` method signature mismatch | Error |
-| SMP0103 | `AfterMap` method signature mismatch | Error |
-| SMP0104 | Converter method signature mismatch | Error |
-| SMP0105 | Converter return type does not match destination property type | Error |
-| SMP0106 | Property-condition method signature mismatch | Error |
-| SMP0201 | `MapUsing` static method signature mismatch | Error |
-| SMP0202 | `MapUsing` static method return type does not match destination property type | Error |
-| SMP0203 | `[MapFrom]` target property not found on destination type | Error |
-| SMP0204 | `MapFrom` member is not a valid parameterless instance method or property path on the source type | Error |
-| SMP0205 | `MapFrom` member type does not match destination property type | Error |
-| SMP0206 | `[MapCollection]` / `[MapNested]` source property not found on source type | Error |
-| SMP0207 | `[MapCollection]` / `[MapNested]` target property not found on destination type | Error |
-| SMP0208 | `[MapCollection]` source property is not a collection type | Error |
-| SMP0209 | `[MapCollection]` target property is not a collection type | Error |
-| SMP0210 | `MapCollection` element mapper method not found or signature mismatch | Error |
-| SMP0211 | `MapNested` mapper method not found or signature mismatch | Error |
-| SMP0212 | `[MapCollection]` / `[MapNested]` cannot target an init-only / required member | Error |
-| SMP0213 | `[MapProperty]` source property not found on source type | Error |
-| SMP0214 | `[MapProperty]` target property not found on destination type, or not assignable | Error |
-| SMP0215 | `[MapCondition]` / `NullBehavior.Skip` applied to a constructor- or initializer-assigned target | Error |
-| SMP0216 | `[MapIgnore]` applied to a member assigned through a constructor | Error |
-| SMP0301 | Constructor parameter has no matching source property | Error |
-| SMP0302 | `void` mapper cannot be used with `init-only` / `record` destination | Error |
-| SMP0303 | `required` member is not mapped | Error |
-| SMP0401 | `DateTimeFormat` / `NumberFormat` specified without `Culture` | Error |
-| SMP0402 | AOT incompatible: generic fallback `Convert<TSource,TDest>` is reachable | Error |
-| SMP0403 | AOT warning: possible reflection pattern in `MapExpression` | Warning |
-| SMP0501 | Strict mode: unmapped destination property | Warning |
-
----
-
 ## Benchmark
 
 Measured with [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) on .NET 10.

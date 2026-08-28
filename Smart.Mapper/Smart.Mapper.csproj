@@ -16,6 +16,7 @@
     <ItemGroup>
       <TfmSpecificPackageFile Include="..\Smart.Mapper.Generator\bin\$(Configuration)\netstandard2.0\Smart.Mapper.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
       <TfmSpecificPackageFile Include="$(PKGSourceGenerateHelper)\lib\netstandard2.0\SourceGenerateHelper.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+      <TfmSpecificPackageFile Include="..\Smart.Mapper.props" Pack="true" PackagePath="buildTransitive\Usa.Smart.Mapper.props" Visible="false" />
       <TfmSpecificPackageFile Include="..\Smart.Mapper.targets" Pack="true" PackagePath="buildTransitive\Usa.Smart.Mapper.targets" Visible="false" />
     </ItemGroup>
   </Target>

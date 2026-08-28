@@ -15,26 +15,26 @@ internal static class Diagnostics
     // SMP00xx — method definition
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor InvalidMethodDefinition = new(
+    public static DiagnosticDescriptor InvalidMethodDefinition { get; } = new(
         id: "SMP0001",
         title: "Invalid mapper method definition",
-        messageFormat: "Mapper method must be static partial. method=[{0}].",
+        messageFormat: "Mapper method must be static partial. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidMethodParameter = new(
+    public static DiagnosticDescriptor InvalidMethodParameter { get; } = new(
         id: "SMP0002",
         title: "Invalid mapper method parameters",
-        messageFormat: "Mapper method must have at least 1 parameter (return pattern) or 2 parameters (void pattern). method=[{0}].",
+        messageFormat: "Mapper method parameter count is invalid. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor DuplicateCustomParameterType = new(
+    public static DiagnosticDescriptor DuplicateCustomParameterType { get; } = new(
         id: "SMP0003",
         title: "Duplicate custom parameter type",
-        messageFormat: "Custom parameters must have unique types. method=[{0}], type=[{1}].",
+        messageFormat: "Custom parameters must have unique types. method=[{0}], type=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -43,50 +43,50 @@ internal static class Diagnostics
     // SMP01xx — attribute validation
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor DuplicateTargetMapping = new(
+    public static DiagnosticDescriptor DuplicateTargetMapping { get; } = new(
         id: "SMP0101",
         title: "Duplicate target mapping",
-        messageFormat: "Multiple mapping attributes specify the same target property. method=[{0}], target=[{1}], attributes=[{2}].",
+        messageFormat: "Multiple attributes specify the same target. method=[{0}], target=[{1}], attributes=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidBeforeMapSignature = new(
+    public static DiagnosticDescriptor InvalidBeforeMapSignature { get; } = new(
         id: "SMP0102",
         title: "Invalid BeforeMap method signature",
-        messageFormat: "BeforeMap method signature does not match; expected (Source, Destination) or (Source, Destination, customParams...). method=[{0}], callback=[{1}].",
+        messageFormat: "BeforeMap signature does not match. method=[{0}], callback=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidAfterMapSignature = new(
+    public static DiagnosticDescriptor InvalidAfterMapSignature { get; } = new(
         id: "SMP0103",
         title: "Invalid AfterMap method signature",
-        messageFormat: "AfterMap method signature does not match; expected (Source, Destination) or (Source, Destination, customParams...). method=[{0}], callback=[{1}].",
+        messageFormat: "AfterMap signature does not match. method=[{0}], callback=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidConverterSignature = new(
+    public static DiagnosticDescriptor InvalidConverterSignature { get; } = new(
         id: "SMP0104",
         title: "Invalid converter method signature",
-        messageFormat: "Converter method signature does not match; expected (SourceType) or (SourceType, customParams...) returning the target property type. method=[{0}], converter=[{1}], target=[{2}].",
+        messageFormat: "Converter signature does not match. method=[{0}], converter=[{1}], target=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidConverterReturnType = new(
+    public static DiagnosticDescriptor InvalidConverterReturnType { get; } = new(
         id: "SMP0105",
         title: "Converter return type mismatch",
-        messageFormat: "Converter method parameter types match but the return type does not match the target property type. method=[{0}], converter=[{1}], expected=[{2}], actual=[{3}].",
+        messageFormat: "Converter return type does not match. method=[{0}], converter=[{1}], expected=[{2}], actual=[{3}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidPropertyConditionSignature = new(
+    public static DiagnosticDescriptor InvalidPropertyConditionSignature { get; } = new(
         id: "SMP0106",
-        title: "Invalid property condition method signature",
-        messageFormat: "Property condition method signature does not match; expected (SourceType) or (SourceType, customParams...) returning bool. method=[{0}], condition=[{1}], target=[{2}].",
+        title: "Invalid property condition signature",
+        messageFormat: "Condition signature does not match. method=[{0}], condition=[{1}], target=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -95,130 +95,130 @@ internal static class Diagnostics
     // SMP02xx — explicit features (MapUsing / MapFrom / MapCollection / MapNested)
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor InvalidMapUsingSignature = new(
+    public static DiagnosticDescriptor InvalidMapUsingSignature { get; } = new(
         id: "SMP0201",
         title: "Invalid MapUsing method signature",
-        messageFormat: "MapUsing method signature does not match; expected (Source) or (Source, customParams...) returning the target property type. method=[{0}], using=[{1}], target=[{2}].",
+        messageFormat: "MapUsing signature does not match. method=[{0}], using=[{1}], target=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor MapUsingReturnTypeMismatch = new(
+    public static DiagnosticDescriptor MapUsingReturnTypeMismatch { get; } = new(
         id: "SMP0202",
         title: "MapUsing return type mismatch",
-        messageFormat: "MapUsing method return type does not match the target property type. method=[{0}], using=[{1}], expected=[{2}], actual=[{3}].",
+        messageFormat: "MapUsing return type does not match. method=[{0}], using=[{1}], expected=[{2}], actual=[{3}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnresolvedMapFromTargetProperty = new(
+    public static DiagnosticDescriptor UnresolvedMapFromTargetProperty { get; } = new(
         id: "SMP0203",
         title: "Unresolved MapFrom target property",
-        messageFormat: "MapFrom target property was not found on the destination type. method=[{0}], target=[{1}].",
+        messageFormat: "MapFrom target property is not found. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidMapFromMember = new(
+    public static DiagnosticDescriptor InvalidMapFromMember { get; } = new(
         id: "SMP0204",
         title: "Invalid MapFrom member",
-        messageFormat: "MapFrom member must be a parameterless method or a property path on the source type. method=[{0}], member=[{1}], target=[{2}].",
+        messageFormat: "MapFrom member is not supported. method=[{0}], member=[{1}], target=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor MapFromReturnTypeMismatch = new(
+    public static DiagnosticDescriptor MapFromReturnTypeMismatch { get; } = new(
         id: "SMP0205",
         title: "MapFrom member type mismatch",
-        messageFormat: "MapFrom member type does not match the target property type. method=[{0}], member=[{1}], expected=[{2}], actual=[{3}].",
+        messageFormat: "MapFrom member type does not match. method=[{0}], member=[{1}], expected=[{2}], actual=[{3}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnresolvedMapCollectionSourceProperty = new(
+    public static DiagnosticDescriptor UnresolvedMapCollectionSourceProperty { get; } = new(
         id: "SMP0206",
-        title: "Unresolved MapCollection/MapNested source property",
-        messageFormat: "Source property specified in [MapCollection]/[MapNested] was not found on the source type. method=[{0}], source=[{1}].",
+        title: "Unresolved MapCollection source",
+        messageFormat: "Source property is not found. method=[{0}], source=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnresolvedMapCollectionTargetProperty = new(
+    public static DiagnosticDescriptor UnresolvedMapCollectionTargetProperty { get; } = new(
         id: "SMP0207",
-        title: "Unresolved MapCollection/MapNested target property",
-        messageFormat: "Target property specified in [MapCollection]/[MapNested] was not found on the destination type. method=[{0}], target=[{1}].",
+        title: "Unresolved MapCollection target",
+        messageFormat: "Target property is not found. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor MapCollectionSourceNotCollection = new(
+    public static DiagnosticDescriptor MapCollectionSourceNotCollection { get; } = new(
         id: "SMP0208",
-        title: "MapCollection source property is not a collection",
-        messageFormat: "[MapCollection] source property is not a collection type; IEnumerable<T> implementations, Memory<T>, and ReadOnlyMemory<T> are supported. method=[{0}], source=[{1}].",
+        title: "Source property is not a collection",
+        messageFormat: "MapCollection source is not a collection. method=[{0}], source=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor MapCollectionTargetNotCollection = new(
+    public static DiagnosticDescriptor MapCollectionTargetNotCollection { get; } = new(
         id: "SMP0209",
-        title: "MapCollection target property is not a collection",
-        messageFormat: "[MapCollection] target property is not a collection type; only IEnumerable<T> implementations are supported. method=[{0}], target=[{1}].",
+        title: "Target property is not a collection",
+        messageFormat: "MapCollection target is not a collection. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidMapCollectionMapperMethod = new(
+    public static DiagnosticDescriptor InvalidMapCollectionMapperMethod { get; } = new(
         id: "SMP0210",
-        title: "Invalid MapCollection element mapper method",
-        messageFormat: "MapCollection element mapper method was not found or its signature does not match. method=[{0}], mapper=[{1}], target=[{2}].",
+        title: "Invalid MapCollection mapper method",
+        messageFormat: "Element mapper method does not match. method=[{0}], mapper=[{1}], target=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InvalidMapNestedMapperMethod = new(
+    public static DiagnosticDescriptor InvalidMapNestedMapperMethod { get; } = new(
         id: "SMP0211",
         title: "Invalid MapNested mapper method",
-        messageFormat: "MapNested mapper method was not found or its signature does not match. method=[{0}], mapper=[{1}], target=[{2}].",
+        messageFormat: "MapNested mapper method does not match. method=[{0}], mapper=[{1}], target=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnsupportedInitOnlyCollectionTarget = new(
+    public static DiagnosticDescriptor UnsupportedInitOnlyCollectionTarget { get; } = new(
         id: "SMP0212",
-        title: "Unsupported init-only or required target for MapCollection/MapNested",
-        messageFormat: "[MapCollection]/[MapNested] cannot target an init-only property (or a required property with a return-type mapper) because the generated loop cannot run inside an object initializer; use a settable property. method=[{0}], target=[{1}].",
+        title: "Unsupported init-only target",
+        messageFormat: "Target property is init-only or required. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnresolvedMapPropertySourceProperty = new(
+    public static DiagnosticDescriptor UnresolvedMapPropertySourceProperty { get; } = new(
         id: "SMP0213",
-        title: "Unresolved MapProperty source property",
-        messageFormat: "Source property specified in [MapProperty] was not found on the source type. method=[{0}], target=[{1}], source=[{2}].",
+        title: "Unresolved MapProperty source",
+        messageFormat: "MapProperty source is not found. method=[{0}], target=[{1}], source=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnresolvedMapPropertyTargetProperty = new(
+    public static DiagnosticDescriptor UnresolvedMapPropertyTargetProperty { get; } = new(
         id: "SMP0214",
-        title: "Unresolved MapProperty target property",
-        messageFormat: "Target property specified in [MapProperty] was not found on the destination type, or has no setter and is not assigned by a constructor. method=[{0}], target=[{1}].",
+        title: "Unresolved MapProperty target",
+        messageFormat: "MapProperty target is not assignable. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnsupportedConstructorAssignedOption = new(
+    public static DiagnosticDescriptor UnsupportedConstructorAssignedOption { get; } = new(
         id: "SMP0215",
-        title: "Unsupported option for a constructor-assigned target",
-        messageFormat: "[MapCondition] and NullBehavior.Skip require a property assignment and cannot apply to a member assigned through a constructor or object initializer. method=[{0}], target=[{1}], option=[{2}].",
+        title: "Unsupported constructor-assigned option",
+        messageFormat: "Option requires a property assignment. method=[{0}], target=[{1}], option=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor IgnoredConstructorParameter = new(
+    public static DiagnosticDescriptor IgnoredConstructorParameter { get; } = new(
         id: "SMP0216",
-        title: "Ignored member is assigned through a constructor",
-        messageFormat: "An ignored member is assigned through a constructor, which requires a value for it; remove [MapIgnore] or provide the value explicitly. method=[{0}], target=[{1}].",
+        title: "Ignored constructor parameter",
+        messageFormat: "Ignored member is assigned by a constructor. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -227,26 +227,26 @@ internal static class Diagnostics
     // SMP03xx — construction (constructor parameters, init-only / required members)
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor UnresolvedConstructorParameter = new(
+    public static DiagnosticDescriptor UnresolvedConstructorParameter { get; } = new(
         id: "SMP0301",
         title: "Unresolved constructor parameter",
-        messageFormat: "Constructor parameter has no matching source property; add a [MapProperty] for it or provide a source property with a matching name. method=[{0}], parameter=[{1}], type=[{2}].",
+        messageFormat: "Constructor parameter has no source. method=[{0}], parameter=[{1}], type=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor InitOnlyDestinationRequiresReturnMapper = new(
+    public static DiagnosticDescriptor InitOnlyDestinationRequiresReturnMapper { get; } = new(
         id: "SMP0302",
-        title: "Init-only destination requires a return-type mapper",
-        messageFormat: "Destination type has init-only or constructor-only members that a void mapper can never assign; use a return-type mapper. method=[{0}], type=[{1}].",
+        title: "Return-type mapper is required",
+        messageFormat: "Void mapper cannot assign init-only members. method=[{0}], type=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor UnmappedRequiredProperty = new(
+    public static DiagnosticDescriptor UnmappedRequiredProperty { get; } = new(
         id: "SMP0303",
         title: "Unmapped required property",
-        messageFormat: "Required destination property has no mapping; add [MapProperty], [MapConstant], [MapExpression], [MapUsing], [MapFrom], [MapCollection], [MapNested], or [MapIgnore]. method=[{0}], property=[{1}].",
+        messageFormat: "Required property has no mapping. method=[{0}], property=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -255,26 +255,26 @@ internal static class Diagnostics
     // SMP04xx — conversion / AOT
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor FormatWithoutCulture = new(
+    public static DiagnosticDescriptor FormatWithoutCulture { get; } = new(
         id: "SMP0401",
         title: "Format specified without Culture",
-        messageFormat: "DateTimeFormat or NumberFormat is specified but Culture is not set; a format requires a culture to be meaningful. method=[{0}], target=[{1}].",
+        messageFormat: "Format is specified without Culture. method=[{0}], target=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor TypeConverterFallbackNotAllowed = new(
+    public static DiagnosticDescriptor TypeConverterFallbackNotAllowed { get; } = new(
         id: "SMP0402",
         title: "TypeConverter fallback is not AOT-safe",
-        messageFormat: "Property has no specialized conversion and would fall back to Convert<TSource, TDestination>, which is not AOT-safe; provide a specialized conversion (ConvertToXxx method, IParsable, IFormattable, explicit cast, or op_Implicit/op_Explicit), or apply [ValueConverter(typeof(...))] to opt into the generic converter path. method=[{0}], target=[{1}].",
+        messageFormat: "Conversion falls back to a non-AOT-safe path. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor MapExpressionReflectionNotAllowed = new(
+    public static DiagnosticDescriptor MapExpressionReflectionNotAllowed { get; } = new(
         id: "SMP0403",
-        title: "MapExpression contains potentially AOT-incompatible reflection",
-        messageFormat: "MapExpression contains potentially AOT-incompatible reflection; avoid Activator, Type.GetType, MethodInfo, PropertyInfo, FieldInfo, Assembly.Load, and RuntimeHelpers.GetUninitializedObject, or use [MapFrom] / [MapUsing] instead. method=[{0}], target=[{1}].",
+        title: "MapExpression uses reflection",
+        messageFormat: "MapExpression may use reflection. method=[{0}], target=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -283,10 +283,10 @@ internal static class Diagnostics
     // SMP05xx — strict mode
     // ==================================================================
 
-    public static readonly DiagnosticDescriptor UnmappedDestinationProperty = new(
+    public static DiagnosticDescriptor UnmappedDestinationProperty { get; } = new(
         id: "SMP0501",
         title: "Unmapped destination property",
-        messageFormat: "Destination property is not mapped in strict mode. method=[{0}], property=[{1}].",
+        messageFormat: "Destination property is not mapped. method=[{0}], property=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

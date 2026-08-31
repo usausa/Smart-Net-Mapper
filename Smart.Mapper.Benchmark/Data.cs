@@ -62,11 +62,13 @@ public sealed class MixedDestination
     public MyEnum EnumValue { get; set; }
 }
 
+#pragma warning disable CA1711
 public enum MyEnum
 {
     Zero,
     One
 }
+#pragma warning restore CA1711
 
 // -------------------------------------------------------------------------
 // Nested object mapping
@@ -116,15 +118,19 @@ public sealed class CollectionItemDestination
 
 // MapCollection 属性はプロパティ単位のため、コレクションをラップするオブジェクトを用意する
 // [MapCollection] is applied per property, so we provide an object that wraps the collection.
+#pragma warning disable CA1002
 public sealed class CollectionSource
 {
     public List<CollectionItemSource> Items { get; set; } = [];
 }
+#pragma warning restore CA1002
 
+#pragma warning disable CA1002
 public sealed class CollectionWrapper
 {
     public List<CollectionItemDestination> Items { get; set; } = [];
 }
+#pragma warning restore CA1002
 
 // -------------------------------------------------------------------------
 // Type conversion mapping (int → string, string → int)

@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // Default collection converter for collection property mappings.
+#pragma warning disable CA1002
 public static class DefaultCollectionConverter
 {
     // Converts a collection to an array using the specified mapper function.
@@ -737,3 +738,4 @@ public static class DefaultCollectionConverter
         }).ToFrozenSet();
     }
 }
+#pragma warning restore CA1002

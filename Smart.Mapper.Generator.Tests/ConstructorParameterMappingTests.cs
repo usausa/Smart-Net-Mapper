@@ -19,7 +19,7 @@ public class ConstructorParameterMappingTests
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .Select(d => d.Id + ": " + d.GetMessage(CultureInfo.InvariantCulture))
             .ToList();
-        Assert.True(errors.Count == 0, string.Join("\n", errors));
+        Assert.True(errors.Count == 0, String.Join("\n", errors));
     }
 
     // get-only プロパティをパラメータ付きコンストラクタで代入する場合のリネーム。

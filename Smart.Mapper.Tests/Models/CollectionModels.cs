@@ -12,12 +12,14 @@ public class CollectionSourceChild
     public string Name { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class CollectionSource
 {
     public CollectionSourceChild[]? Children { get; set; }
     public List<CollectionSourceChild>? Items { get; set; }
     public int DirectValue { get; set; }
 }
+#pragma warning restore CA1002
 
 public class CollectionDestinationChild
 {
@@ -25,12 +27,14 @@ public class CollectionDestinationChild
     public string Name { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class CollectionDestination
 {
     public List<CollectionDestinationChild>? Children { get; set; }
     public CollectionDestinationChild[]? Items { get; set; }
     public int DirectValue { get; set; }
 }
+#pragma warning restore CA1002
 
 public class CustomCollectionConverterSourceChild
 {
@@ -38,10 +42,12 @@ public class CustomCollectionConverterSourceChild
     public string Name { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class CustomCollectionConverterSource
 {
     public List<CustomCollectionConverterSourceChild>? Children { get; set; }
 }
+#pragma warning restore CA1002
 
 public class CustomCollectionConverterDestChild
 {
@@ -54,6 +60,7 @@ public class CustomCollectionConverterDestination
     public IReadOnlyList<CustomCollectionConverterDestChild>? Children { get; set; }
 }
 
+#pragma warning disable CA1002
 public static class TestCollectionConverter
 {
     public static TDest[] ToArray<TSource, TDest>(IEnumerable<TSource>? source, Func<TSource, TDest> mapper)
@@ -75,6 +82,7 @@ public static class TestCollectionConverter
         return source.Select(mapper).ToList().AsReadOnly();
     }
 }
+#pragma warning restore CA1002
 
 public class VoidMapperSourceChild
 {
@@ -92,21 +100,26 @@ public class VoidMapperDestinationChild
     public string Extra { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class VoidMapperDestination
 {
     public List<VoidMapperDestinationChild>? Children { get; set; }
 }
+#pragma warning restore CA1002
 
 public class CustomCollectionSource
 {
     public CollectionSourceChild[]? Numbers { get; set; }
 }
 
+#pragma warning disable CA1002
 public class CustomCollectionDestination
 {
     public List<CollectionDestinationChild>? Numbers { get; set; }
 }
+#pragma warning restore CA1002
 
+#pragma warning disable CA1002
 public static class TestCustomCollectionConverter
 {
     public static TDest[]? ToArray<TSource, TDest>(
@@ -139,6 +152,7 @@ public static class TestCustomCollectionConverter
         }).ToList();
     }
 }
+#pragma warning restore CA1002
 
 // C3: ImmutableArray / ImmutableList / HashSet collection targets
 public class ImmutableCollectionSourceChild
@@ -153,12 +167,14 @@ public class ImmutableCollectionDestinationChild
     public string Name { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class ImmutableCollectionSource
 {
     public List<ImmutableCollectionSourceChild>? Items { get; set; }
     public List<ImmutableCollectionSourceChild>? ListItems { get; set; }
     public List<ImmutableCollectionSourceChild>? SetItems { get; set; }
 }
+#pragma warning restore CA1002
 
 public class ImmutableCollectionDestination
 {
@@ -180,15 +196,19 @@ public class InPlaceDestinationChild
     public string Name { get; set; } = default!;
 }
 
+#pragma warning disable CA1002
 public class InPlaceSource
 {
     public List<InPlaceSourceChild>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
+#pragma warning disable CA1002
 public class InPlaceDestination
 {
     public List<InPlaceDestinationChild>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 // D4: readonly struct
 public readonly struct ReadOnlyStructSource
@@ -226,20 +246,24 @@ public class MatrixArraySource
     public MatrixSrcItem[]? Items { get; set; }
 }
 
+#pragma warning disable CA1002
 public class MatrixListSource
 {
     public List<MatrixSrcItem>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 public class MatrixEnumerableSource
 {
     public IEnumerable<MatrixSrcItem>? Items { get; set; }
 }
 
+#pragma warning disable CA1002
 public class MatrixToListDst
 {
     public List<MatrixDstItem>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 public class MatrixToArrayDst
 {
@@ -282,7 +306,9 @@ public class MatrixToFrozenSetDst
     public FrozenSet<MatrixDstItem>? Items { get; set; }
 }
 
+#pragma warning disable CA1002
 public class MatrixVoidDst
 {
     public List<MatrixDstItem>? Items { get; set; }
 }
+#pragma warning restore CA1002

@@ -35,7 +35,7 @@ public class ScalarConversionSelfContainedTests
             .Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
             .ToList();
 
-        Assert.True(errors.Count == 0, string.Join("\n", errors));
+        Assert.True(errors.Count == 0, String.Join("\n", errors));
     }
 
     [Fact]

@@ -19,7 +19,7 @@ public class NameComparisonResolutionTests
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .Select(d => d.Id + ": " + d.GetMessage(CultureInfo.InvariantCulture))
             .ToList();
-        Assert.True(errors.Count == 0, string.Join("\n", errors));
+        Assert.True(errors.Count == 0, String.Join("\n", errors));
     }
 
     // Source 省略時、ターゲット名の綴りでソース側を大文字小文字無視で解決する。

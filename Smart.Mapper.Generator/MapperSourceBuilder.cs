@@ -1030,7 +1030,7 @@ internal static class MapperSourceBuilder
         }
 
         if (mapping.IsSourceNullable && !mapping.HasConverter() && !mapping.RequiresConversion &&
-            mapping.NullBehavior == NullBehaviorType.Skip)
+            (mapping.NullBehavior == NullBehaviorType.Skip))
         {
             BuildSkipAssignment(builder, mapping, sourceParamName, destVarName, nullChecked);
         }

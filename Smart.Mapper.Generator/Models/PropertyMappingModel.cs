@@ -102,5 +102,5 @@ internal static class PropertyMappingModelExtensions
         m.SourcePathSegments.Any(s => s.IsNullable);
 
     public static bool RequiresNullCoalescing(this PropertyMappingModel m) =>
-        m.IsSourceNullable && !m.IsTargetNullable && m.NullBehavior == NullBehaviorType.Default && !m.HasNullValue();
+        m.IsSourceNullable && !m.IsTargetNullable && (m.NullBehavior == NullBehaviorType.Default) && !m.HasNullValue();
 }

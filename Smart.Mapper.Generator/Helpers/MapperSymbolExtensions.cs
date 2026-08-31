@@ -80,12 +80,12 @@ internal static class MapperSymbolExtensions
         {
             foreach (var member in declaringType.GetMembers(operatorName).OfType<IMethodSymbol>())
             {
-                if (member.MethodKind != MethodKind.Conversion || !member.IsStatic)
+                if ((member.MethodKind != MethodKind.Conversion) || !member.IsStatic)
                 {
                     continue;
                 }
 
-                if (member.Parameters.Length == 1 &&
+                if ((member.Parameters.Length == 1) &&
                     SymbolEqualityComparer.Default.Equals(member.Parameters[0].Type, sourceType) &&
                     SymbolEqualityComparer.Default.Equals(member.ReturnType, targetType))
                 {

@@ -68,12 +68,12 @@ internal static class PropertyPathHelper
                 continue;
             }
 
-            if (part == "Length" && currentType is IArrayTypeSymbol)
+            if ((part == "Length") && (currentType is IArrayTypeSymbol))
             {
                 return (currentType.ContainingAssembly?.GetTypeByMetadataName("System.Int32"), true);
             }
 
-            if ((part == "Length" || part == "Count") && currentType is INamedTypeSymbol namedType)
+            if (((part == "Length") || (part == "Count")) && (currentType is INamedTypeSymbol namedType))
             {
                 var member = namedType.GetMembers(part).FirstOrDefault();
                 if (member is IPropertySymbol propSymbol)

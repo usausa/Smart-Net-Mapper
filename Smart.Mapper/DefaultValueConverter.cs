@@ -681,21 +681,21 @@ public static class DefaultValueConverter
         }
 
         // bool -> string
-        if (typeof(TSource) == typeof(bool) && typeof(TDestination) == typeof(string))
+        if ((typeof(TSource) == typeof(bool)) && (typeof(TDestination) == typeof(string)))
         {
             var value = (bool)(object)source!;
             return (TDestination)(object)value.ToString();
         }
 
         // DateTime -> string
-        if (typeof(TSource) == typeof(DateTime) && typeof(TDestination) == typeof(string))
+        if ((typeof(TSource) == typeof(DateTime)) && (typeof(TDestination) == typeof(string)))
         {
             var value = (DateTime)(object)source!;
             return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
         }
 
         // Guid -> string
-        if (typeof(TSource) == typeof(Guid) && typeof(TDestination) == typeof(string))
+        if ((typeof(TSource) == typeof(Guid)) && (typeof(TDestination) == typeof(string)))
         {
             var value = (Guid)(object)source!;
             return (TDestination)(object)value.ToString();

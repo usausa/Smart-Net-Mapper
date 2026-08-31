@@ -11,7 +11,10 @@ public readonly struct TestParsableId : IParsable<TestParsableId>, IEquatable<Te
 {
     public int Value { get; }
 
-    public TestParsableId(int value) => Value = value;
+    public TestParsableId(int value)
+    {
+        Value = value;
+    }
 
     public static TestParsableId Parse(string s, IFormatProvider? provider)
         => new(Int32.Parse(s, provider ?? CultureInfo.InvariantCulture));
@@ -28,7 +31,7 @@ public readonly struct TestParsableId : IParsable<TestParsableId>, IEquatable<Te
     }
 
     public bool Equals(TestParsableId other) => Value == other.Value;
-    public override bool Equals(object? obj) => obj is TestParsableId other && Equals(other);
+    public override bool Equals(object? obj) => (obj is TestParsableId other) && Equals(other);
     public override int GetHashCode() => Value.GetHashCode();
 }
 
@@ -38,7 +41,10 @@ public readonly struct TestSpanParsableId : ISpanParsable<TestSpanParsableId>, I
 {
     public int Value { get; }
 
-    public TestSpanParsableId(int value) => Value = value;
+    public TestSpanParsableId(int value)
+    {
+        Value = value;
+    }
 
     public static TestSpanParsableId Parse(ReadOnlySpan<char> s, IFormatProvider? provider)
         => new(Int32.Parse(s, NumberStyles.Any, provider ?? CultureInfo.InvariantCulture));
@@ -61,7 +67,7 @@ public readonly struct TestSpanParsableId : ISpanParsable<TestSpanParsableId>, I
         => TryParse(s.AsSpan(), provider, out result);
 
     public bool Equals(TestSpanParsableId other) => Value == other.Value;
-    public override bool Equals(object? obj) => obj is TestSpanParsableId other && Equals(other);
+    public override bool Equals(object? obj) => (obj is TestSpanParsableId other) && Equals(other);
     public override int GetHashCode() => Value.GetHashCode();
 }
 
@@ -71,7 +77,10 @@ public class TestParsableCode : IParsable<TestParsableCode>
 {
     public string Code { get; }
 
-    public TestParsableCode(string code) => Code = code;
+    public TestParsableCode(string code)
+    {
+        Code = code;
+    }
 
     public static TestParsableCode Parse(string s, IFormatProvider? provider) => new(s.ToUpperInvariant());
 

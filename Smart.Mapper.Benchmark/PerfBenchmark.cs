@@ -43,25 +43,31 @@ public sealed class PerfItemDestination
     public int Id { get; set; }
 }
 
+#pragma warning disable CA1002
 public sealed class InPlacePerfSource
 {
     public List<PerfItemSource> Items { get; set; } = [];
 }
+#pragma warning restore CA1002
 
+#pragma warning disable CA1002
 public sealed class InPlacePerfDestination
 {
     public List<PerfItemDestination>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 public sealed class RoListPerfSource
 {
     public IReadOnlyList<PerfItemSource>? Items { get; set; }
 }
 
+#pragma warning disable CA1002
 public sealed class RoListPerfDestination
 {
     public List<PerfItemDestination>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 // -- Mappers --
 

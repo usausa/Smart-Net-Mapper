@@ -78,8 +78,7 @@ public class SimpleMapBenchmark
     {
         source = new()
         {
-            Value1 = 1, Value2 = 2, Value3 = 3, Value4 = 4,
-            Value5 = "a", Value6 = "b", Value7 = "c", Value8 = "d"
+            Value1 = 1, Value2 = 2, Value3 = 3, Value4 = 4, Value5 = "a", Value6 = "b", Value7 = "c", Value8 = "d"
         };
     }
 
@@ -185,6 +184,7 @@ public class NestedMapBenchmark
 // Comparison: Direct foreach vs Smart.Mapper (inline-expanded CollectionsMarshal)
 // ==========================================================================
 
+#pragma warning disable CA1002
 [Config(typeof(BenchmarkConfig))]
 [BenchmarkCategory("Collection")]
 public class CollectionMapBenchmark
@@ -237,6 +237,7 @@ public class CollectionMapBenchmark
         return ret;
     }
 }
+#pragma warning restore CA1002
 
 // ==========================================================================
 // Scenario 3-A: Collection mapping — List-level (fair comparison)
@@ -244,6 +245,7 @@ public class CollectionMapBenchmark
 // List management is identical; only item mapping differs.
 // ==========================================================================
 
+#pragma warning disable CA1002
 [MemoryDiagnoser]
 [BenchmarkCategory("Collection.List")]
 public class CollectionListMapBenchmark
@@ -299,6 +301,7 @@ public class CollectionListMapBenchmark
         return ret;
     }
 }
+#pragma warning restore CA1002
 
 // ==========================================================================
 // Scenario 3-B: Collection mapping — Wrapper-level (fair comparison)

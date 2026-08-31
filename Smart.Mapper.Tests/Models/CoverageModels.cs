@@ -68,6 +68,7 @@ public sealed class NullableNumCovDestination
 // §2 Enum 変換（幅 16/32/64 × int × enum × Nullable）
 // §2 Enum conversion (width 16/32/64 × int × enum × Nullable)
 // ---------------------------------------------------------------------
+#pragma warning disable CA1028
 public enum CovE16 : short
 {
     None = 0,
@@ -75,6 +76,7 @@ public enum CovE16 : short
     B = 2,
     C = 3
 }
+#pragma warning restore CA1028
 
 // ReSharper disable once EnumUnderlyingTypeIsInt
 public enum CovE32 : int
@@ -85,6 +87,7 @@ public enum CovE32 : int
     C = 3
 }
 
+#pragma warning disable CA1028
 public enum CovE64 : long
 {
     None = 0,
@@ -92,6 +95,7 @@ public enum CovE64 : long
     B = 2,
     C = 3
 }
+#pragma warning restore CA1028
 
 // enum <-> int, enum <-> enum（非 Nullable）
 // enum <-> int, enum <-> enum (non-Nullable)
@@ -184,7 +188,7 @@ public static class CovConverter
 
     // specialized: string -> int
     public static int ConvertToInt32(string value) =>
-        int.Parse(value.TrimStart('#'), System.Globalization.CultureInfo.InvariantCulture);
+        Int32.Parse(value.TrimStart('#'), System.Globalization.CultureInfo.InvariantCulture);
 
     // generic fallback
     public static TDestination Convert<TSource, TDestination>(TSource source) =>

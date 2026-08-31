@@ -28,13 +28,13 @@ public static class TestCustomConverter
 {
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {
-        if (typeof(TSource) == typeof(int) && typeof(TDestination) == typeof(string))
+        if ((typeof(TSource) == typeof(int)) && (typeof(TDestination) == typeof(string)))
         {
             var value = (int)(object)source!;
             return (TDestination)(object)$"PREFIX_{value}";
         }
 
-        if (typeof(TSource) == typeof(string) && typeof(TDestination) == typeof(int))
+        if ((typeof(TSource) == typeof(string)) && (typeof(TDestination) == typeof(int)))
         {
             var value = (string)(object)source!;
             if (value.StartsWith("NUM_", StringComparison.Ordinal))

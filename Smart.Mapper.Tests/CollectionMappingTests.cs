@@ -200,10 +200,10 @@ public class ImmutableCollectionMappingTests
         Assert.Equal(1, destination.Items[0].Id);
         Assert.Equal("A", destination.Items[0].Name);
         Assert.NotNull(destination.ListItems);
-        Assert.Single(destination.ListItems!);
-        Assert.Equal(3, destination.ListItems![0].Id);
+        Assert.Single(destination.ListItems);
+        Assert.Equal(3, destination.ListItems[0].Id);
         Assert.NotNull(destination.SetItems);
-        Assert.Single(destination.SetItems!);
+        Assert.Single(destination.SetItems);
     }
 }
 
@@ -221,7 +221,7 @@ public class InPlaceCollectionMappingTests
         TestMappers.MapInPlace(source, destination);
 
         Assert.NotNull(destination.Items);
-        Assert.Equal(2, destination.Items!.Count);
+        Assert.Equal(2, destination.Items.Count);
         Assert.Equal(1, destination.Items[0].Id);
         Assert.Equal("A", destination.Items[0].Name);
         Assert.Equal(2, destination.Items[1].Id);
@@ -246,8 +246,8 @@ public class InPlaceCollectionMappingTests
 
         // Reference must be preserved
         Assert.Same(originalReference, destination.Items);
-        Assert.Single(destination.Items!);
-        Assert.Equal(10, destination.Items![0].Id);
+        Assert.Single(destination.Items);
+        Assert.Equal(10, destination.Items[0].Id);
         Assert.Equal("New", destination.Items[0].Name);
     }
 
@@ -266,7 +266,7 @@ public class InPlaceCollectionMappingTests
         TestMappers.MapInPlace(source, destination);
 
         Assert.Same(originalReference, destination.Items);
-        Assert.Equal(10, destination.Items!.Count);
+        Assert.Equal(10, destination.Items.Count);
         for (var i = 0; i < 10; i++)
         {
             Assert.Equal(i + 1, destination.Items[i].Id);
@@ -286,7 +286,7 @@ public class InPlaceCollectionMappingTests
         TestMappers.MapInPlace(source, destination);
 
         Assert.Same(existingList, destination.Items);
-        Assert.Single(destination.Items!);
+        Assert.Single(destination.Items);
     }
 }
 

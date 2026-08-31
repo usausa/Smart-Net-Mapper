@@ -1,4 +1,4 @@
-﻿namespace Smart.Mapper.Generator.Tests;
+namespace Smart.Mapper.Generator.Tests;
 
 using System.Globalization;
 

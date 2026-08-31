@@ -77,7 +77,6 @@ internal static partial class ObjectMapper
 
     // ReSharper disable UnusedParameter.Local
 #pragma warning disable IDE0060
-#pragma warning disable CA1303
     private static void OnBeforeMap(BeforeAfterSource source, BeforeAfterDestination destination)
     {
         destination.BeforeMapCalled = true;
@@ -89,7 +88,6 @@ internal static partial class ObjectMapper
         destination.AfterMapCalled = true;
         Console.WriteLine("  AfterMap called!");
     }
-#pragma warning restore CA1303
 #pragma warning restore IDE0060
     // ReSharper restore UnusedParameter.Local
 }

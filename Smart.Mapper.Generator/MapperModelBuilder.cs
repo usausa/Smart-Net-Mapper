@@ -91,7 +91,7 @@ internal static class MapperModelBuilder
         }
 
         var isSourceReadOnlyStruct = sourceParam.Type.IsValueType &&
-                                     sourceParam.Type is INamedTypeSymbol { IsReadOnly: true };
+                                     (sourceParam.Type is INamedTypeSymbol { IsReadOnly: true });
 
         var model = new MapperMethodModel(
             Namespace: ns,
@@ -252,7 +252,7 @@ internal static class MapperModelBuilder
 
             var conditionMethods = containingType.GetMembers(mapping.ConditionMethod!)
                 .OfType<IMethodSymbol>()
-                .Where(m => m.IsStatic && m.ReturnType.SpecialType == SpecialType.System_Boolean)
+                .Where(m => m.IsStatic && (m.ReturnType.SpecialType == SpecialType.System_Boolean))
                 .ToList();
 
             var matchResult = FindMatchingPropertyConditionMethod(conditionMethods, mapping, model);
@@ -349,8 +349,8 @@ internal static class MapperModelBuilder
             if (matchResult == ConverterMatchResult.ReturnTypeMismatch)
             {
                 var actualReturnType = converterMethods
-                    .Where(m => m.Parameters.Length >= 1 &&
-                           m.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == mapping.SourceType)
+                    .Where(m => (m.Parameters.Length >= 1) &&
+                           (m.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == mapping.SourceType))
                     .Select(m => m.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
                     .FirstOrDefault() ?? "?";
 
@@ -630,8 +630,8 @@ internal static class MapperModelBuilder
                 }
             }
             else if ((attributeName == Names.MapPropertyAttribute) ||
-                     (attribute.AttributeClass?.IsGenericType == true &&
-                      attribute.AttributeClass.OriginalDefinition.ToDisplayString() == Names.MapPropertyAttributeGeneric))
+                     ((attribute.AttributeClass?.IsGenericType == true) &&
+                      (attribute.AttributeClass.OriginalDefinition.ToDisplayString() == Names.MapPropertyAttributeGeneric)))
             {
                 if (attribute.ConstructorArguments.Length >= 1)
                 {
@@ -707,7 +707,7 @@ internal static class MapperModelBuilder
                 }
             }
             else if ((attributeName == Names.MapConstantAttribute) ||
-                     (attributeName is not null && attributeName.StartsWith(Names.MapConstantAttributeGenericPrefix, StringComparison.Ordinal)))
+                     ((attributeName is not null) && attributeName.StartsWith(Names.MapConstantAttributeGenericPrefix, StringComparison.Ordinal)))
             {
                 if (attribute.ConstructorArguments.Length >= 2)
                 {
@@ -717,7 +717,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
@@ -743,7 +743,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
@@ -794,7 +794,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
@@ -819,7 +819,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
@@ -852,19 +852,19 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
+                        if ((namedArg.Key == "Mapper") && (namedArg.Value.Value is string m))
                         {
                             mapper = m;
                         }
-                        else if (namedArg.Key == "Converter" && namedArg.Value.Value is string conv)
+                        else if ((namedArg.Key == "Converter") && (namedArg.Value.Value is string conv))
                         {
                             converter = conv;
                         }
-                        else if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        else if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
-                        else if (namedArg.Key == "Strategy" && namedArg.Value.Value is int strat)
+                        else if ((namedArg.Key == "Strategy") && (namedArg.Value.Value is int strat))
                         {
                             inPlace = strat == 1;
                         }
@@ -898,11 +898,11 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Mapper" && namedArg.Value.Value is string m)
+                        if ((namedArg.Key == "Mapper") && (namedArg.Value.Value is string m))
                         {
                             mapper = m;
                         }
-                        else if (namedArg.Key == "Order" && namedArg.Value.Value is int ord)
+                        else if ((namedArg.Key == "Order") && (namedArg.Value.Value is int ord))
                         {
                             order = ord;
                         }
@@ -980,7 +980,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Method" && namedArg.Value.Value is string methodName)
+                        if ((namedArg.Key == "Method") && (namedArg.Value.Value is string methodName))
                         {
                             mapConverterMethodName = methodName;
                         }
@@ -1011,7 +1011,7 @@ internal static class MapperModelBuilder
 
                     foreach (var namedArg in attribute.NamedArguments)
                     {
-                        if (namedArg.Key == "Method" && namedArg.Value.Value is string methodName)
+                        if ((namedArg.Key == "Method") && (namedArg.Value.Value is string methodName))
                         {
                             mapConverterMethodName = methodName;
                         }
@@ -1393,13 +1393,13 @@ internal static class MapperModelBuilder
             {
                 var sourceMethod = sourceType.GetMembers(member)
                     .OfType<IMethodSymbol>()
-                    .FirstOrDefault(m => !m.IsStatic && m.Parameters.Length == 0);
+                    .FirstOrDefault(m => !m.IsStatic && (m.Parameters.Length == 0));
 
                 if (sourceMethod is not null)
                 {
                     var returnType = sourceMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                    if (returnType != targetTypeName && !sourceMethod.ReturnType.IsAssignableTo(destProp.Type))
+                    if ((returnType != targetTypeName) && !sourceMethod.ReturnType.IsAssignableTo(destProp.Type))
                     {
                         return new DiagnosticInfo(
                             Diagnostics.MapFromReturnTypeMismatch,
@@ -1420,7 +1420,7 @@ internal static class MapperModelBuilder
             {
                 var returnType = resolvedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                if (returnType != targetTypeName && !resolvedType.IsAssignableTo(destProp.Type))
+                if ((returnType != targetTypeName) && !resolvedType.IsAssignableTo(destProp.Type))
                 {
                     return new DiagnosticInfo(
                         Diagnostics.MapFromReturnTypeMismatch,
@@ -2258,7 +2258,7 @@ internal static class MapperModelBuilder
     // mapping is also emitted.
     internal static bool MatchesConstructorParameter(IParameterSymbol param, string targetName, StringComparison nameComparison)
     {
-        var pascalParamName = char.ToUpperInvariant(param.Name[0]) + param.Name.Substring(1);
+        var pascalParamName = Char.ToUpperInvariant(param.Name[0]) + param.Name.Substring(1);
         return String.Equals(targetName, param.Name, nameComparison) ||
                String.Equals(targetName, pascalParamName, nameComparison);
     }
@@ -3224,7 +3224,7 @@ internal static class MapperModelBuilder
     {
         var methods = converterType.GetMembers(methodName)
             .OfType<IMethodSymbol>()
-            .Where(m => m.IsStatic && m.Parameters.Length == 1)
+            .Where(m => m.IsStatic && (m.Parameters.Length == 1))
             .ToList();
 
         foreach (var method in methods)

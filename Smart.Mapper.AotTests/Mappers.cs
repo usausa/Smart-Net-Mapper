@@ -8,6 +8,7 @@ namespace Smart.Mapper.AotTests;
 
 // Basic
 
+#pragma warning disable CA1002
 public sealed class BasicSource { public int Id { get; set; } public string Name { get; set; } = default!; }
 
 public sealed class BasicDest { public int Id { get; set; } public string Name { get; set; } = default!; }
@@ -55,6 +56,7 @@ public sealed class CollDst
     // ReSharper disable once CollectionNeverUpdated.Global
     public List<ItemDst>? Items { get; set; }
 }
+#pragma warning restore CA1002
 
 // Custom value converter
 
@@ -66,7 +68,7 @@ public static class IntToStringConverter
 {
     public static TDest Convert<TSrc, TDest>(TSrc source)
     {
-        if (typeof(TSrc) == typeof(int) && typeof(TDest) == typeof(string))
+        if ((typeof(TSrc) == typeof(int)) && (typeof(TDest) == typeof(string)))
         {
             var v = (int)(object)source!;
             return (TDest)(object)v.ToString(System.Globalization.CultureInfo.InvariantCulture);

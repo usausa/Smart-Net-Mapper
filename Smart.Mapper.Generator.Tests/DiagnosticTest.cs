@@ -490,7 +490,7 @@ public partial class DiagnosticTest
     // コンストラクタパラメーター名が source 以外 (src / input) でも正しく生成されることを確認
     // Verifies correct generation even when the constructor parameter name is not "source" (src / input)
     [Fact]
-    public void ConstructorMapping_NonDefaultParameterName_CompilesWithoutError()
+    public void ConstructorMappingNonDefaultParameterNameCompilesWithoutError()
     {
         const string source = """
             using Smart.Mapper;
@@ -1167,7 +1167,7 @@ public partial class DiagnosticTest
     // 基底インターフェイスから継承したメンバーへのドット記法ソースパスは解決できる。
     // A dotted source path through a member inherited from a base interface resolves.
     [Fact]
-    public void SMP0213_InterfaceInheritedMember_DoesNotEmitDiagnostic()
+    public void SMP0213InterfaceInheritedMemberDoesNotEmitDiagnostic()
     {
         const string source = """
             using Smart.Mapper;

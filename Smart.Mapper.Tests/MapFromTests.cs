@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class MapFromTests
 {
     [Fact]
-    public void MapFrom_ComputesValueFromMethod()
+    public void MapFromComputesValueFromMethod()
     {
         var source = new MapFromSource { FirstName = "John", LastName = "Doe" };
         var destination = new MapFromDestination();
@@ -18,7 +18,7 @@ public class MapFromTests
     }
 
     [Fact]
-    public void MapFrom_WithCustomParameters_UsesContext()
+    public void MapFromWithCustomParametersUsesContext()
     {
         var source = new MapFromSource { FirstName = "Jane", LastName = "Smith" };
         var context = new MapFromContext { Separator = " - " };
@@ -32,7 +32,7 @@ public class MapFromTests
 public class MapFromMethodTests
 {
     [Fact]
-    public void MapFromMethod_CallsSourceMethod()
+    public void MapFromMethodCallsSourceMethod()
     {
         var source = new MapFromMethodSource { Items = [1, 2, 3, 4, 5] };
         var destination = new MapFromMethodDestination();
@@ -47,7 +47,7 @@ public class MapFromMethodTests
 public class MapFromPropertyPathTests
 {
     [Fact]
-    public void MapWithPropertyPath_MapsMethodCallAndPropertyPath()
+    public void MapWithPropertyPathMapsMethodCallAndPropertyPath()
     {
         var source = new MapFromPathSource { Nested = new MapFromPathNested { Value = 123 } };
         var destination = new MapFromPathDestination();
@@ -62,7 +62,7 @@ public class MapFromPropertyPathTests
 public class MapUsingContextTests
 {
     [Fact]
-    public void MapWithUsingContext_PassesCustomParametersToMethod()
+    public void MapWithUsingContextPassesCustomParametersToMethod()
     {
         var source = new MapUsingContextSource { BaseValue = "Hello" };
         var destination = new MapUsingContextDestination();

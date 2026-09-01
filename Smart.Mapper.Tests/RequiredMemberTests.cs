@@ -10,7 +10,7 @@ using Smart.Mapper.Models;
 public class RequiredMemberTests
 {
     [Fact]
-    public void Map_RequiredMembers_MapsAllRequiredProperties()
+    public void MapRequiredMembersMapsAllRequiredProperties()
     {
         var source = new RequiredMemberSource { Id = 1, Name = "Test" };
         var destination = new RequiredMemberDestination { Id = 0, Name = string.Empty };
@@ -22,7 +22,7 @@ public class RequiredMemberTests
     }
 
     [Fact]
-    public void Map_RequiredMembers_OptionalPropertyMapped()
+    public void MapRequiredMembersOptionalPropertyMapped()
     {
         var source = new RequiredMemberSource { Id = 42, Name = "Hello" };
         var destination = new RequiredMemberDestination { Id = 0, Name = string.Empty };
@@ -36,7 +36,7 @@ public class RequiredMemberTests
     // Regression H: return-mapper to an init-only destination without a parameterized constructor.
     // Previously generated `new Dst(); dst.Id = ...;` which failed with CS8852.
     [Fact]
-    public void Map_InitOnlyReturnMapper_SetsInitMembers()
+    public void MapInitOnlyReturnMapperSetsInitMembers()
     {
         var dest = TestMappers.MapInitReturn(new InitReturnSource { Id = 7, Name = "seven" });
 
@@ -47,7 +47,7 @@ public class RequiredMemberTests
     // Regression I: return-mapper to a required-member destination.
     // Previously generated `new Dst();` which failed with CS9035 (required members unset).
     [Fact]
-    public void Map_RequiredReturnMapper_SetsRequiredMembers()
+    public void MapRequiredReturnMapperSetsRequiredMembers()
     {
         var dest = TestMappers.MapRequiredReturn(new RequiredReturnSource { Id = 9, Name = "nine" });
 
@@ -61,7 +61,7 @@ public class RequiredMemberTests
     // MapConstant / MapExpression / MapUsing / MapFrom targeting init-only / required members are
     // assigned via the object initializer (previously post-construction assignment: CS8852 / CS9035).
     [Fact]
-    public void Map_FeatureMappings_SetInitOnlyAndRequiredTargets()
+    public void MapFeatureMappingsSetInitOnlyAndRequiredTargets()
     {
         var dest = TestMappers.MapFeatureInit(new FeatureInitSource { Id = 3, Name = "abc" });
 

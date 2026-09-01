@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class MapCollectionTests
 {
     [Fact]
-    public void MapCollection_ArrayToList_MapsElements()
+    public void MapCollectionArrayToListMapsElements()
     {
         var source = new CollectionSource
         {
@@ -31,7 +31,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_ListToArray_MapsElements()
+    public void MapCollectionListToArrayMapsElements()
     {
         var source = new CollectionSource
         {
@@ -54,7 +54,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_NullSource_SetsDefault()
+    public void MapCollectionNullSourceSetsDefault()
     {
         var source = new CollectionSource { Children = null, DirectValue = 50 };
         var destination = new CollectionDestination
@@ -69,7 +69,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_WithReturnType_ReturnsNewObject()
+    public void MapCollectionWithReturnTypeReturnsNewObject()
     {
         var source = new CollectionSource
         {
@@ -85,7 +85,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_WithVoidMapper_MapsElements()
+    public void MapCollectionWithVoidMapperMapsElements()
     {
         var source = new VoidMapperSource
         {
@@ -106,7 +106,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_WithCustomConverter_UsesSpecifiedMethod()
+    public void MapCollectionWithCustomConverterUsesSpecifiedMethod()
     {
         var source = new CustomCollectionConverterSource
         {
@@ -131,7 +131,7 @@ public class MapCollectionTests
     }
 
     [Fact]
-    public void MapCollection_WithCustomConverter_NullSource_ReturnsNull()
+    public void MapCollectionWithCustomConverterNullSourceReturnsNull()
     {
         var source = new CustomCollectionConverterSource { Children = null };
         var destination = new CustomCollectionConverterDestination();
@@ -146,7 +146,7 @@ public class MapCollectionTests
 public class CustomConverterTests
 {
     [Fact]
-    public void MapWithCustomConverter_UsesCustomConversion()
+    public void MapWithCustomConverterUsesCustomConversion()
     {
         var source = new CustomConverterSource { IntValue = 42, StringValue = "NUM_100" };
         var destination = new CustomConverterDestination();
@@ -158,7 +158,7 @@ public class CustomConverterTests
     }
 
     [Fact]
-    public void MapWithCustomCollectionConverter_UsesCustomCollectionConversion()
+    public void MapWithCustomCollectionConverterUsesCustomCollectionConversion()
     {
         var source = new CustomCollectionSource
         {
@@ -184,7 +184,7 @@ public class CustomConverterTests
 public class ImmutableCollectionMappingTests
 {
     [Fact]
-    public void MapImmutableCollections_ToImmutableArray_MapsElements()
+    public void MapImmutableCollectionsToImmutableArrayMapsElements()
     {
         var source = new ImmutableCollectionSource
         {
@@ -210,7 +210,7 @@ public class ImmutableCollectionMappingTests
 public class InPlaceCollectionMappingTests
 {
     [Fact]
-    public void MapInPlace_NullDestination_CreatesNewList()
+    public void MapInPlaceNullDestinationCreatesNewList()
     {
         var source = new InPlaceSource
         {
@@ -228,7 +228,7 @@ public class InPlaceCollectionMappingTests
     }
 
     [Fact]
-    public void MapInPlace_ExistingList_ClearsAndRefills()
+    public void MapInPlaceExistingListClearsAndRefills()
     {
         var source = new InPlaceSource
         {
@@ -254,7 +254,7 @@ public class InPlaceCollectionMappingTests
     // 容量不足の既存リストは EnsureCapacity で一括拡張されたうえで再充填される。
     // An undersized existing list is grown once via EnsureCapacity and then refilled.
     [Fact]
-    public void MapInPlace_UndersizedExistingList_RefillsCorrectly()
+    public void MapInPlaceUndersizedExistingListRefillsCorrectly()
     {
         var source = new InPlaceSource
         {
@@ -274,7 +274,7 @@ public class InPlaceCollectionMappingTests
     }
 
     [Fact]
-    public void MapInPlace_NullSource_LeavesDestinationUnchanged()
+    public void MapInPlaceNullSourceLeavesDestinationUnchanged()
     {
         var source = new InPlaceSource { Items = null };
         var existingList = new List<InPlaceDestinationChild>
@@ -293,7 +293,7 @@ public class InPlaceCollectionMappingTests
 public class ReadOnlyStructMappingTests
 {
     [Fact]
-    public void MapReadOnlyStruct_MapsAllProperties()
+    public void MapReadOnlyStructMapsAllProperties()
     {
         var source = new ReadOnlyStructSource { Id = 42, Name = "Test" };
 

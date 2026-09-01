@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class TypeConversionMappingTests
 {
     [Fact]
-    public void Map_TypeConversion_ConvertsTypes()
+    public void MapTypeConversionConvertsTypes()
     {
         var source = new TypeConversionSource { IntValue = 999, StringValue = "123" };
         var destination = new TypeConversionDestination();
@@ -18,7 +18,7 @@ public class TypeConversionMappingTests
     }
 
     [Fact]
-    public void Map_CharAndStringInterconvert()
+    public void MapCharAndStringInterconvert()
     {
         var source = new ScalarCharSource { CharValue = 'A', StringValue = "B" };
 
@@ -29,7 +29,7 @@ public class TypeConversionMappingTests
     }
 
     [Fact]
-    public void Map_NumericToHalf_WithCulture()
+    public void MapNumericToHalfWithCulture()
     {
         var source = new ScalarHalfSource { IntValue = 3 };
 
@@ -42,7 +42,7 @@ public class TypeConversionMappingTests
 public class ExtendedTypeConversionTests
 {
     [Fact]
-    public void Map_ExtendedTypeConversions_ConvertsCorrectly()
+    public void MapExtendedTypeConversionsConvertsCorrectly()
     {
         var guid = Guid.NewGuid();
         var dateTime = new DateTime(2024, 1, 15, 10, 30, 0);
@@ -72,7 +72,7 @@ public class ExtendedTypeConversionTests
 public class NumericConversionTests
 {
     [Fact]
-    public void Map_NumericConversions_ConvertsCorrectly()
+    public void MapNumericConversionsConvertsCorrectly()
     {
         var source = new NumericConversionSource { IntValue = 100, LongValue = 200L, DoubleValue = 3.5 };
         var destination = new NumericConversionDestination();
@@ -88,7 +88,7 @@ public class NumericConversionTests
 public class DateTimeTypeConversionTests
 {
     [Fact]
-    public void MapDateTimeTypes_ConvertsToString()
+    public void MapDateTimeTypesConvertsToString()
     {
         var date = new DateOnly(2024, 6, 15);
         var time = new TimeOnly(12, 30, 0);
@@ -115,7 +115,7 @@ public class DateTimeTypeConversionTests
 public class ModernNumericConversionTests
 {
     [Fact]
-    public void MapModernNumericTypes_ConvertsHalfAndInt()
+    public void MapModernNumericTypesConvertsHalfAndInt()
     {
         var source = new ModernNumericConversionSource { HalfValue = (Half)3.14, IntValue = 42 };
         var destination = new ModernNumericConversionDestination();
@@ -130,7 +130,7 @@ public class ModernNumericConversionTests
 public class CaseInsensitiveMappingTests
 {
     [Fact]
-    public void MapCaseInsensitive_MapsLowercaseSourceToTitleCaseDestination()
+    public void MapCaseInsensitiveMapsLowercaseSourceToTitleCaseDestination()
     {
         var source = new CaseInsensitiveSource { userid = 7, username = "alice" };
         var destination = new CaseInsensitiveDestination();

@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class ConstantMappingTests
 {
     [Fact]
-    public void Map_ConstantValues_SetsConstantsCorrectly()
+    public void MapConstantValuesSetsConstantsCorrectly()
     {
         var source = new ConstantSource { Id = 1, Name = "Test" };
         var destination = new ConstantDestination();
@@ -26,7 +26,7 @@ public class ConstantMappingTests
 public class BeforeAfterMapTests
 {
     [Fact]
-    public void Map_BeforeAfterMap_CallsBothMethods()
+    public void MapBeforeAfterMapCallsBothMethods()
     {
         var source = new BeforeAfterSource { Value = 42, Text = "Hello" };
         var destination = new BeforeAfterDestination();
@@ -43,7 +43,7 @@ public class BeforeAfterMapTests
 public class CustomParameterTests
 {
     [Fact]
-    public void MapWithContext_CallsBeforeMapAndAfterMapWithContext()
+    public void MapWithContextCallsBeforeMapAndAfterMapWithContext()
     {
         var source = new BasicSource { Id = 1, Name = "Test", Description = "Desc" };
         var destination = new BasicDestination();
@@ -58,7 +58,7 @@ public class CustomParameterTests
     }
 
     [Fact]
-    public void MapWithContextMixed_CallsBeforeMapWithoutContextAndAfterMapWithContext()
+    public void MapWithContextMixedCallsBeforeMapWithoutContextAndAfterMapWithContext()
     {
         var source = new BasicSource { Id = 2, Name = "Mixed", Description = "Desc" };
         var destination = new BasicDestination();
@@ -72,7 +72,7 @@ public class CustomParameterTests
     }
 
     [Fact]
-    public void MapToNewWithContext_ReturnsNewObjectAndCallsAfterMapWithContext()
+    public void MapToNewWithContextReturnsNewObjectAndCallsAfterMapWithContext()
     {
         var source = new BasicSource { Id = 3, Name = "Return", Description = "Original" };
         var context = new CustomMappingContext { ContextValue = "ReturnContext" };
@@ -89,7 +89,7 @@ public class CustomParameterTests
 public class ConverterTests
 {
     [Fact]
-    public void MapWithConverter_UsesCustomConverter()
+    public void MapWithConverterUsesCustomConverter()
     {
         var source = new ConverterSource { Value = 42, Text = "Hello" };
         var destination = new ConverterDestination();
@@ -100,7 +100,7 @@ public class ConverterTests
     }
 
     [Fact]
-    public void MapWithConverterAndContext_UsesCustomConverterWithContext()
+    public void MapWithConverterAndContextUsesCustomConverterWithContext()
     {
         var source = new ConverterSource { Value = 100, Text = "Hello" };
         var destination = new ConverterDestination();
@@ -116,7 +116,7 @@ public class ConverterTests
 public class ConditionTests
 {
     [Fact]
-    public void MapWithPropertyCondition_WhenNameNotNull_MapsName()
+    public void MapWithPropertyConditionWhenNameNotNullMapsName()
     {
         var source = new ConditionSource { Value = 42, Name = "Test", IsActive = true };
         var destination = new ConditionDestination();
@@ -128,7 +128,7 @@ public class ConditionTests
     }
 
     [Fact]
-    public void MapWithPropertyCondition_WhenNameNull_DoesNotMapName()
+    public void MapWithPropertyConditionWhenNameNullDoesNotMapName()
     {
         var source = new ConditionSource { Value = 42, Name = null, IsActive = true };
         var destination = new ConditionDestination { Name = "Original" };
@@ -140,7 +140,7 @@ public class ConditionTests
     }
 
     [Fact]
-    public void MapWithGenericConstant_SetsGenericConstantValues()
+    public void MapWithGenericConstantSetsGenericConstantValues()
     {
         var source = new ConstantSource { Name = "Test" };
         var destination = new ConstantDestination();

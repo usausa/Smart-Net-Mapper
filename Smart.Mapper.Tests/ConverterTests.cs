@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class OrderTests
 {
     [Fact]
-    public void MapWithOrder_SetsPropertiesInCorrectOrder()
+    public void MapWithOrderSetsPropertiesInCorrectOrder()
     {
         var source = new OrderTestSource { Value = 42 };
         var destination = new OrderTestDestination();
@@ -21,7 +21,7 @@ public class OrderTests
     }
 
     [Fact]
-    public void MapWithReversedOrder_SetsPropertiesInOrderedSequence()
+    public void MapWithReversedOrderSetsPropertiesInOrderedSequence()
     {
         var source = new OrderTestSource { Value = 42 };
         var destination = new OrderTestDestination();
@@ -39,7 +39,7 @@ public class OrderTests
 public class SpecializedConverterTests
 {
     [Fact]
-    public void MapWithSpecializedConverter_UsesSpecializedMethodsWhenAvailable()
+    public void MapWithSpecializedConverterUsesSpecializedMethodsWhenAvailable()
     {
         var source = new SpecializedConverterSource { StringValue = "42", IntValue = 100, DoubleValue = 3.14 };
         var destination = new SpecializedConverterDestination();
@@ -55,21 +55,21 @@ public class SpecializedConverterTests
 public class DefaultValueConverterSpecializedTests
 {
     [Fact]
-    public void DefaultValueConverter_StringToInt_UsesSpecializedMethod()
+    public void DefaultValueConverterStringToIntUsesSpecializedMethod()
     {
         var result = DefaultValueConverter.ConvertToInt32("123");
         Assert.Equal(123, result);
     }
 
     [Fact]
-    public void DefaultValueConverter_IntToString_UsesSpecializedMethod()
+    public void DefaultValueConverterIntToStringUsesSpecializedMethod()
     {
         var result = DefaultValueConverter.ConvertToString(456);
         Assert.Equal("456", result);
     }
 
     [Fact]
-    public void DefaultValueConverter_GenericConvert_StillWorks()
+    public void DefaultValueConverterGenericConvertStillWorks()
     {
         var intResult = DefaultValueConverter.Convert<string, int>("789");
         Assert.Equal(789, intResult);

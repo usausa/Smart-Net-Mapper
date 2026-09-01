@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class NullHandlingTests
 {
     [Fact]
-    public void Map_NestedSourceWithNullChild_SkipsCopyForNullSource()
+    public void MapNestedSourceWithNullChildSkipsCopyForNullSource()
     {
         var source = new NullableNestedSource { Child = null, DirectValue = 100 };
         var destination = new NullableNestedFlatDestination { ChildId = 999, ChildName = "Original", DirectValue = 0 };
@@ -19,7 +19,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NestedSourceWithNonNullChild_CopiesNestedProperties()
+    public void MapNestedSourceWithNonNullChildCopiesNestedProperties()
     {
         var source = new NullableNestedSource
         {
@@ -36,7 +36,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableProperties_CopiesNullValues()
+    public void MapNullablePropertiesCopiesNullValues()
     {
         var source = new NullablePropertySource { NullableName = null, NullableInt = null, NonNullableName = "Test" };
         var destination = new NullablePropertyDestination { NullableName = "Original", NullableInt = 999 };
@@ -49,7 +49,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableProperties_CopiesNonNullValues()
+    public void MapNullablePropertiesCopiesNonNullValues()
     {
         var source = new NullablePropertySource { NullableName = "NewName", NullableInt = 42, NonNullableName = "Test" };
         var destination = new NullablePropertyDestination();
@@ -62,7 +62,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableToNonNullable_WithNullSource_SetsDefault()
+    public void MapNullableToNonNullableWithNullSourceSetsDefault()
     {
         var source = new NullableToNonNullableSource { Name = null };
         var destination = new NullableToNonNullableDestination { Name = "Original" };
@@ -73,7 +73,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableToNonNullable_WithNonNullSource_CopiesValue()
+    public void MapNullableToNonNullableWithNonNullSourceCopiesValue()
     {
         var source = new NullableToNonNullableSource { Name = "NewValue" };
         var destination = new NullableToNonNullableDestination { Name = "Original" };
@@ -84,7 +84,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableIntToString_WithNullSource_SetsDefault()
+    public void MapNullableIntToStringWithNullSourceSetsDefault()
     {
         var source = new NullableIntToStringSource { IntValue = null };
         var destination = new NullableIntToStringDestination { IntValue = "Original" };
@@ -95,7 +95,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void Map_NullableIntToString_WithNonNullSource_ConvertsValue()
+    public void MapNullableIntToStringWithNonNullSourceConvertsValue()
     {
         var source = new NullableIntToStringSource { IntValue = 42 };
         var destination = new NullableIntToStringDestination { IntValue = "Original" };
@@ -106,7 +106,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void MapWithNullValue_WhenSourceIsNull_UsesFallbackValues()
+    public void MapWithNullValueWhenSourceIsNullUsesFallbackValues()
     {
         var source = new NullValueSource { Name = null, Count = null };
         var destination = new NullValueDestination();
@@ -118,7 +118,7 @@ public class NullHandlingTests
     }
 
     [Fact]
-    public void MapWithNullValue_WhenSourceHasValues_UsesSourceValues()
+    public void MapWithNullValueWhenSourceHasValuesUsesSourceValues()
     {
         var source = new NullValueSource { Name = "hello", Count = 5 };
         var destination = new NullValueDestination();
@@ -132,7 +132,7 @@ public class NullHandlingTests
     // Regression G: NullBehavior.Skip on a nullable value type -> non-nullable target with no conversion.
     // Previously generated `dst.Value = src.Value;` (int? -> int) which did not compile and ignored Skip.
     [Fact]
-    public void MapSkipNoConversion_CopiesValueButSkipsNull()
+    public void MapSkipNoConversionCopiesValueButSkipsNull()
     {
         var whenValue = new SkipNoConvDestination { Value = 99 };
         TestMappers.MapSkipNoConv(new SkipNoConvSource { Value = 5 }, whenValue);

@@ -1,5 +1,6 @@
 #pragma warning disable SA1136
 #pragma warning disable SA1502
+#pragma warning disable CA1002
 #pragma warning disable CA1008
 #pragma warning disable CA2227
 namespace Smart.Mapper.AotTests;
@@ -8,7 +9,6 @@ namespace Smart.Mapper.AotTests;
 
 // Basic
 
-#pragma warning disable CA1002
 public sealed class BasicSource { public int Id { get; set; } public string Name { get; set; } = default!; }
 
 public sealed class BasicDest { public int Id { get; set; } public string Name { get; set; } = default!; }
@@ -56,7 +56,6 @@ public sealed class CollDst
     // ReSharper disable once CollectionNeverUpdated.Global
     public List<ItemDst>? Items { get; set; }
 }
-#pragma warning restore CA1002
 
 // Custom value converter
 

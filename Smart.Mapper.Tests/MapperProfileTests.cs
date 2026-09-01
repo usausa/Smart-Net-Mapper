@@ -10,7 +10,7 @@ using Smart.Mapper.Models;
 public class MapperProfileTests
 {
     [Fact]
-    public void Map_WithProfile_MapsPropertiesCorrectly()
+    public void MapWithProfileMapsPropertiesCorrectly()
     {
         var source = new ProfileSource { Id = 10, Name = "Profile" };
         var destination = new ProfileDestination();
@@ -22,7 +22,7 @@ public class MapperProfileTests
     }
 
     [Fact]
-    public void MapNoStrict_WithProfileOverride_MapsPropertiesCorrectly()
+    public void MapNoStrictWithProfileOverrideMapsPropertiesCorrectly()
     {
         var source = new ProfileSource { Id = 20, Name = "Override" };
         var destination = new ProfileDestination();

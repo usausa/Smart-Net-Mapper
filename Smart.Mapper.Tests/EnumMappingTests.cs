@@ -12,7 +12,7 @@ public class EnumMappingTests
     // ---- enum ↔ enum (by name) ----
 
     [Fact]
-    public void MapEnumToEnum_Active_MapsCorrectly()
+    public void MapEnumToEnumActiveMapsCorrectly()
     {
         var source = new EnumToEnumSource { Status = SourceStatus.Active };
         var destination = new EnumToEnumDestination();
@@ -23,7 +23,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapEnumToEnum_Inactive_MapsCorrectly()
+    public void MapEnumToEnumInactiveMapsCorrectly()
     {
         var source = new EnumToEnumSource { Status = SourceStatus.Inactive };
         var destination = new EnumToEnumDestination();
@@ -34,7 +34,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapEnumToEnum_AllValues_MappedByName()
+    public void MapEnumToEnumAllValuesMappedByName()
     {
         foreach (var value in Enum.GetValues<SourceStatus>())
         {
@@ -50,7 +50,7 @@ public class EnumMappingTests
     // ---- partial enum (Pending → default) ----
 
     [Fact]
-    public void MapPartialEnum_UnmatchedValue_ReturnsDefault()
+    public void MapPartialEnumUnmatchedValueReturnsDefault()
     {
         var source = new PartialEnumSource { Status = SourceStatus.Pending };
         var destination = new PartialEnumDestination();
@@ -61,7 +61,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapPartialEnum_MatchedValue_MapsCorrectly()
+    public void MapPartialEnumMatchedValueMapsCorrectly()
     {
         var source = new PartialEnumSource { Status = SourceStatus.Active };
         var destination = new PartialEnumDestination();
@@ -74,7 +74,7 @@ public class EnumMappingTests
     // ---- nullable enum ↔ nullable enum ----
 
     [Fact]
-    public void MapNullableEnum_NonNullValue_MapsCorrectly()
+    public void MapNullableEnumNonNullValueMapsCorrectly()
     {
         var source = new NullableEnumSource { Status = SourceStatus.Inactive };
         var destination = new NullableEnumDestination();
@@ -85,7 +85,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapNullableEnum_NullValue_ResultsInDefault()
+    public void MapNullableEnumNullValueResultsInDefault()
     {
         var source = new NullableEnumSource { Status = null };
         var destination = new NullableEnumDestination();
@@ -98,7 +98,7 @@ public class EnumMappingTests
     // ---- enum → int ----
 
     [Fact]
-    public void MapEnumToInt_Active_ReturnsIntValue()
+    public void MapEnumToIntActiveReturnsIntValue()
     {
         var source = new EnumToIntSource { Status = SourceStatus.Active };
         var destination = new EnumToIntDestination();
@@ -109,7 +109,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapEnumToInt_Inactive_ReturnsIntValue()
+    public void MapEnumToIntInactiveReturnsIntValue()
     {
         var source = new EnumToIntSource { Status = SourceStatus.Inactive };
         var destination = new EnumToIntDestination();
@@ -122,7 +122,7 @@ public class EnumMappingTests
     // ---- int → enum ----
 
     [Fact]
-    public void MapIntToEnum_ValidValue_MapsCorrectly()
+    public void MapIntToEnumValidValueMapsCorrectly()
     {
         var source = new IntToEnumSource { Status = (int)DestStatus.Active };
         var destination = new IntToEnumDestination();
@@ -135,7 +135,7 @@ public class EnumMappingTests
     // ---- enum → string ----
 
     [Fact]
-    public void MapEnumToString_Active_ReturnsStringName()
+    public void MapEnumToStringActiveReturnsStringName()
     {
         var source = new EnumToStringSource { Status = SourceStatus.Active };
         var destination = new EnumToStringDestination();
@@ -146,7 +146,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapEnumToString_Pending_ReturnsStringName()
+    public void MapEnumToStringPendingReturnsStringName()
     {
         var source = new EnumToStringSource { Status = SourceStatus.Pending };
         var destination = new EnumToStringDestination();
@@ -159,7 +159,7 @@ public class EnumMappingTests
     // ---- string → enum ----
 
     [Fact]
-    public void MapStringToEnum_ActiveString_MapsCorrectly()
+    public void MapStringToEnumActiveStringMapsCorrectly()
     {
         var source = new StringToEnumSource { Status = "Active" };
         var destination = new StringToEnumDestination();
@@ -170,7 +170,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapStringToEnum_InactiveString_MapsCorrectly()
+    public void MapStringToEnumInactiveStringMapsCorrectly()
     {
         var source = new StringToEnumSource { Status = "Inactive" };
         var destination = new StringToEnumDestination();
@@ -183,7 +183,7 @@ public class EnumMappingTests
     // エイリアス値 (Active = Enabled = 1) は最初に宣言された名前にマップされる。
     // Alias values (Active = Enabled = 1) map to the first declared name.
     [Fact]
-    public void MapAliasEnumToString_AliasValue_UsesFirstDeclaredName()
+    public void MapAliasEnumToStringAliasValueUsesFirstDeclaredName()
     {
         var source = new AliasEnumToStringSource { Status = AliasStatus.Enabled };
         var destination = new AliasEnumToStringDestination();
@@ -196,7 +196,7 @@ public class EnumMappingTests
     // Flags の合成値は switch アームに一致せず ToString へフォールバックする。
     // Combined flags values match no switch arm and fall back to ToString.
     [Fact]
-    public void MapFlagsEnumToString_CombinedValue_FallsBackToToString()
+    public void MapFlagsEnumToStringCombinedValueFallsBackToToString()
     {
         var source = new FlagsEnumToStringSource { Options = FlagOptions.A | FlagOptions.B };
         var destination = new FlagsEnumToStringDestination();
@@ -207,7 +207,7 @@ public class EnumMappingTests
     }
 
     [Fact]
-    public void MapFlagsEnumToString_SingleValue_MapsViaSwitch()
+    public void MapFlagsEnumToStringSingleValueMapsViaSwitch()
     {
         var source = new FlagsEnumToStringSource { Options = FlagOptions.B };
         var destination = new FlagsEnumToStringDestination();

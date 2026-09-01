@@ -38,18 +38,18 @@ public class CollectionSelfContainedTests
     }
 
     [Fact]
-    public void ArraySource_GeneratesSelfContainedCode() =>
+    public void ArraySourceGeneratesSelfContainedCode() =>
         AssertGeneratedCompiles("E1[]", "global::System.Collections.Generic.List<E2>");
 
     [Fact]
-    public void FrozenSetTarget_GeneratesSelfContainedCode() =>
+    public void FrozenSetTargetGeneratesSelfContainedCode() =>
         AssertGeneratedCompiles("E1[]", "global::System.Collections.Frozen.FrozenSet<E2>");
 
     [Fact]
-    public void MemorySource_IsSupported() =>
+    public void MemorySourceIsSupported() =>
         AssertGeneratedCompiles("global::System.Memory<E1>", "global::System.Collections.Generic.List<E2>");
 
     [Fact]
-    public void ReadOnlyMemorySource_IsSupported() =>
+    public void ReadOnlyMemorySourceIsSupported() =>
         AssertGeneratedCompiles("global::System.ReadOnlyMemory<E1>", "global::System.Collections.Generic.List<E2>");
 }

@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class CultureFormatMappingTests
 {
     [Fact]
-    public void Map_WithCultureAndNumberFormat_FormatsDoubleWithFrenchLocale()
+    public void MapWithCultureAndNumberFormatFormatsDoubleWithFrenchLocale()
     {
         // fr-FR uses comma as decimal separator, N2 gives 2 decimal places
         var source = new CultureFormatSource { Amount = 1234.56, EventDate = new DateTime(2024, 6, 15), Price = 99.9m };
@@ -20,7 +20,7 @@ public class CultureFormatMappingTests
     }
 
     [Fact]
-    public void Map_WithCultureParse_ParsesDoubleWithFrenchLocale()
+    public void MapWithCultureParseParsesDoubleWithFrenchLocale()
     {
         // fr-FR decimal separator is comma
         var source = new CultureParseSource { Amount = "1234,56", EventDate = "15/06/2024" };
@@ -31,7 +31,7 @@ public class CultureFormatMappingTests
     }
 
     [Fact]
-    public void Map_WithCultureParse_ParsesDateWithFrenchLocale()
+    public void MapWithCultureParseParsesDateWithFrenchLocale()
     {
         // fr-FR date format is dd/MM/yyyy
         var source = new CultureParseSource { Amount = "0", EventDate = "15/06/2024" };
@@ -42,7 +42,7 @@ public class CultureFormatMappingTests
     }
 
     [Fact]
-    public void Map_WithPropertyCultureOverride_UsesPropertyCultureForValueB()
+    public void MapWithPropertyCultureOverrideUsesPropertyCultureForValueB()
     {
         // ValueA should use en-US (method-level), ValueB should use de-DE (property-level)
         var source = new CultureOverrideSource { ValueA = 1234.5, ValueB = 1234.5 };
@@ -58,7 +58,7 @@ public class CultureFormatMappingTests
     // Regression: with a Culture in effect, string -> bool/Guid/Half/Int128/UInt128/BigInteger
     // previously generated a 3-argument converter call with no matching overload (did not compile).
     [Fact]
-    public void Map_WithCulture_ParsesSpecializedTypes()
+    public void MapWithCultureParsesSpecializedTypes()
     {
         var guid = Guid.Parse("12345678-1234-1234-1234-1234567890ab");
         var source = new CultureSpecialParseSource
@@ -83,7 +83,7 @@ public class CultureFormatMappingTests
 
     // Regression: with a Culture in effect, bool/Guid/Half/Int128/UInt128/BigInteger -> string.
     [Fact]
-    public void Map_WithCulture_FormatsSpecializedTypes()
+    public void MapWithCultureFormatsSpecializedTypes()
     {
         var guid = Guid.Parse("12345678-1234-1234-1234-1234567890ab");
         var source = new CultureSpecialFormatSource

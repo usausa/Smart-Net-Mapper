@@ -24,7 +24,7 @@ public sealed class NumericConversionCoverageTests
     }
 
     [Fact]
-    public void NullableNumericConversions_WithValues()
+    public void NullableNumericConversionsWithValues()
     {
         var source = new NullableNumCovSource
         {
@@ -178,7 +178,7 @@ public sealed class ConverterConversionCoverageTests
     }
 
     [Fact]
-    public void CustomConverter_NullableSourceNull_UsesDefault()
+    public void CustomConverterNullableSourceNullUsesDefault()
     {
         var source = new ConverterCovSource { IntToStr = 1, NIntToStr = null, StrToInt = "#0" };
         var destination = new ConverterCovDestination();

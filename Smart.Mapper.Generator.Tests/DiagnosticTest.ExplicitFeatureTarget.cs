@@ -45,25 +45,25 @@ public partial class DiagnosticTest
     [Theory]
     [InlineData("public string Extra { get; init; } = \"\";")]
     [InlineData("public required string Extra { get; set; }")]
-    public void Constant_On_InitOrRequired_ReturnMapper_Compiles(string propDecl) =>
+    public void ConstantOnInitOrRequiredReturnMapperCompiles(string propDecl) =>
         AssertCompiles(FeatureSource(propDecl, returns: true, "[global::Smart.Mapper.MapConstant(\"Extra\", \"x\")]"));
 
     [Theory]
     [InlineData("public string Extra { get; init; } = \"\";")]
     [InlineData("public required string Extra { get; set; }")]
-    public void Expression_On_InitOrRequired_ReturnMapper_Compiles(string propDecl) =>
+    public void ExpressionOnInitOrRequiredReturnMapperCompiles(string propDecl) =>
         AssertCompiles(FeatureSource(propDecl, returns: true, "[global::Smart.Mapper.MapExpression(\"Extra\", \"src.Name + \\\"!\\\"\")]"));
 
     [Theory]
     [InlineData("public string Extra { get; init; } = \"\";")]
     [InlineData("public required string Extra { get; set; }")]
-    public void Using_On_InitOrRequired_ReturnMapper_Compiles(string propDecl) =>
+    public void UsingOnInitOrRequiredReturnMapperCompiles(string propDecl) =>
         AssertCompiles(FeatureSource(propDecl, returns: true, "[global::Smart.Mapper.MapUsing(\"Extra\", nameof(Build))]", "public static string Build(Src s) => s.Name;"));
 
     [Theory]
     [InlineData("public string Extra { get; init; } = \"\";")]
     [InlineData("public required string Extra { get; set; }")]
-    public void From_On_InitOrRequired_ReturnMapper_Compiles(string propDecl) =>
+    public void FromOnInitOrRequiredReturnMapperCompiles(string propDecl) =>
         AssertCompiles(FeatureSource(propDecl, returns: true, "[global::Smart.Mapper.MapFrom(\"Extra\", \"Name\")]"));
 
     [Fact]
@@ -107,6 +107,6 @@ public partial class DiagnosticTest
         AssertRejected(CollectionSource("public required List<E2> Items { get; set; }", returns: true), "SMP0212");
 
     [Fact]
-    public void Collection_On_Required_VoidMapper_Compiles() =>
+    public void CollectionOnRequiredVoidMapperCompiles() =>
         AssertCompiles(CollectionSource("public required List<E2> Items { get; set; }", returns: false));
 }

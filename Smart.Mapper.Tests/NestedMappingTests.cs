@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class NestedMappingTests
 {
     [Fact]
-    public void Map_FlatToNested_MapsToNestedProperties()
+    public void MapFlatToNestedMapsToNestedProperties()
     {
         var source = new FlatSource { Value1 = 10, Value2 = 20, Value3 = 30 };
         var destination = new NestedDestination();
@@ -22,7 +22,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void MapToNew_FlatToNested_ReturnsNestedObject()
+    public void MapToNewFlatToNestedReturnsNestedObject()
     {
         var source = new FlatSource { Value1 = 100, Value2 = 200, Value3 = 300 };
 
@@ -38,7 +38,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_NestedToFlat_FlattensProperties()
+    public void MapNestedToFlatFlattensProperties()
     {
         var source = new NestedSource
         {
@@ -55,7 +55,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_DeepNested_MapsToDeepNestedProperties()
+    public void MapDeepNestedMapsToDeepNestedProperties()
     {
         var source = new DeepSource { DeepValue = 12345 };
         var destination = new DeepNestedDestination();
@@ -68,7 +68,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void MapToNew_DeepNested_ReturnsDeepNestedObject()
+    public void MapToNewDeepNestedReturnsDeepNestedObject()
     {
         var source = new DeepSource { DeepValue = 67890 };
 
@@ -81,7 +81,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_FlatToNested_PreservesExistingNestedObjects()
+    public void MapFlatToNestedPreservesExistingNestedObjects()
     {
         var source = new FlatSource { Value1 = 10, Value2 = 20, Value3 = 30 };
         var existingChild1 = new DestinationChild { Value = 999 };
@@ -96,7 +96,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_DeepNestedSourceToFlat_FlattensMultipleLevels()
+    public void MapDeepNestedSourceToFlatFlattensMultipleLevels()
     {
         var source = new DeepNestedSource
         {
@@ -113,7 +113,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_DeepNestedSourceWithNullOuter_SkipsNestedProperties()
+    public void MapDeepNestedSourceWithNullOuterSkipsNestedProperties()
     {
         var source = new DeepNestedSource { Outer = null, DirectValue = 200 };
         var destination = new DeepFlatDestination { OuterInnerValue = 999, OuterInnerName = "Original" };
@@ -126,7 +126,7 @@ public class NestedMappingTests
     }
 
     [Fact]
-    public void Map_DeepNestedSourceWithNullInner_SkipsNestedProperties()
+    public void MapDeepNestedSourceWithNullInnerSkipsNestedProperties()
     {
         var source = new DeepNestedSource
         {
@@ -146,7 +146,7 @@ public class NestedMappingTests
 public class MapNestedTests
 {
     [Fact]
-    public void MapNested_WithValue_MapsNestedObject()
+    public void MapNestedWithValueMapsNestedObject()
     {
         var source = new NestedObjectSource
         {
@@ -164,7 +164,7 @@ public class MapNestedTests
     }
 
     [Fact]
-    public void MapNested_NullSource_SetsDefault()
+    public void MapNestedNullSourceSetsDefault()
     {
         var source = new NestedObjectSource { Child = null, DirectValue = 50 };
         var destination = new NestedObjectDestination { Child = new NestedObjectDestinationChild { Value = 999 } };
@@ -176,7 +176,7 @@ public class MapNestedTests
     }
 
     [Fact]
-    public void MapNested_WithReturnType_ReturnsNewObject()
+    public void MapNestedWithReturnTypeReturnsNewObject()
     {
         var source = new NestedObjectSource
         {
@@ -194,7 +194,7 @@ public class MapNestedTests
     }
 
     [Fact]
-    public void MapNested_WithVoidMapper_MapsNestedObject()
+    public void MapNestedWithVoidMapperMapsNestedObject()
     {
         var source = new NestedObjectSource
         {

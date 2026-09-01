@@ -9,7 +9,7 @@ namespace Smart.Mapper;
 public class DefaultValueConverterTests
 {
     [Fact]
-    public void Convert_UnsignedAndSByteSources_ConvertWithoutBoxingFallback()
+    public void ConvertUnsignedAndSByteSourcesConvertWithoutBoxingFallback()
     {
         Assert.Equal(42, DefaultValueConverter.Convert<uint, int>(42u));
         Assert.Equal(42L, DefaultValueConverter.Convert<uint, long>(42u));
@@ -27,7 +27,7 @@ public class DefaultValueConverterTests
     }
 
     [Fact]
-    public void Convert_FloatingToUnsignedTargets_ConvertWithoutBoxingFallback()
+    public void ConvertFloatingToUnsignedTargetsConvertWithoutBoxingFallback()
     {
         Assert.Equal(3u, DefaultValueConverter.Convert<float, uint>(3.7f));
         Assert.Equal((ushort)3, DefaultValueConverter.Convert<double, ushort>(3.7d));

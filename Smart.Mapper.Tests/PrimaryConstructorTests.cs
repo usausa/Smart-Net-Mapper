@@ -10,7 +10,7 @@ public class PrimaryConstructorTests
     // D1: record → record (全パラメータ)
     // D1: record → record (all parameters)
     [Fact]
-    public void MapRecord_AllParameters_MapsCorrectly()
+    public void MapRecordAllParametersMapsCorrectly()
     {
         var source = new RecordSource(1, "Alice", 30);
 
@@ -24,7 +24,7 @@ public class PrimaryConstructorTests
     // D1: record → record (パラメータ数の少ない宛先)
     // D1: record → record (destination with fewer parameters)
     [Fact]
-    public void MapRecordPartial_FewerParameters_MapsAvailableProperties()
+    public void MapRecordPartialFewerParametersMapsAvailableProperties()
     {
         var source = new RecordSource(2, "Bob", 25);
 
@@ -37,7 +37,7 @@ public class PrimaryConstructorTests
     // D3: クラスのプライマリコンストラクタ
     // D3: primary constructor of a class
     [Fact]
-    public void MapPrimaryCtorClass_AllParameters_MapsCorrectly()
+    public void MapPrimaryCtorClassAllParametersMapsCorrectly()
     {
         var source = new PrimaryCtorSource { Id = 3, Name = "Carol", Age = 40 };
 
@@ -51,7 +51,7 @@ public class PrimaryConstructorTests
     // D1: record + 通常 settable プロパティ
     // D1: record + a regular settable property
     [Fact]
-    public void MapRecordWithExtra_ConstructorAndSettableProperty_MapsAll()
+    public void MapRecordWithExtraConstructorAndSettablePropertyMapsAll()
     {
         var source = new RecordWithExtraSource { Id = 4, Name = "Dave", Extra = "extra-value" };
 
@@ -65,7 +65,7 @@ public class PrimaryConstructorTests
     // D1: record + settable プロパティが null の場合
     // D1: record + settable property is null
     [Fact]
-    public void MapRecordWithExtra_NullExtra_MapsNullCorrectly()
+    public void MapRecordWithExtraNullExtraMapsNullCorrectly()
     {
         var source = new RecordWithExtraSource { Id = 5, Name = "Eve", Extra = null };
 
@@ -79,7 +79,7 @@ public class PrimaryConstructorTests
     // D1: [MapProperty] でコンストラクタ引数を上書き
     // D1: override a constructor argument with [MapProperty]
     [Fact]
-    public void MapWithPropertyOverride_MapPropertyTakesPriority_MapsCorrectly()
+    public void MapWithPropertyOverrideMapPropertyTakesPriorityMapsCorrectly()
     {
         var source = new MapPropertyOverrideSource { Identifier = 99, FullName = "Overridden" };
 
@@ -92,7 +92,7 @@ public class PrimaryConstructorTests
     // 対応5: コンストラクタ引数に型変換・Converter・NullValue が適用されること。
     // Fix 5: type conversion, Converter and NullValue are applied to constructor arguments.
     [Fact]
-    public void MapCtorConversion_AppliesConversionPipeline()
+    public void MapCtorConversionAppliesConversionPipeline()
     {
         var source = new CtorConversionSource { Value = 42, Raw = 7, Quantity = null };
 
@@ -106,7 +106,7 @@ public class PrimaryConstructorTests
     // 対応5: NullValue を使わない場合は元の値が渡ること。
     // Fix 5: the original value is passed through when the substitute is not needed.
     [Fact]
-    public void MapCtorConversion_KeepsValueWhenNotNull()
+    public void MapCtorConversionKeepsValueWhenNotNull()
     {
         var source = new CtorConversionSource { Value = 1, Raw = 2, Quantity = 5 };
 
@@ -118,7 +118,7 @@ public class PrimaryConstructorTests
     // 対応4/5: セッターの無いプロパティへのリネームと型変換。
     // Fix 4/5: rename plus type conversion onto a get-only property.
     [Fact]
-    public void MapCtorGetOnly_AppliesRenameAndConversion()
+    public void MapCtorGetOnlyAppliesRenameAndConversion()
     {
         var source = new CtorGetOnlySource { Other = 123 };
 
@@ -130,7 +130,7 @@ public class PrimaryConstructorTests
     // 対応5: null 許容ソース + 型変換。値がある場合は変換される。
     // Fix 5: a nullable source needing conversion is converted when it has a value.
     [Fact]
-    public void MapCtorNullableConversion_ConvertsWhenNotNull()
+    public void MapCtorNullableConversionConvertsWhenNotNull()
     {
         var source = new CtorNullableConversionSource { Value = 7, Text = "42" };
 
@@ -143,7 +143,7 @@ public class PrimaryConstructorTests
     // 対応5: null の場合はターゲット型の default になる。
     // Fix 5: null yields the destination type's default.
     [Fact]
-    public void MapCtorNullableConversion_UsesDestinationDefaultWhenNull()
+    public void MapCtorNullableConversionUsesDestinationDefaultWhenNull()
     {
         var source = new CtorNullableConversionSource { Value = null, Text = null };
 
@@ -156,7 +156,7 @@ public class PrimaryConstructorTests
     // 残作業1: 対応する destination プロパティを持たない引数にもリネームと型変換が適用される。
     // Remaining item 1: rename and conversion apply to a parameter with no backing property.
     [Fact]
-    public void MapCtorNoProperty_AppliesRenameAndConversion()
+    public void MapCtorNoPropertyAppliesRenameAndConversion()
     {
         var source = new CtorNoPropertySource { Other = 55 };
 
@@ -168,7 +168,7 @@ public class PrimaryConstructorTests
     // null 許容な中間セグメントは、値がある場合は辿って変換される。
     // A nullable intermediate segment is traversed and converted when it has a value.
     [Fact]
-    public void MapCtorNestedGuard_ConvertsWhenIntermediateNotNull()
+    public void MapCtorNestedGuardConvertsWhenIntermediateNotNull()
     {
         var source = new CtorNestedGuardSource { Child = new CtorNestedGuardSourceChild { Val = 7 } };
 
@@ -180,7 +180,7 @@ public class PrimaryConstructorTests
     // null 許容な中間セグメントが null の場合、NRE にならずターゲット型の default になる。
     // A null intermediate segment yields the destination type's default instead of an NRE.
     [Fact]
-    public void MapCtorNestedGuard_UsesDefaultWhenIntermediateNull()
+    public void MapCtorNestedGuardUsesDefaultWhenIntermediateNull()
     {
         var source = new CtorNestedGuardSource { Child = null };
 

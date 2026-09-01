@@ -18,7 +18,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToList_PreservesElements(int count)
+    public void MapArrayToListPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToListDst();
@@ -33,7 +33,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToArray_PreservesElements(int count)
+    public void MapArrayToArrayPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToArrayDst();
@@ -48,7 +48,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToImmutableArray_PreservesElements(int count)
+    public void MapArrayToImmutableArrayPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToImmutableArrayDst();
@@ -62,7 +62,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToHashSet_PreservesElements(int count)
+    public void MapArrayToHashSetPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToHashSetDst();
@@ -73,7 +73,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToFrozenSet_PreservesElements(int count)
+    public void MapArrayToFrozenSetPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixToFrozenSetDst();
@@ -91,7 +91,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_MemoryToList_PreservesElements(int count)
+    public void MapMemoryToListPreservesElements(int count)
     {
         var src = new MatrixMemorySource { Items = MakeArray(count).AsMemory() };
         var dst = new MatrixToListDst();
@@ -108,7 +108,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ReadOnlyListToList_PreservesElements(int count)
+    public void MapReadOnlyListToListPreservesElements(int count)
     {
         var src = new MatrixReadOnlyListSource { Items = MakeList(count) };
         var dst = new MatrixToListDst();
@@ -122,7 +122,7 @@ public class CollectionMatrixMappingTests
     }
 
     [Fact]
-    public void Map_NullReadOnlyListToList_SetsDefault()
+    public void MapNullReadOnlyListToListSetsDefault()
     {
         var src = new MatrixReadOnlyListSource { Items = null };
         var dst = new MatrixToListDst { Items = [] };
@@ -134,7 +134,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ReadOnlyCollectionToImmutableArray_PreservesElements(int count)
+    public void MapReadOnlyCollectionToImmutableArrayPreservesElements(int count)
     {
         var src = new MatrixReadOnlyCollectionSource { Items = MakeList(count) };
         var dst = new MatrixToImmutableArrayDst();
@@ -148,7 +148,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ReadOnlyCollectionToHashSet_PreservesElements(int count)
+    public void MapReadOnlyCollectionToHashSetPreservesElements(int count)
     {
         var src = new MatrixReadOnlyCollectionSource { Items = MakeList(count) };
         var dst = new MatrixToHashSetDst();
@@ -161,7 +161,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToList_PreservesElements(int count)
+    public void MapListToListPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixToListDst();
@@ -176,7 +176,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToArray_PreservesElements(int count)
+    public void MapListToArrayPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixToArrayDst();
@@ -191,7 +191,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToImmutableArray_PreservesElements(int count)
+    public void MapListToImmutableArrayPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixToImmutableArrayDst();
@@ -205,7 +205,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToHashSet_PreservesElements(int count)
+    public void MapListToHashSetPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixToHashSetDst();
@@ -221,7 +221,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_EnumerableToArray_PreservesElements(int count)
+    public void MapEnumerableToArrayPreservesElements(int count)
     {
         var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
         var dst = new MatrixToArrayDst();
@@ -236,7 +236,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_EnumerableToList_PreservesElements(int count)
+    public void MapEnumerableToListPreservesElements(int count)
     {
         var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
         var dst = new MatrixToListDst();
@@ -251,7 +251,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_EnumerableToImmutableArray_PreservesElements(int count)
+    public void MapEnumerableToImmutableArrayPreservesElements(int count)
     {
         var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
         var dst = new MatrixToImmutableArrayDst();
@@ -265,7 +265,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_EnumerableToHashSet_PreservesElements(int count)
+    public void MapEnumerableToHashSetPreservesElements(int count)
     {
         var src = new MatrixEnumerableSource { Items = MakeEnumerable(count) };
         var dst = new MatrixToHashSetDst();
@@ -275,7 +275,7 @@ public class CollectionMatrixMappingTests
     }
 
     [Fact]
-    public void Map_NullEnumerableToArray_SetsDefault()
+    public void MapNullEnumerableToArraySetsDefault()
     {
         var src = new MatrixEnumerableSource { Items = null };
         var dst = new MatrixToArrayDst();
@@ -287,7 +287,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToArrayWithConverter_PreservesElements(int count)
+    public void MapListToArrayWithConverterPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixConverterArrayDst();
@@ -301,7 +301,7 @@ public class CollectionMatrixMappingTests
     }
 
     [Fact]
-    public void Map_NullListToArrayWithConverter_SetsDefault()
+    public void MapNullListToArrayWithConverterSetsDefault()
     {
         var src = new MatrixListSource { Items = null };
         var dst = new MatrixConverterArrayDst();
@@ -312,7 +312,7 @@ public class CollectionMatrixMappingTests
     // ── Null source ──────────────────────────────────────────────────────────
 
     [Fact]
-    public void Map_NullArrayToList_SetsDefault()
+    public void MapNullArrayToListSetsDefault()
     {
         var src = new MatrixArraySource { Items = null };
         var dst = new MatrixToListDst();
@@ -321,7 +321,7 @@ public class CollectionMatrixMappingTests
     }
 
     [Fact]
-    public void Map_NullListToList_SetsDefault()
+    public void MapNullListToListSetsDefault()
     {
         var src = new MatrixListSource { Items = null };
         var dst = new MatrixToListDst();
@@ -333,7 +333,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ArrayToListVoid_PreservesElements(int count)
+    public void MapArrayToListVoidPreservesElements(int count)
     {
         var src = new MatrixArraySource { Items = MakeArray(count) };
         var dst = new MatrixVoidDst();
@@ -348,7 +348,7 @@ public class CollectionMatrixMappingTests
 
     [Theory]
     [MemberData(nameof(ElementCounts))]
-    public void Map_ListToListVoid_PreservesElements(int count)
+    public void MapListToListVoidPreservesElements(int count)
     {
         var src = new MatrixListSource { Items = MakeList(count) };
         var dst = new MatrixVoidDst();

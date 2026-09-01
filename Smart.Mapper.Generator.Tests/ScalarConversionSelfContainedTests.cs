@@ -42,20 +42,20 @@ public class ScalarConversionSelfContainedTests
     public void CharToString() => AssertCompiles("char", "string");
 
     [Fact]
-    public void CharToString_WithCulture() => AssertCompiles("char", "string", "de-DE");
+    public void CharToStringWithCulture() => AssertCompiles("char", "string", "de-DE");
 
     [Fact]
     public void StringToChar() => AssertCompiles("string", "char");
 
     [Fact]
-    public void StringToChar_WithCulture() => AssertCompiles("string", "char", "de-DE");
+    public void StringToCharWithCulture() => AssertCompiles("string", "char", "de-DE");
 
     [Theory]
     [InlineData("int")]
     [InlineData("long")]
     [InlineData("float")]
     [InlineData("double")]
-    public void NumericToHalf_WithCulture(string numeric) =>
+    public void NumericToHalfWithCulture(string numeric) =>
         AssertCompiles(numeric, "global::System.Half", "de-DE");
 
     [Theory]
@@ -65,7 +65,7 @@ public class ScalarConversionSelfContainedTests
     [InlineData("global::System.Numerics.BigInteger")]
     [InlineData("bool")]
     [InlineData("global::System.Guid")]
-    public void StringToSpecialized_WithCulture(string target) =>
+    public void StringToSpecializedWithCulture(string target) =>
         AssertCompiles("string", target, "de-DE");
 
     [Theory]
@@ -73,13 +73,13 @@ public class ScalarConversionSelfContainedTests
     [InlineData("global::System.Int128")]
     [InlineData("bool")]
     [InlineData("global::System.Guid")]
-    public void SpecializedToString_WithCulture(string source) =>
+    public void SpecializedToStringWithCulture(string source) =>
         AssertCompiles(source, "string", "de-DE");
 
     // A custom type implementing ISpanParsable<T> publicly exercises the string-parse path that
     // emits .AsSpan(); the generated call must be fully qualified (global::System.MemoryExtensions.AsSpan).
     [Fact]
-    public void StringToCustomSpanParsable_IsSelfContained()
+    public void StringToCustomSpanParsableIsSelfContained()
     {
         const string sp =
             "public readonly struct Sp : global::System.ISpanParsable<Sp>\n" +

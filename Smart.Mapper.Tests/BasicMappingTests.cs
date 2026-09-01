@@ -6,7 +6,7 @@ using Smart.Mapper.Models;
 public class BasicMappingTests
 {
     [Fact]
-    public void Map_BasicProperties_CopiesAllProperties()
+    public void MapBasicPropertiesCopiesAllProperties()
     {
         var source = new BasicSource { Id = 42, Name = "Test Name", Description = "Test Description" };
         var destination = new BasicDestination();
@@ -19,7 +19,7 @@ public class BasicMappingTests
     }
 
     [Fact]
-    public void MapToNew_BasicProperties_ReturnsNewObjectWithCopiedProperties()
+    public void MapToNewBasicPropertiesReturnsNewObjectWithCopiedProperties()
     {
         var source = new BasicSource { Id = 100, Name = "New Object", Description = "Created via MapToNew" };
 
@@ -35,7 +35,7 @@ public class BasicMappingTests
 public class DifferentPropertyMappingTests
 {
     [Fact]
-    public void Map_DifferentPropertyNames_MapsCorrectly()
+    public void MapDifferentPropertyNamesMapsCorrectly()
     {
         var source = new DifferentPropertySource { SourceId = 123, SourceName = "Different Name" };
         var destination = new DifferentPropertyDestination();
@@ -47,7 +47,7 @@ public class DifferentPropertyMappingTests
     }
 
     [Fact]
-    public void MapToNew_DifferentPropertyNames_ReturnsCorrectlyMappedObject()
+    public void MapToNewDifferentPropertyNamesReturnsCorrectlyMappedObject()
     {
         var source = new DifferentPropertySource { SourceId = 456, SourceName = "Another Name" };
 
@@ -62,7 +62,7 @@ public class DifferentPropertyMappingTests
 public class IgnorePropertyMappingTests
 {
     [Fact]
-    public void Map_IgnoredProperty_DoesNotCopyIgnoredProperty()
+    public void MapIgnoredPropertyDoesNotCopyIgnoredProperty()
     {
         var source = new IgnoreSource { Id = 1, Name = "Public", Secret = "TopSecret" };
         var destination = new IgnoreDestination { Secret = "Original" };
@@ -78,7 +78,7 @@ public class IgnorePropertyMappingTests
 public class AutoMapFalseTests
 {
     [Fact]
-    public void AutoMapFalse_OnlyMapsExplicitProperties()
+    public void AutoMapFalseOnlyMapsExplicitProperties()
     {
         var source = new AutoMapSource { Id = 42, Name = "Test", Value = 100 };
         var destination = new AutoMapDestination { Id = 0, Name = "Original", Value = 0 };
@@ -91,7 +91,7 @@ public class AutoMapFalseTests
     }
 
     [Fact]
-    public void AutoMapFalse_WithMapProperty_OnlyMapsSpecified()
+    public void AutoMapFalseWithMapPropertyOnlyMapsSpecified()
     {
         var source = new AutoMapSource { Id = 10, Name = "Explicit", Value = 200 };
 
@@ -106,7 +106,7 @@ public class AutoMapFalseTests
 public class AutoMapTrueTests
 {
     [Fact]
-    public void AutoMapTrue_MapsAllSameNameProperties()
+    public void AutoMapTrueMapsAllSameNameProperties()
     {
         var source = new BasicSource { Id = 42, Name = "Test" };
         var destination = new BasicDestination();
@@ -118,7 +118,7 @@ public class AutoMapTrueTests
     }
 
     [Fact]
-    public void AutoMapTrue_WithMapProperty_MapsExplicitAndAutoProperties()
+    public void AutoMapTrueWithMapPropertyMapsExplicitAndAutoProperties()
     {
         var source = new MultiPropertySource { Id = 100, Name = "Multi", Value = 50, Description = "Test Description" };
         var destination = new MultiPropertyDestination();

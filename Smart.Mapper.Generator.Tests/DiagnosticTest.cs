@@ -1167,7 +1167,7 @@ public partial class DiagnosticTest
     // 基底インターフェイスから継承したメンバーへのドット記法ソースパスは解決できる。
     // A dotted source path through a member inherited from a base interface resolves.
     [Fact]
-    public void SMP0213InterfaceInheritedMemberDoesNotEmitDiagnostic()
+    public void Smp0213InterfaceInheritedMemberDoesNotEmitDiagnostic()
     {
         const string source = """
             using Smart.Mapper;

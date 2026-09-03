@@ -208,7 +208,7 @@ internal static class MapperModelBuilder
 
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model));
 
-        model = model with { Warnings = [with(warnings.ToArray())] };
+        model = model with { Warnings = new(warnings) };
 
         var voidInitOnlyError = ValidateVoidMapperInitOnlyTargets(model, syntax);
         if (voidInitOnlyError is not null)
@@ -269,7 +269,7 @@ internal static class MapperModelBuilder
             resolved.Add(mapping with { ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
-        model = model with { PropertyMappings = [with(resolved.ToArray())] };
+        model = model with { PropertyMappings = new(resolved) };
         return null;
     }
 
@@ -376,7 +376,7 @@ internal static class MapperModelBuilder
             resolved.Add(mapping with { ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
         }
 
-        model = model with { PropertyMappings = [with(resolved.ToArray())] };
+        model = model with { PropertyMappings = new(resolved) };
         return null;
     }
 
@@ -942,15 +942,15 @@ internal static class MapperModelBuilder
             NumberFormat = numberFormatOption,
             BeforeMapMethod = beforeMapMethod,
             AfterMapMethod = afterMapMethod,
-            PropertyMappings = [with(propertyMappings.ToArray())],
-            IgnoredProperties = [with(ignoredProperties.ToArray())],
-            PropertyConditions = [with(propertyConditions.ToArray())],
-            ConstantMappings = [with(constantMappings.ToArray())],
-            ExpressionMappings = [with(expressionMappings.ToArray())],
-            MapUsingMappings = [with(mapUsingMappings.ToArray())],
-            MapFromMappings = [with(mapFromMappings.ToArray())],
-            MapCollectionMappings = [with(mapCollectionMappings.ToArray())],
-            MapNestedMappings = [with(mapNestedMappings.ToArray())]
+            PropertyMappings = new(propertyMappings),
+            IgnoredProperties = new(ignoredProperties),
+            PropertyConditions = new(propertyConditions),
+            ConstantMappings = new(constantMappings),
+            ExpressionMappings = new(expressionMappings),
+            MapUsingMappings = new(mapUsingMappings),
+            MapFromMappings = new(mapFromMappings),
+            MapCollectionMappings = new(mapCollectionMappings),
+            MapNestedMappings = new(mapNestedMappings)
         };
     }
 
@@ -1253,7 +1253,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapUsingMappings = [with(resolved.ToArray())] };
+        model = model with { MapUsingMappings = new(resolved) };
         return null;
     }
 
@@ -1440,7 +1440,7 @@ internal static class MapperModelBuilder
                 mapFrom.TargetName);
         }
 
-        model = model with { MapFromMappings = [with(resolved.ToArray())] };
+        model = model with { MapFromMappings = new(resolved) };
         return null;
     }
 
@@ -1542,7 +1542,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapCollectionMappings = [with(resolvedCollections.ToArray())] };
+        model = model with { MapCollectionMappings = new(resolvedCollections) };
         return null;
     }
 
@@ -1629,7 +1629,7 @@ internal static class MapperModelBuilder
             });
         }
 
-        model = model with { MapNestedMappings = [with(resolvedNested.ToArray())] };
+        model = model with { MapNestedMappings = new(resolvedNested) };
         return null;
     }
 
@@ -1957,7 +1957,7 @@ internal static class MapperModelBuilder
             return new DiagnosticInfo(Diagnostics.TypeConverterFallbackNotAllowed, syntax.GetLocation(), model.MethodName, mapping.TargetPath);
         }
 
-        model = model with { PropertyMappings = [with(resolved.ToArray())] };
+        model = model with { PropertyMappings = new(resolved) };
         return null;
     }
 
@@ -2189,7 +2189,7 @@ internal static class MapperModelBuilder
 
         model = model with
         {
-            ConstructorParameters = [with(ctorParams.ToArray())],
+            ConstructorParameters = new(ctorParams),
             PropertyMappings = [with([.. flagged, .. synthesizedMappings])]
         };
 
@@ -2340,7 +2340,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMappings ??= model.PropertyMappings.ToArray();
+            updatedMappings ??= [.. model.PropertyMappings];
             updatedMappings[i] = item with { TargetPath = canonical };
         }
 
@@ -2354,7 +2354,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedConditions ??= model.PropertyConditions.ToArray();
+            updatedConditions ??= [.. model.PropertyConditions];
             updatedConditions[i] = item with { TargetName = canonical };
         }
 
@@ -2368,7 +2368,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedConstants ??= model.ConstantMappings.ToArray();
+            updatedConstants ??= [.. model.ConstantMappings];
             updatedConstants[i] = item with { TargetName = canonical };
         }
 
@@ -2382,7 +2382,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedExpressions ??= model.ExpressionMappings.ToArray();
+            updatedExpressions ??= [.. model.ExpressionMappings];
             updatedExpressions[i] = item with { TargetName = canonical };
         }
 
@@ -2396,7 +2396,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapUsings ??= model.MapUsingMappings.ToArray();
+            updatedMapUsings ??= [.. model.MapUsingMappings];
             updatedMapUsings[i] = item with { TargetName = canonical };
         }
 
@@ -2410,7 +2410,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapFroms ??= model.MapFromMappings.ToArray();
+            updatedMapFroms ??= [.. model.MapFromMappings];
             updatedMapFroms[i] = item with { TargetName = canonical };
         }
 
@@ -2424,7 +2424,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapCollections ??= model.MapCollectionMappings.ToArray();
+            updatedMapCollections ??= [.. model.MapCollectionMappings];
             updatedMapCollections[i] = item with { TargetName = canonical };
         }
 
@@ -2438,7 +2438,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedMapNesteds ??= model.MapNestedMappings.ToArray();
+            updatedMapNesteds ??= [.. model.MapNestedMappings];
             updatedMapNesteds[i] = item with { TargetName = canonical };
         }
 
@@ -2452,7 +2452,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            updatedIgnored ??= model.IgnoredProperties.ToArray();
+            updatedIgnored ??= [.. model.IgnoredProperties];
             updatedIgnored[i] = canonical;
         }
 
@@ -2759,7 +2759,7 @@ internal static class MapperModelBuilder
             }
         }
 
-        return model with { PropertyMappings = [with(mappings.ToArray())] };
+        return model with { PropertyMappings = new(mappings) };
     }
 
     internal static PropertyMappingModel DetectEnumMappingKind(PropertyMappingModel mapping, ITypeSymbol sourceUnderlying, ITypeSymbol targetUnderlying)
@@ -2782,8 +2782,8 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.EnumToEnum,
                 RequiresConversion = true,
-                SourceEnumMembers = [with(GetEnumMemberNamesDedupedByValue(sourceUnderlying).ToArray())],
-                DestEnumMembers = [with(targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name).ToArray())]
+                SourceEnumMembers = new(GetEnumMemberNamesDedupedByValue(sourceUnderlying)),
+                DestEnumMembers = new(targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name))
             };
         }
 
@@ -2803,7 +2803,7 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.EnumToString,
                 RequiresConversion = true,
-                SourceEnumMembers = [with(GetEnumMemberNamesDedupedByValue(sourceUnderlying).ToArray())]
+                SourceEnumMembers = new(GetEnumMemberNamesDedupedByValue(sourceUnderlying))
             };
         }
 
@@ -2813,7 +2813,7 @@ internal static class MapperModelBuilder
             {
                 EnumMappingKind = EnumMappingKind.StringToEnum,
                 RequiresConversion = true,
-                DestEnumMembers = [with(targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name).ToArray())]
+                DestEnumMembers = new(targetUnderlying.GetMembers().OfType<IFieldSymbol>().Where(f => f.IsConst).Select(f => f.Name))
             };
         }
 
@@ -2917,7 +2917,9 @@ internal static class MapperModelBuilder
                     currentType = prop.Type;
                 }
             }
-            sourcePathSegments = [with(sourceSegments.ToArray())];
+#pragma warning disable IDE0028, IDE0306
+            sourcePathSegments = new(sourceSegments);
+#pragma warning restore IDE0028, IDE0306
 
             var finalSourceProp = currentType.GetAllPublicProperties().FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
             if (finalSourceProp is not null)
@@ -2962,7 +2964,9 @@ internal static class MapperModelBuilder
                     currentTargetType = prop.Type;
                 }
             }
-            targetPathSegments = [with(targetSegments.ToArray())];
+#pragma warning disable IDE0028, IDE0306
+            targetPathSegments = new(targetSegments);
+#pragma warning restore IDE0028, IDE0306
 
             var finalProp = currentTargetType.GetAllPublicProperties().FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
             if (finalProp is not null)
@@ -3171,7 +3175,7 @@ internal static class MapperModelBuilder
                 continue;
             }
 
-            analyzed ??= mappings.ToArray();
+            analyzed ??= [.. mappings];
             analyzed[i] = mapping with
             {
                 SpecializedConverterMethod = specializedConverterMethod,

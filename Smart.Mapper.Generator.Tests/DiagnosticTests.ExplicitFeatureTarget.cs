@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 //   - constant/expression/using/from × init/required × return mapper: accepted, assigned via object initializer
 //   - any init-only target × void mapper: rejected with SMP0302 (cannot assign init-only on an existing instance)
 //   - MapCollection/MapNested × init-only (or required × return): rejected with SMP0212 (loop cannot run in an initializer)
-public partial class DiagnosticTest
+public partial class DiagnosticTests
 {
     private static IReadOnlyList<Diagnostic> AllDiagnostics(string source) =>
         GeneratorTestHelper.GetDiagnosticsAll(source);

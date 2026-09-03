@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 
 // Source Generator が正しい診断（SMP0001〜SMP0402）を発行することを検証するテスト。
 // Tests that verify the source generator emits the correct diagnostics (SMP0001-SMP0402).
-public partial class DiagnosticTest
+public partial class DiagnosticTests
 {
     // ------------------------------------------------------------
     // SMP0001 — [Mapper] をインスタンスメソッドまたは非 partial メソッドに付与

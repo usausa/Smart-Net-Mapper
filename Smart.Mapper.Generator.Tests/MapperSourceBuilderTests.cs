@@ -1,7 +1,5 @@
 namespace Smart.Mapper.Generator.Tests;
 
-using Xunit;
-
 public class MapperSourceBuilderTests
 {
     // Simple mapping generates correct property assignments

@@ -76,7 +76,7 @@ public sealed class MapperGenerator : IIncrementalGenerator
         context.CancellationToken.ThrowIfCancellationRequested();
 
         var builder = new SourceBuilder();
-        MapperSourceBuilder.BuildSource(builder, group.Methods.ToList());
+        MapperSourceBuilder.BuildSource(builder, group.Methods);
 
         context.AddSource(HintNameBuilder.Build(group.Namespace, group.ClassName), builder);
     }

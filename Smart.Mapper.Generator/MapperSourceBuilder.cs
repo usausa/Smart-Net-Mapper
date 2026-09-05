@@ -25,7 +25,7 @@ internal static class MapperSourceBuilder
         "MakeGenericMethod"
     ];
 
-    internal static void BuildSource(SourceBuilder builder, List<MapperMethodModel> methods)
+    internal static void BuildSource(SourceBuilder builder, EquatableArray<MapperMethodModel> methods)
     {
         var ns = methods[0].Namespace;
         var className = methods[0].ClassName;

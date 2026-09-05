@@ -8,11 +8,15 @@ public class CollectionMatrixMappingTests
 {
     public static TheoryData<int> ElementCounts => [0, 1, 10];
 
+#pragma warning disable IDE0028
     private static MatrixSrcItem[] MakeArray(int count) =>
         Enumerable.Range(1, count).Select(i => new MatrixSrcItem { Value = i }).ToArray();
+#pragma warning restore IDE0028
 
+#pragma warning disable IDE0028
     private static List<MatrixSrcItem> MakeList(int count) =>
         Enumerable.Range(1, count).Select(i => new MatrixSrcItem { Value = i }).ToList();
+#pragma warning restore IDE0028
 
     // ── Array source ─────────────────────────────────────────────────────────
 

@@ -72,6 +72,20 @@ public static partial Destination Map(Source source)
 }
 ```
 
+### 拡張メソッドとして定義する
+
+`[Mapper]` メソッドは拡張メソッドとして宣言できます。生成される実装側の宣言にも `this` が付くため、呼び出し側は自然に書けます。
+
+```csharp
+public static partial class ObjectMapper
+{
+    [Mapper]
+    public static partial Destination ToDestination(this Source source);
+}
+
+var destination = source.ToDestination();
+```
+
 ---
 
 ## 属性リファレンス

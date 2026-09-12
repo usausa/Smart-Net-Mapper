@@ -30,6 +30,31 @@ public class BasicMappingTests
         Assert.Equal("New Object", destination.Name);
         Assert.Equal("Created via MapToNew", destination.Description);
     }
+
+    [Fact]
+    public void ToDestinationExtensionReturnsNewObjectWithCopiedProperties()
+    {
+        var source = new BasicSource { Id = 7, Name = "Extension", Description = "Called as extension" };
+
+        var destination = source.ToDestination();
+
+        Assert.Equal(7, destination.Id);
+        Assert.Equal("Extension", destination.Name);
+        Assert.Equal("Called as extension", destination.Description);
+    }
+
+    [Fact]
+    public void CopyToExtensionCopiesAllProperties()
+    {
+        var source = new BasicSource { Id = 8, Name = "Extension", Description = "Void pattern" };
+        var destination = new BasicDestination();
+
+        source.CopyTo(destination);
+
+        Assert.Equal(8, destination.Id);
+        Assert.Equal("Extension", destination.Name);
+        Assert.Equal("Void pattern", destination.Description);
+    }
 }
 
 public class DifferentPropertyMappingTests

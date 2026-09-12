@@ -26,6 +26,56 @@ public class MapperSourceBuilderTests
         Assert.Contains("destination.Name = src.Name", generated, StringComparison.Ordinal);
     }
 
+    // Extension method mapper keeps the this modifier on the implementing declaration (CS0755 otherwise)
+    [Fact]
+    public void ExtensionMethodMapperKeepsThisModifier()
+    {
+        var source = """
+            using Smart.Mapper;
+            namespace Test;
+            public class Source { public int Value { get; set; } }
+            public class Dest { public int Value { get; set; } }
+            public static partial class Mapper
+            {
+                [Mapper]
+                public static partial Dest ToDest(this Source src);
+
+                [Mapper]
+                public static partial void CopyTo(this Source src, Dest dst);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+
+        var generated = GeneratorTestHelper.GetGeneratedSource(source);
+        Assert.Contains("ToDest(this global::Test.Source src)", generated, StringComparison.Ordinal);
+        Assert.Contains("CopyTo(this global::Test.Source src, global::Test.Dest dst)", generated, StringComparison.Ordinal);
+    }
+
+    // Extension method mapper on a readonly struct source keeps both this and in
+    [Fact]
+    public void ExtensionMethodMapperOnReadOnlyStructKeepsThisAndIn()
+    {
+        var source = """
+            using Smart.Mapper;
+            namespace Test;
+            public readonly struct Source { public int Value { get; init; } }
+            public class Dest { public int Value { get; set; } }
+            public static partial class Mapper
+            {
+                [Mapper]
+                public static partial Dest ToDest(this in Source src);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+
+        var generated = GeneratorTestHelper.GetGeneratedSource(source);
+        Assert.Contains("ToDest(this in global::Test.Source src)", generated, StringComparison.Ordinal);
+    }
+
     // Constructor mapping (record) generates new Dest(src.Prop) pattern
     [Fact]
     public void RecordMappingGeneratesConstructorPattern()

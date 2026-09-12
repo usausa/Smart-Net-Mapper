@@ -98,6 +98,23 @@ internal static class MapperSourceBuilder
     internal static string GetCultureFieldName(string cultureName) =>
         "__culture_" + cultureName.Replace('-', '_').Replace('.', '_');
 
+    // Emits the source parameter with the modifiers of the defining declaration: this for
+    // extension mappers (both parts must agree), in for readonly struct sources.
+    private static void AppendSourceParameter(SourceBuilder builder, MapperMethodModel method)
+    {
+        if (method.IsExtensionMethod)
+        {
+            builder.Append("this ");
+        }
+
+        if (method.IsSourceReadOnlyStruct)
+        {
+            builder.Append("in ");
+        }
+
+        builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName);
+    }
+
     internal static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
         // Mappers that emit collection loops have large bodies; forcing them into callers bloats
@@ -117,11 +134,7 @@ internal static class MapperSourceBuilder
         {
             builder.Append(method.DestinationTypeName).Append(" ");
             builder.Append(method.MethodName).Append("(");
-            if (method.IsSourceReadOnlyStruct)
-            {
-                builder.Append("in ");
-            }
-            builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName);
+            AppendSourceParameter(builder, method);
 
             foreach (var customParam in method.CustomParameters)
             {
@@ -134,11 +147,8 @@ internal static class MapperSourceBuilder
         {
             builder.Append("void ");
             builder.Append(method.MethodName).Append("(");
-            if (method.IsSourceReadOnlyStruct)
-            {
-                builder.Append("in ");
-            }
-            builder.Append(method.SourceTypeName).Append(" ").Append(method.SourceParameterName).Append(", ");
+            AppendSourceParameter(builder, method);
+            builder.Append(", ");
             builder.Append(method.DestinationTypeName).Append(" ").Append(method.DestinationParameterName!);
 
             foreach (var customParam in method.CustomParameters)

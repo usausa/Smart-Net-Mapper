@@ -72,6 +72,20 @@ public static partial Destination Map(Source source)
 }
 ```
 
+### Extension method mappers
+
+A `[Mapper]` method can be declared as an extension method. The generated implementation keeps the `this` modifier, so the mapper reads naturally at the call site.
+
+```csharp
+public static partial class ObjectMapper
+{
+    [Mapper]
+    public static partial Destination ToDestination(this Source source);
+}
+
+var destination = source.ToDestination();
+```
+
 ---
 
 ## Attribute Reference

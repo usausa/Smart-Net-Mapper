@@ -26,6 +26,9 @@ internal sealed record MapperMethodModel(
     string? DateTimeFormat = default,
     string? NumberFormat = default,
     bool IsSourceReadOnlyStruct = default,
+    // The defining declaration has the this modifier on the source parameter. The implementing
+    // declaration must repeat it (CS0755), so the emitter carries it over.
+    bool IsExtensionMethod = default,
     string? MapConverterTypeName = default,
     string MapConverterMethodName = "Convert",
     string? CollectionConverterTypeName = default,

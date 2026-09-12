@@ -13,6 +13,13 @@ internal static partial class TestMappers
     [Mapper]
     public static partial BasicDestination MapToNew(BasicSource source);
 
+    // Extension method mappers (this is kept on the generated implementation)
+    [Mapper]
+    public static partial BasicDestination ToDestination(this BasicSource source);
+
+    [Mapper]
+    public static partial void CopyTo(this BasicSource source, BasicDestination destination);
+
     // Different property names mapping
     [Mapper]
     [MapProperty(nameof(DifferentPropertyDestination.DestId), nameof(DifferentPropertySource.SourceId))]

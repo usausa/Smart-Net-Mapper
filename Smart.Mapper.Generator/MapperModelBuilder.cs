@@ -102,6 +102,7 @@ internal static class MapperModelBuilder
             SourceTypeName: sourceParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             SourceParameterName: sourceParam.Name,
             IsSourceReadOnlyStruct: isSourceReadOnlyStruct,
+            IsExtensionMethod: symbol.IsExtensionMethod,
             DestinationTypeName: destinationTypeName,
             DestinationParameterName: destinationParameterName,
             ReturnsDestination: returnsDestination,

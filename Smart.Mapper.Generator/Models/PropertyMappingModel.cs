@@ -1,5 +1,7 @@
 namespace Smart.Mapper.Generator.Models;
 
+using Microsoft.CodeAnalysis;
+
 using SourceGenerateHelper;
 
 // Represents the kind of enum conversion to perform.
@@ -60,18 +62,23 @@ internal sealed record PropertyMappingModel(
     bool IsConstructorParameter = default,
     int Order = default,
     int DefinitionOrder = default,
-    // Optional per-mapping settings
+    // Optional per-mapping settings. The RefKinds of the matched method's parameters decide how each
+    // argument is passed
     string? ConverterMethod = default,
     bool ConverterAcceptsCustomParameters = default,
+    EquatableArray<RefKind> ConverterParameterRefKinds = default,
     string? ConditionMethod = default,
     bool ConditionAcceptsCustomParameters = default,
+    EquatableArray<RefKind> ConditionParameterRefKinds = default,
     NullBehaviorType NullBehavior = NullBehaviorType.Default,
     string? NullValue = default,
     string? EffectiveCulture = default,
     string? EffectiveDateTimeFormat = default,
     string? EffectiveNumberFormat = default,
-    // Conversion-detection results
+    // Conversion-detection results. With a culture, the overload of the specialized method taking the
+    // culture and the format is called, and the culture field goes to it with CultureArgumentModifier
     string? SpecializedConverterMethod = default,
+    string CultureArgumentModifier = "",
     ParseMethodKind ParseMethod = ParseMethodKind.None,
     UserDefinedConversionKind UserDefinedConversion = UserDefinedConversionKind.None,
     bool RequiresExplicitNumericCast = default,

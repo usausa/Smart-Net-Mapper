@@ -159,7 +159,7 @@ public class ConstructorParameterMappingTests
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("new global::Test.Dst(src.A, src.B)", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("destination.Extra", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("__d.Extra", generated, StringComparison.Ordinal);
     }
 
     // void マッパーはコンストラクタを呼ばないため、便宜的なパラメータ付きコンストラクタが
@@ -248,7 +248,7 @@ public class ConstructorParameterMappingTests
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("B = src.B", generated, StringComparison.Ordinal);
-        Assert.Contains("destination.A = src.A", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.A = src.A", generated, StringComparison.Ordinal);
     }
 
     // 何もコンストラクタを要求しない場合はパラメータレス構築が選ばれる。
@@ -277,7 +277,7 @@ public class ConstructorParameterMappingTests
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("new global::Test.Dst()", generated, StringComparison.Ordinal);
-        Assert.Contains("destination.Value = src.Value", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Value = src.Value", generated, StringComparison.Ordinal);
     }
 
     // パラメータレスコンストラクタが無い型は、引き続きパラメータ付きコンストラクタで構築される。

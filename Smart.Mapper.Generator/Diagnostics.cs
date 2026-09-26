@@ -3,7 +3,7 @@ namespace Smart.Mapper.Generator;
 using Microsoft.CodeAnalysis;
 
 // Core Mapper generator diagnostics. IDs follow a phase-based banding aligned with the pipeline:
-//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / custom parameters)
+//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters)
 //   SMP01xx  attribute validation(duplicate targets, callbacks, converters, conditions)
 //   SMP02xx  explicit features   (MapUsing / MapFrom / MapCollection / MapNested resolution)
 //   SMP03xx  construction        (constructor parameters, init-only / required members)
@@ -35,6 +35,22 @@ internal static class Diagnostics
         id: "SMP0003",
         title: "Duplicate custom parameter type",
         messageFormat: "[Mapper] custom parameters must have unique types. method=[{0}], type=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor ReservedParameterName { get; } = new(
+        id: "SMP0004",
+        title: "Reserved parameter name",
+        messageFormat: "[Mapper] parameter names starting with __ are reserved for the generated code, rename the parameter. method=[{0}], parameter=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnsupportedParameterModifier { get; } = new(
+        id: "SMP0005",
+        title: "Unsupported parameter modifier",
+        messageFormat: "[Mapper] parameter modifier is not supported, the generated code reads every parameter and assigns the destination members. method=[{0}], parameter=[{1}], modifier=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -185,8 +201,8 @@ internal static class Diagnostics
 
     public static DiagnosticDescriptor UnsupportedInitOnlyCollectionTarget { get; } = new(
         id: "SMP0212",
-        title: "Unsupported init-only target",
-        messageFormat: "[MapCollection]/[MapNested] target is init-only or required. method=[{0}], target=[{1}]",
+        title: "Unassignable target",
+        messageFormat: "[MapCollection]/[MapNested] target has no setter the mapper can call, or is init-only or required. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -219,6 +235,14 @@ internal static class Diagnostics
         id: "SMP0216",
         title: "Ignored constructor parameter",
         messageFormat: "[MapIgnore] member is assigned by a constructor. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnsupportedCollectionTarget { get; } = new(
+        id: "SMP0217",
+        title: "Unsupported collection target",
+        messageFormat: "[MapCollection] target cannot take the collection the generated code creates for it. method=[{0}], target=[{1}], collection=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);

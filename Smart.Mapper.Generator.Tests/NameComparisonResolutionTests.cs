@@ -178,7 +178,7 @@ public class NameComparisonResolutionTests
         AssertCompiles(source);
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
-        Assert.Contains("destination.Value = src.Other", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Value = src.Other", generated, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class NameComparisonResolutionTests
         AssertCompiles(source);
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
-        Assert.Contains("destination.Child", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Child", generated, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public class NameComparisonResolutionTests
         AssertCompiles(source);
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
-        Assert.Contains("destination.Items", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Items", generated, StringComparison.Ordinal);
     }
 
     // [MapIgnore] などターゲット名のみを取る属性も同様に一致する。
@@ -258,7 +258,7 @@ public class NameComparisonResolutionTests
         AssertCompiles(source);
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
-        Assert.Contains("destination.Keep", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("destination.Value", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Keep", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("__d.Value", generated, StringComparison.Ordinal);
     }
 }

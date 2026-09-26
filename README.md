@@ -11,9 +11,9 @@ It automatically generates property-copying code at compile time for `static par
 - **Zero overhead** - no reflection at runtime; all code is generated statically at compile time
 - **Specialized-method dispatch** - `ConvertTo{TargetType}` naming convention enables direct-call generation, friendly to JIT inlining
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
-- **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are transparently propagated to all hooks
+- **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are passed on to the `[MapUsing]`, `Converter`, `[MapCondition]`, `[BeforeMap]` and `[AfterMap]` methods that declare them, and can be used in `[MapExpression]`
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 32 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
+- **Rich diagnostics** - 35 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
 
 ## Installation
 
@@ -64,11 +64,11 @@ public static partial void Map(Source source, Destination destination)
 ```csharp
 public static partial Destination Map(Source source)
 {
-    var destination = new Destination();
-    destination.Id          = source.Id;
-    destination.Name        = source.Name;
-    destination.Description = source.Description;
-    return destination;
+    var __d = new Destination();
+    __d.Id          = source.Id;
+    __d.Name        = source.Name;
+    __d.Description = source.Description;
+    return __d;
 }
 ```
 
@@ -101,7 +101,7 @@ var destination = source.ToDestination();
 | `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
 | `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
 | `[Mapper(NumberFormat = "...")]` | Format string for numeric <-> `string` conversion (use with `Culture`) |
-| `[MapProperty]` | Explicit property-to-property mapping; supports `NullValue`, `Culture`, `DateTimeFormat`, `NumberFormat`, `Converter` |
+| `[MapProperty]` | Explicit property-to-property mapping; supports `NullValue`, `NullBehavior`, `Culture`, `DateTimeFormat`, `NumberFormat`, `Converter` |
 | `[MapProperty<T>]` | Type-safe variant of `[MapProperty]` (C# 11+) |
 | `[MapUsing]` | Calculates a value via a static method (custom-parameter aware) |
 | `[MapFrom]` | Maps from a source instance-method call or dot-notation property path |
@@ -111,13 +111,13 @@ var destination = source.ToDestination();
 | `[MapIgnore]` | Excludes a destination property from mapping |
 | `[BeforeMap]` | Callback invoked before mapping |
 | `[AfterMap]` | Callback invoked after mapping |
-| `[MapCondition]` | Conditional mapping - global or per-property |
-| `[MapCollection]` | Collection property mapping via an explicit mapper method |
+| `[MapCondition]` | Maps a destination property only when a condition method returns `true` |
+| `[MapCollection]` | Collection property mapping via an explicit mapper method; supports `Strategy`, `Converter` |
 | `[MapNested]` | Nested object mapping via an explicit mapper method |
-| `[ValueConverter]` | Custom type converter (method / class level) |
+| `[ValueConverter]` | Custom type converter (method / class level); supports `Method` |
 | `[CollectionConverter]` | Custom collection converter (method / class level) |
 
-> **First argument convention** - For all attributes, the **first** argument is the **destination** (target) property name; the **second** is the source.
+> **First argument convention** - For the attributes that map a destination member, the **first** argument is the **destination** (target) name. The **second** is the source for `[MapProperty]`, `[MapFrom]`, `[MapCollection]` and `[MapNested]`, and the method, constant or expression for `[MapUsing]`, `[MapCondition]`, `[MapConstant]` and `[MapExpression]`.
 
 ### Class-level attributes
 
@@ -176,7 +176,7 @@ public static partial Dst Map(Src src);
 Generated code — both names resolve to the declared members:
 
 ```csharp
-destination.Value = src.other;
+__d.Value = src.other;
 ```
 
 This holds for every mapping attribute, including target-only ones such as `[MapIgnore]`.
@@ -189,6 +189,33 @@ This holds for every mapping attribute, including target-only ones such as `[Map
 [MapProperty(nameof(Destination.Count), nameof(Source.Count), NullValue = 0)]
 public static partial void Map(Source source, Destination destination);
 ```
+
+### Keeping the destination value (`NullBehavior.Skip`)
+
+With `NullBehavior.Skip`, a null source leaves the destination member as it is instead of assigning a value:
+
+```csharp
+// Source: string? Name, int? Count / Destination: string Name, string Count
+[Mapper]
+[MapProperty(nameof(Destination.Name), NullBehavior = NullBehavior.Skip)]
+[MapProperty(nameof(Destination.Count), NullBehavior = NullBehavior.Skip)]
+public static partial void Map(Source source, Destination destination);
+```
+
+Generated code:
+
+```csharp
+if (source.Name is not null)
+{
+    destination.Name = source.Name!;
+}
+if (source.Count is not null)
+{
+    destination.Count = DefaultValueConverter.ConvertToString(source.Count.GetValueOrDefault());
+}
+```
+
+A member assigned through a constructor or an object initializer has no previous value to keep, so `NullBehavior.Skip` is rejected there (SMP0215).
 
 ### Ignore properties (`[MapIgnore]`)
 
@@ -220,6 +247,8 @@ private static string CombineFullName(Source source, FormattingContext context)
     => $"{source.FirstName}{context.Separator}{source.LastName}";
 ```
 
+The `Converter` of `[MapProperty]`, `[MapCondition]` and `[BeforeMap]` / `[AfterMap]` methods receive them the same way when they declare them after their usual parameters, and a `[MapExpression]` can refer to them by name. The mapper methods of `[MapCollection]` / `[MapNested]` and the methods of `[ValueConverter]` / `[CollectionConverter]` classes do not receive them.
+
 ### Source method / property-path (`[MapFrom]`)
 
 ```csharp
@@ -242,6 +271,8 @@ public static partial void Map(Source source, Destination destination);
 Non-generic variant: `[MapConstant("Status", "Active")]`
 For expressions: `[MapExpression("CreatedAt", "System.DateTime.Now")]`
 
+An expression is compiled as a static local function that takes the mapper's parameters under the same names, so it can refer to them (e.g. `"source.Price * source.Quantity"`), and variables it declares with `out var` or patterns do not clash with those of other expressions.
+
 ### Before / After Map callbacks
 
 ```csharp
@@ -256,17 +287,7 @@ private static void AfterMapping(Source source, Destination destination) { /* ..
 
 ### Conditional mapping (`[MapCondition]`)
 
-Global condition:
-
-```csharp
-[Mapper]
-[MapCondition(nameof(ShouldMap))]
-public static partial void Map(Source source, Destination destination);
-
-private static bool ShouldMap(Source source, Destination destination) => source.IsActive;
-```
-
-Per-property condition:
+The destination property is assigned only when the condition method, which takes the source value (and the custom parameters), returns `true`.
 
 ```csharp
 [Mapper]
@@ -285,6 +306,26 @@ public static partial void Map(Source source, Destination destination);
 // Only 'Id' is mapped; other properties are ignored.
 ```
 
+### Assignment order (`Order`)
+
+`[MapProperty]`, `[MapConstant]`, `[MapExpression]`, `[MapUsing]`, `[MapFrom]`, `[MapNested]` and `[MapCollection]` take `Order`. Assignments of the same kind are emitted in ascending `Order` (0 by default), then in the order they are declared:
+
+```csharp
+[Mapper(AutoMap = false)]
+[MapConstant(nameof(Destination.Label), "second", Order = 2)]
+[MapConstant(nameof(Destination.Note), "first", Order = 1)]
+public static partial void Map(Source source, Destination destination);
+```
+
+Generated code:
+
+```csharp
+destination.Note = "first";
+destination.Label = "second";
+```
+
+The kinds follow a fixed sequence between `[BeforeMap]` and `[AfterMap]`: property mappings (auto-mapping and `[MapProperty]`, those guarded by a null check of a source path last), `[MapConstant]`, `[MapExpression]`, `[MapUsing]`, `[MapFrom]`, `[MapNested]`, then `[MapCollection]`. `Order` does not move an assignment across kinds.
+
 ---
 
 ## Nested Property Mapping
@@ -295,8 +336,8 @@ Use dot notation in `[MapProperty]` to flatten or unflatten nested properties.
 
 ```csharp
 [Mapper]
-[MapProperty("Child.Id",   "ChildId")]
-[MapProperty("Child.Name", "ChildName")]
+[MapProperty("ChildId",   "Child.Id")]
+[MapProperty("ChildName", "Child.Name")]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -314,8 +355,8 @@ if (source.Child is not null)
 
 ```csharp
 [Mapper]
-[MapProperty("Value1", "Child1.Value")]
-[MapProperty("Value2", "Child2.Value")]
+[MapProperty("Child1.Value", "Value1")]
+[MapProperty("Child2.Value", "Value2")]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -346,14 +387,56 @@ internal static partial class ObjectMapper
 }
 ```
 
-Generated code:
+Generated code (for a `List<SourceChild>` source and a `List<DestinationChild>` target):
 
 ```csharp
-destination.Children = global::Smart.Mapper.DefaultCollectionConverter.ToList<SourceChild, DestinationChild>(
-    source.Children, MapChild)!;
+{
+    var __src = CollectionsMarshal.AsSpan(source.Children);
+    var __list = new List<DestinationChild>(__src.Length);
+    CollectionsMarshal.SetCount(__list, __src.Length);
+    var __dst = CollectionsMarshal.AsSpan(__list);
+    for (var __i = 0; __i < __src.Length; __i++)
+    {
+        __dst[__i] = MapChild(__src[__i]);
+    }
+    destination.Children = __list;
+}
 ```
 
-`DefaultCollectionConverter` provides `ToArray` / `ToList` overloads for both function-mapper and action-mapper variants. A null source collection returns `default`.
+The loop is generated inline, shaped by the source and target collection types. A null source collection sets the target to `default`. The target has to take the collection the loop builds: a `List<T>` for `List<T>` and its interfaces, an array, a `HashSet<T>` for sets, or the immutable or frozen collection of its type. A collection class of its own, such as `ObservableCollection<T>`, is reported (SMP0217) unless a collection converter builds it. A void element mapper `(SourceChild, DestinationChild)` fills a `new DestinationChild()`, so the element type has to be creatable with `new()` (SMP0210 otherwise).
+
+With a collection converter (`[CollectionConverter]`, see below), its method is called instead, as in `CustomCollectionConverter.ToList<SourceChild, DestinationChild>(source.Children, MapChild)!`. `Converter` on `[MapCollection]` names the method to call, on the `[CollectionConverter]` type or, without one, on `DefaultCollectionConverter`, which provides such methods (`ToList`, `ToArray`, `ToHashSet`, `ToImmutableArray`, ...) for both function-mapper and action-mapper variants.
+
+### Refilling the existing collection (`Strategy = CollectionStrategy.InPlace`)
+
+By default the target gets a new collection. `CollectionStrategy.InPlace` keeps the target instance, clears it and adds the mapped elements, which preserves a reference held elsewhere:
+
+```csharp
+[Mapper(AutoMap = false)]
+[MapCollection(nameof(Destination.Children), Mapper = nameof(MapChild), Strategy = CollectionStrategy.InPlace)]
+public static partial void Map(Source source, Destination destination);
+```
+
+Generated code (for a `List<SourceChild>` source and a `List<DestinationChild>` target):
+
+```csharp
+{
+    if (destination.Children is null)
+    {
+        destination.Children = new List<DestinationChild>(source.Children.Count);
+    }
+    destination.Children.Clear();
+    destination.Children.EnsureCapacity(source.Children.Count);
+    var __srcSpan = CollectionsMarshal.AsSpan(source.Children);
+    var __dstColl = destination.Children;
+    for (var __i = 0; __i < __srcSpan.Length; __i++)
+    {
+        __dstColl.Add(MapChild(__srcSpan[__i]));
+    }
+}
+```
+
+A null target gets a new `List<T>` (a `HashSet<T>` for `HashSet<T>` / `ISet<T>`), so the target has to be a settable property that takes it, such as `List<T>`, `IList<T>`, `ICollection<T>`, `IReadOnlyList<T>`, `HashSet<T>` or `ISet<T>` (SMP0217 otherwise, SMP0212 without a setter). A target declared as an interface is filled through `ICollection<T>`, so its instance has to be mutable. `InPlace` always emits the loop; a collection converter is not used.
 
 ---
 
@@ -391,12 +474,12 @@ Generated code:
 ```csharp
 public static partial DestModel Map(SrcModel src)
 {
-    var destination = new DestModel(src.Id, src.Name);
-    return destination;
+    var __d = new DestModel(src.Id, src.Name);
+    return __d;
 }
 ```
 
-> `void` mapper is not allowed for `init-only` / `record` destination types (SMP0302).
+> A `void` mapper cannot assign `init`-only members, such as the properties of a positional `record` (SMP0302).
 
 ### Conversion of constructor arguments
 
@@ -413,7 +496,7 @@ public static partial Dst Map(Src src);
 Generated code:
 
 ```csharp
-var destination = new Dst(src.Value is not null
+var __d = new Dst(src.Value is not null
     ? DefaultValueConverter.ConvertToString(src.Value.GetValueOrDefault())
     : default!);
 ```
@@ -468,6 +551,8 @@ public static partial Dst Map(Src src);
 Nullable intermediate paths on the **source side** are guarded with `if (... is not null)`.
 Nullable intermediate paths on the **destination side** are auto-instantiated with `??= new`.
 
+A source parameter (or the destination parameter of a void mapper) declared nullable, as in `Map(Src? source)`, is checked before anything is mapped. When it is null nothing is mapped: a return-type mapper returns `default`, and a void mapper returns without touching the destination.
+
 ---
 
 ## Type Conversion
@@ -490,7 +575,7 @@ destination.StringValue = DefaultValueConverter.ConvertToString(source.IntValue)
 ```csharp
 // int? -> string
 destination.StringValue = source.NullableValue is not null
-    ? DefaultValueConverter.ConvertToString(source.NullableValue.Value)
+    ? DefaultValueConverter.ConvertToString(source.NullableValue.GetValueOrDefault())
     : default!;
 ```
 
@@ -507,6 +592,24 @@ public static class CustomConverter
 [ValueConverter(typeof(CustomConverter))]
 public static partial void Map(Source source, Destination destination);
 ```
+
+The converter class may be nested or generic (`typeof(Outer.CustomConverter)`, `typeof(CustomConverter<TMarker>)`). `Method` changes the name its methods are looked up by (default `"Convert"`): the specialized methods become `{Method}To{TargetType}`, and the generic fallback `{Method}<TSource, TDestination>`:
+
+```csharp
+public static class MapConverter
+{
+    public static string MapToString(int source) => $"ID_{source}";
+    public static TDestination Map<TSource, TDestination>(TSource source) { ... }
+}
+
+[Mapper]
+[ValueConverter(typeof(MapConverter), Method = "Map")]
+public static partial void Map(Source source, Destination destination);
+
+// Generated: destination.Value = MapConverter.MapToString(source.Value);
+```
+
+A converter method that is missing, such as the generic fallback of a conversion no specialized method covers, is reported (SMP0104).
 
 Priority order (highest to lowest):
 
@@ -534,6 +637,8 @@ public static class CustomCollectionConverter
 public static partial void Map(Source source, Destination destination);
 ```
 
+The method is picked by the target type (`ToList`, `ToArray`, `ToHashSet`, `ToImmutableArray`, ...) unless `Converter` of `[MapCollection]` names one, and is called as `Method<TSourceElement, TTargetElement>(source, mapper)`. A method that is missing, does not take the source collection, or returns something the target property cannot take is reported (SMP0104).
+
 ---
 
 ## Culture / Format
@@ -546,12 +651,14 @@ internal static partial class AppMappers
     public static partial Dest Map(Src src);
 
     [Mapper]
-    [MapProperty(nameof(Dst.Amount), nameof(Src.Price), Culture = "en-US", NumberFormat = "C")]
+    [MapProperty(nameof(Dest2.Amount), nameof(Src2.Price), Culture = "en-US", NumberFormat = "C")]
     public static partial Dest2 Map(Src2 src);
 }
 ```
 
 Priority: `[MapProperty]` > `[Mapper]` > `[MapperProfile]` > `CultureInfo.InvariantCulture`
+
+With a culture, the specialized methods of the converter are called through their overload taking the culture and the format, as in `DefaultValueConverter.ConvertToString(int source, IFormatProvider culture, string? format)`. A custom `[ValueConverter]` has to provide that overload for each specialized method it uses (SMP0104 otherwise).
 
 The resolved `CultureInfo` is cached as a `static readonly` field in the generated class to avoid repeated `GetCultureInfo(...)` calls.
 
@@ -565,10 +672,54 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 
 - `<IsAotCompatible>true</IsAotCompatible>` is declared in `Smart.Mapper.csproj`
 - All type conversions are handled through specialized methods - no generic reflection fallback at runtime
-- `Activator.CreateInstance` is never used; object creation is expanded inline by the generator
+- The generated code never uses `Activator.CreateInstance`; object creation is expanded inline by the generator (the `Action` overloads of `DefaultCollectionConverter`, which create elements with `new()`, are marked `RequiresDynamicCode`)
 - `[DynamicallyAccessedMembers]` annotations are applied to `ValueConverterAttribute.ConverterType` and `CollectionConverterAttribute.ConverterType`
 
 > **`[MapExpression]` warning** - If an expression contains reflection APIs (`Activator`, `Type.GetType`, `MethodInfo`, etc.), SMP0403 is emitted. Prefer `[MapFrom]` or `[MapUsing]` in AOT contexts.
+
+---
+
+## Diagnostics
+
+| ID | Description | Severity |
+|----|-------------|----------|
+| SMP0001 | Mapper method must be `static partial` | Error |
+| SMP0002 | Mapper method has an invalid number of parameters | Error |
+| SMP0003 | Two custom parameters have the same type | Error |
+| SMP0004 | Mapper parameter name starts with `__` (reserved for the generated code) | Error |
+| SMP0005 | Parameter has a modifier the generated code cannot work with (`out`, or `in` / `ref readonly` on the struct destination of a void mapper) | Error |
+| SMP0101 | Several mapping attributes target the same destination property | Error |
+| SMP0102 | `BeforeMap` method signature does not match | Error |
+| SMP0103 | `AfterMap` method signature does not match | Error |
+| SMP0104 | Converter method is not found or its signature does not match | Error |
+| SMP0105 | Converter return type does not match the target property type | Error |
+| SMP0106 | Property condition method signature does not match | Error |
+| SMP0201 | `MapUsing` method signature does not match | Error |
+| SMP0202 | `MapUsing` return type does not match the target property type | Error |
+| SMP0203 | `[MapFrom]` target property is not found on the destination type | Error |
+| SMP0204 | `MapFrom` member is not a parameterless method or a property path of the source type | Error |
+| SMP0205 | `MapFrom` member type does not match the target property type | Error |
+| SMP0206 | `[MapCollection]` / `[MapNested]` source property is not found | Error |
+| SMP0207 | `[MapCollection]` / `[MapNested]` target property is not found | Error |
+| SMP0208 | `[MapCollection]` source property is not a collection type | Error |
+| SMP0209 | `[MapCollection]` target property is not a collection type | Error |
+| SMP0210 | `MapCollection` element mapper method is not found or its signature does not match | Error |
+| SMP0211 | `MapNested` mapper method is not found or its signature does not match | Error |
+| SMP0212 | `[MapCollection]` / `[MapNested]` target cannot be assigned (no setter the mapper can call, init-only or required) | Error |
+| SMP0213 | `[MapProperty]` source property is not found | Error |
+| SMP0214 | `[MapProperty]` target property is not found or cannot be assigned | Error |
+| SMP0215 | `[MapCondition]` / `NullBehavior.Skip` on a target assigned through a constructor or object initializer | Error |
+| SMP0216 | `[MapIgnore]` on a member assigned through a constructor | Error |
+| SMP0217 | `[MapCollection]` target cannot take the collection the generated code creates for it | Error |
+| SMP0301 | Constructor parameter has no matching source property | Error |
+| SMP0302 | A `void` mapper cannot assign `init`-only members (such as the properties of a positional `record`) | Error |
+| SMP0303 | `required` member is not mapped | Error |
+| SMP0401 | `DateTimeFormat` / `NumberFormat` is specified without `Culture` | Error |
+| SMP0402 | Not AOT-safe: the conversion may fall back to the generic `Convert<TSource, TDestination>` | Error |
+| SMP0403 | AOT warning: `MapExpression` may contain a reflection pattern | Warning |
+| SMP0501 | Strict mode: a destination property is not mapped | Warning |
+
+See [Diagnostics.md](Diagnostics.md) for the cause of each diagnostic and how to fix it.
 
 ---
 
@@ -650,7 +801,11 @@ Both Direct and SmartMapper create `CollectionWrapper { Items = List<T> }`.
 Uses xUnit v3 with Microsoft Testing Platform.
 
 ```powershell
+# Run all tests
 dotnet run --project Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
+
+# Run with code coverage (Cobertura XML under TestResults in the output directory)
+dotnet run --project Smart.Mapper.Tests/Smart.Mapper.Tests.csproj -- --coverage --coverage-settings CodeCoverage.runsettings
 ```
 
 You can also run tests from Visual Studio Test Explorer.

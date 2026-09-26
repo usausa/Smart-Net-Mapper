@@ -11,9 +11,9 @@
 - **ゼロオーバーヘッド** - リフレクションを一切使用しない静的コード生成
 - **スペシャライズドメソッド方式** - `ConvertTo{TargetType}` 命名規則による直接呼び出し生成（JIT インライン展開と相性良好）
 - **メソッド単位の宣言** - `[Mapper]` を個別メソッドに付与するため、通常のヘルパー関数と同じ感覚で扱える
-- **カスタムパラメーター透過** - `Map(Src, Dst, TContext ctx)` のように追加引数をすべてのフックに透過的に伝播
+- **カスタムパラメーター透過** - `Map(Src, Dst, TContext ctx)` のような追加引数を、それを宣言した `[MapUsing]`・`Converter`・`[MapCondition]`・`[BeforeMap]`・`[AfterMap]` のメソッドに渡し、`[MapExpression]` の式からも参照できる
 - **NativeAOT / トリミング完全対応** - `<IsAotCompatible>true</IsAotCompatible>` 宣言済み・NativeAOT smoke test 通過済み
-- **充実した診断** - フェーズ別採番の 32 種（SMP0001〜SMP0501）をコンパイル時に発行
+- **充実した診断** - フェーズ別採番の 35 種（SMP0001〜SMP0501）をコンパイル時に発行
 
 ## インストール
 
@@ -64,11 +64,11 @@ public static partial void Map(Source source, Destination destination)
 ```csharp
 public static partial Destination Map(Source source)
 {
-    var destination = new Destination();
-    destination.Id          = source.Id;
-    destination.Name        = source.Name;
-    destination.Description = source.Description;
-    return destination;
+    var __d = new Destination();
+    __d.Id          = source.Id;
+    __d.Name        = source.Name;
+    __d.Description = source.Description;
+    return __d;
 }
 ```
 
@@ -101,7 +101,7 @@ var destination = source.ToDestination();
 | `[Mapper(Culture = "...")]` | 型変換時に使用するカルチャ（例: `"ja-JP"`） |
 | `[Mapper(DateTimeFormat = "...")]` | `DateTime` <-> `string` 変換時のフォーマット（`Culture` と共に使用） |
 | `[Mapper(NumberFormat = "...")]` | 数値型 <-> `string` 変換時のフォーマット（`Culture` と共に使用） |
-| `[MapProperty]` | プロパティ間の明示的マッピング。`NullValue`・`Culture`・`DateTimeFormat`・`NumberFormat`・`Converter` 対応 |
+| `[MapProperty]` | プロパティ間の明示的マッピング。`NullValue`・`NullBehavior`・`Culture`・`DateTimeFormat`・`NumberFormat`・`Converter` 対応 |
 | `[MapProperty<T>]` | 型安全版 `[MapProperty]`（C# 11+） |
 | `[MapUsing]` | 静的メソッドによる値の計算（カスタムパラメーター対応） |
 | `[MapFrom]` | ソースオブジェクトのインスタンスメソッド呼び出し、またはドット記法プロパティパス |
@@ -111,13 +111,13 @@ var destination = source.ToDestination();
 | `[MapIgnore]` | プロパティのマッピングを除外 |
 | `[BeforeMap]` | マッピング前のコールバック |
 | `[AfterMap]` | マッピング後のコールバック |
-| `[MapCondition]` | 条件付きマッピング（グローバルまたはプロパティ単位） |
-| `[MapCollection]` | 明示的マッパーメソッドを使ったコレクションマッピング |
+| `[MapCondition]` | 条件メソッドが `true` を返したときだけ destination プロパティをマッピング |
+| `[MapCollection]` | 明示的マッパーメソッドを使ったコレクションマッピング。`Strategy`・`Converter` 対応 |
 | `[MapNested]` | 明示的マッパーメソッドを使ったネストオブジェクトマッピング |
-| `[ValueConverter]` | カスタム型変換器（メソッド / クラスレベル） |
+| `[ValueConverter]` | カスタム型変換器（メソッド / クラスレベル）。`Method` 対応 |
 | `[CollectionConverter]` | カスタムコレクション変換器（メソッド / クラスレベル） |
 
-> **第1引数の規則** - すべての属性で、第1引数は **destination**（ターゲット）プロパティ名、第2引数は source です。
+> **第1引数の規則** - destination のメンバーをマッピングする属性では、第1引数は **destination**（ターゲット）名です。第2引数は `[MapProperty]`・`[MapFrom]`・`[MapCollection]`・`[MapNested]` では source、`[MapUsing]`・`[MapCondition]`・`[MapConstant]`・`[MapExpression]` ではメソッド・定数・式です。
 
 ### クラスレベル属性
 
@@ -176,7 +176,7 @@ public static partial Dst Map(Src src);
 生成コード（両方とも宣言されたメンバーに解決される）：
 
 ```csharp
-destination.Value = src.other;
+__d.Value = src.other;
 ```
 
 `[MapIgnore]` のようにターゲット名のみを取る属性を含め、すべてのマッピング属性が対象です。
@@ -189,6 +189,33 @@ destination.Value = src.other;
 [MapProperty(nameof(Destination.Count), nameof(Source.Count), NullValue = 0)]
 public static partial void Map(Source source, Destination destination);
 ```
+
+### 写し先の値を残す（`NullBehavior.Skip`）
+
+`NullBehavior.Skip` を指定すると、source が null のときは値を代入せず、destination のメンバーをそのまま残します。
+
+```csharp
+// Source: string? Name, int? Count / Destination: string Name, string Count
+[Mapper]
+[MapProperty(nameof(Destination.Name), NullBehavior = NullBehavior.Skip)]
+[MapProperty(nameof(Destination.Count), NullBehavior = NullBehavior.Skip)]
+public static partial void Map(Source source, Destination destination);
+```
+
+生成コード：
+
+```csharp
+if (source.Name is not null)
+{
+    destination.Name = source.Name!;
+}
+if (source.Count is not null)
+{
+    destination.Count = DefaultValueConverter.ConvertToString(source.Count.GetValueOrDefault());
+}
+```
+
+コンストラクタやオブジェクト初期化子で代入されるメンバーには残すべき値がないため、`NullBehavior.Skip` は指定できません（SMP0215）。
 
 ### プロパティ除外（`[MapIgnore]`）
 
@@ -220,6 +247,8 @@ private static string CombineFullName(Source source, FormattingContext context)
     => $"{source.FirstName}{context.Separator}{source.LastName}";
 ```
 
+`[MapProperty]` の `Converter`、`[MapCondition]`、`[BeforeMap]` / `[AfterMap]` のメソッドも、通常の引数の後にカスタムパラメーターを宣言すれば同じように受け取ります。`[MapExpression]` の式からは名前で参照できます。`[MapCollection]` / `[MapNested]` のマッパーメソッドと、`[ValueConverter]` / `[CollectionConverter]` のクラスのメソッドには渡りません。
+
 ### ソースメソッド / プロパティパス（`[MapFrom]`）
 
 ```csharp
@@ -242,6 +271,8 @@ public static partial void Map(Source source, Destination destination);
 非 Generic 版: `[MapConstant("Status", "Active")]`
 式の場合: `[MapExpression("CreatedAt", "System.DateTime.Now")]`
 
+式は、マッパーの引数を同じ名前で受け取る static ローカル関数としてコンパイルされます。そのため式から引数を参照でき（例: `"source.Price * source.Quantity"`）、`out var` やパターンで宣言した変数がほかの式と衝突しません。
+
 ### Before / After Map コールバック
 
 ```csharp
@@ -256,17 +287,7 @@ private static void AfterMapping(Source source, Destination destination) { /* ..
 
 ### 条件付きマッピング（`[MapCondition]`）
 
-グローバル条件:
-
-```csharp
-[Mapper]
-[MapCondition(nameof(ShouldMap))]
-public static partial void Map(Source source, Destination destination);
-
-private static bool ShouldMap(Source source, Destination destination) => source.IsActive;
-```
-
-プロパティレベル条件:
+条件メソッドは source の値（とカスタムパラメーター）を受け取り、`true` を返したときだけ destination プロパティに代入されます。
 
 ```csharp
 [Mapper]
@@ -285,6 +306,26 @@ public static partial void Map(Source source, Destination destination);
 // Id のみマッピング。他のプロパティは無視。
 ```
 
+### 代入の順序（`Order`）
+
+`[MapProperty]`・`[MapConstant]`・`[MapExpression]`・`[MapUsing]`・`[MapFrom]`・`[MapNested]`・`[MapCollection]` は `Order` を指定できます。同じ種類の代入は `Order` の昇順（既定は 0）、同じ値なら宣言の順に生成されます。
+
+```csharp
+[Mapper(AutoMap = false)]
+[MapConstant(nameof(Destination.Label), "second", Order = 2)]
+[MapConstant(nameof(Destination.Note), "first", Order = 1)]
+public static partial void Map(Source source, Destination destination);
+```
+
+生成コード：
+
+```csharp
+destination.Note = "first";
+destination.Label = "second";
+```
+
+種類の順は `[BeforeMap]` と `[AfterMap]` の間で決まっています。プロパティのマッピング（自動マッピングと `[MapProperty]`。source パスの null チェックで囲むものは最後）、`[MapConstant]`、`[MapExpression]`、`[MapUsing]`、`[MapFrom]`、`[MapNested]`、`[MapCollection]` の順です。`Order` で種類をまたいで順を変えることはできません。
+
 ---
 
 ## ネストプロパティマッピング
@@ -295,8 +336,8 @@ public static partial void Map(Source source, Destination destination);
 
 ```csharp
 [Mapper]
-[MapProperty("Child.Id",   "ChildId")]
-[MapProperty("Child.Name", "ChildName")]
+[MapProperty("ChildId",   "Child.Id")]
+[MapProperty("ChildName", "Child.Name")]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -314,8 +355,8 @@ if (source.Child is not null)
 
 ```csharp
 [Mapper]
-[MapProperty("Value1", "Child1.Value")]
-[MapProperty("Value2", "Child2.Value")]
+[MapProperty("Child1.Value", "Value1")]
+[MapProperty("Child2.Value", "Value2")]
 public static partial void Map(Source source, Destination destination);
 ```
 
@@ -346,14 +387,56 @@ internal static partial class ObjectMapper
 }
 ```
 
-生成コード：
+生成コード（`List<SourceChild>` から `List<DestinationChild>` の場合）：
 
 ```csharp
-destination.Children = global::Smart.Mapper.DefaultCollectionConverter.ToList<SourceChild, DestinationChild>(
-    source.Children, MapChild)!;
+{
+    var __src = CollectionsMarshal.AsSpan(source.Children);
+    var __list = new List<DestinationChild>(__src.Length);
+    CollectionsMarshal.SetCount(__list, __src.Length);
+    var __dst = CollectionsMarshal.AsSpan(__list);
+    for (var __i = 0; __i < __src.Length; __i++)
+    {
+        __dst[__i] = MapChild(__src[__i]);
+    }
+    destination.Children = __list;
+}
 ```
 
-`DefaultCollectionConverter` は関数マッパー・アクションマッパーどちらにも対応した `ToArray` / `ToList` オーバーロードを提供します。ソースコレクションが null の場合は `default` を返します。
+ループはソースとターゲットのコレクション型に合わせてインラインで生成されます。ソースコレクションが null の場合はターゲットに `default` を代入します。ターゲットは、ループが作るコレクション（`List<T>` とそのインターフェースには `List<T>`、配列、集合には `HashSet<T>`、イミュータブル・フローズンなコレクションにはその型）を受け取れる型である必要があります。`ObservableCollection<T>` のような独自のコレクションクラスは、コレクション変換器で作る場合を除き診断されます（SMP0217）。void の要素マッパー `(SourceChild, DestinationChild)` は `new DestinationChild()` で作ったインスタンスを埋めるため、要素の型は `new()` で作れる必要があります（そうでなければ SMP0210）。
+
+コレクション変換器（後述の `[CollectionConverter]`）を指定すると、ループの代わりにそのメソッドが呼ばれます（例: `CustomCollectionConverter.ToList<SourceChild, DestinationChild>(source.Children, MapChild)!`）。`[MapCollection]` の `Converter` は呼ぶメソッドを指定します。対象は `[CollectionConverter]` の型で、指定がなければ `DefaultCollectionConverter` です。`DefaultCollectionConverter` は関数マッパー・アクションマッパーどちらにも対応したこれらのメソッド（`ToList`・`ToArray`・`ToHashSet`・`ToImmutableArray` など）を提供します。
+
+### 既存のコレクションに詰め直す（`Strategy = CollectionStrategy.InPlace`）
+
+既定ではターゲットに新しいコレクションを代入します。`CollectionStrategy.InPlace` はターゲットのインスタンスを残したまま空にし、写した要素を追加するため、ほかから参照されているインスタンスを保てます。
+
+```csharp
+[Mapper(AutoMap = false)]
+[MapCollection(nameof(Destination.Children), Mapper = nameof(MapChild), Strategy = CollectionStrategy.InPlace)]
+public static partial void Map(Source source, Destination destination);
+```
+
+生成コード（`List<SourceChild>` から `List<DestinationChild>` の場合）：
+
+```csharp
+{
+    if (destination.Children is null)
+    {
+        destination.Children = new List<DestinationChild>(source.Children.Count);
+    }
+    destination.Children.Clear();
+    destination.Children.EnsureCapacity(source.Children.Count);
+    var __srcSpan = CollectionsMarshal.AsSpan(source.Children);
+    var __dstColl = destination.Children;
+    for (var __i = 0; __i < __srcSpan.Length; __i++)
+    {
+        __dstColl.Add(MapChild(__srcSpan[__i]));
+    }
+}
+```
+
+ターゲットが null のときは新しい `List<T>`（`HashSet<T>` / `ISet<T>` には `HashSet<T>`）を作るため、ターゲットはそれを受け取れる、セッターのあるプロパティである必要があります。`List<T>`・`IList<T>`・`ICollection<T>`・`IReadOnlyList<T>`・`HashSet<T>`・`ISet<T>` などです（そうでなければ SMP0217、セッターがなければ SMP0212）。インターフェースで宣言したターゲットは `ICollection<T>` として詰めるため、そのインスタンスは変更できるものである必要があります。`InPlace` は常にループを生成し、コレクション変換器は使いません。
 
 ---
 
@@ -391,12 +474,12 @@ public static partial DestModel Map(SrcModel src);
 ```csharp
 public static partial DestModel Map(SrcModel src)
 {
-    var destination = new DestModel(src.Id, src.Name);
-    return destination;
+    var __d = new DestModel(src.Id, src.Name);
+    return __d;
 }
 ```
 
-> `init-only` / `record` destination に対して `void` マッパーは使用できません（SMP0302）。
+> `void` マッパーは `init` 専用メンバー（位置指定 `record` のプロパティなど）に代入できません（SMP0302）。
 
 ### コンストラクタ引数の変換
 
@@ -413,7 +496,7 @@ public static partial Dst Map(Src src);
 生成コード：
 
 ```csharp
-var destination = new Dst(src.Value is not null
+var __d = new Dst(src.Value is not null
     ? DefaultValueConverter.ConvertToString(src.Value.GetValueOrDefault())
     : default!);
 ```
@@ -468,6 +551,8 @@ public static partial Dst Map(Src src);
 **source 側**の nullable 中間パスには `if (... is not null)` ガードが付きます。
 **destination 側**の nullable 中間パスは `??= new` で自動インスタンス化されます。
 
+元の引数（void マッパーでは宛先の引数も）を `Map(Src? source)` のように null 許容で宣言すると、写す前に検査します。null のときは何も写さず、戻り値のあるマッパーは `default` を返し、void マッパーは宛先に触れずに戻ります。
+
 ---
 
 ## 型変換
@@ -490,7 +575,7 @@ destination.StringValue = DefaultValueConverter.ConvertToString(source.IntValue)
 ```csharp
 // int? -> string
 destination.StringValue = source.NullableValue is not null
-    ? DefaultValueConverter.ConvertToString(source.NullableValue.Value)
+    ? DefaultValueConverter.ConvertToString(source.NullableValue.GetValueOrDefault())
     : default!;
 ```
 
@@ -507,6 +592,24 @@ public static class CustomConverter
 [ValueConverter(typeof(CustomConverter))]
 public static partial void Map(Source source, Destination destination);
 ```
+
+変換器のクラスは入れ子や総称型でも構いません（`typeof(Outer.CustomConverter)`・`typeof(CustomConverter<TMarker>)`）。`Method` は、メソッドを探す名前を変えます（既定は `"Convert"`）。スペシャライズドメソッドは `{Method}To{TargetType}`、汎用のフォールバックは `{Method}<TSource, TDestination>` になります。
+
+```csharp
+public static class MapConverter
+{
+    public static string MapToString(int source) => $"ID_{source}";
+    public static TDestination Map<TSource, TDestination>(TSource source) { ... }
+}
+
+[Mapper]
+[ValueConverter(typeof(MapConverter), Method = "Map")]
+public static partial void Map(Source source, Destination destination);
+
+// 生成コード: destination.Value = MapConverter.MapToString(source.Value);
+```
+
+スペシャライズドメソッドのない変換で使う汎用のフォールバックなど、変換器のメソッドが見つからない場合は診断されます（SMP0104）。
 
 優先順位（高 → 低）：
 
@@ -534,6 +637,8 @@ public static class CustomCollectionConverter
 public static partial void Map(Source source, Destination destination);
 ```
 
+呼ぶメソッドは、`[MapCollection]` の `Converter` で指定しなければターゲットの型で決まり（`ToList`・`ToArray`・`ToHashSet`・`ToImmutableArray` など）、`Method<TSourceElement, TTargetElement>(source, mapper)` として呼ばれます。メソッドがない場合、ソースのコレクションを受け取れない場合、ターゲットのプロパティが受け取れない型を返す場合は診断されます（SMP0104）。
+
 ---
 
 ## Culture / Format
@@ -546,12 +651,14 @@ internal static partial class AppMappers
     public static partial Dest Map(Src src);
 
     [Mapper]
-    [MapProperty(nameof(Dst.Amount), nameof(Src.Price), Culture = "en-US", NumberFormat = "C")]
+    [MapProperty(nameof(Dest2.Amount), nameof(Src2.Price), Culture = "en-US", NumberFormat = "C")]
     public static partial Dest2 Map(Src2 src);
 }
 ```
 
 優先順位: `[MapProperty]` > `[Mapper]` > `[MapperProfile]` > `CultureInfo.InvariantCulture`
+
+カルチャを指定すると、変換器のスペシャライズドメソッドは、カルチャと書式を受け取るオーバーロードで呼ばれます（例: `DefaultValueConverter.ConvertToString(int source, IFormatProvider culture, string? format)`）。独自の `[ValueConverter]` は、使うスペシャライズドメソッドごとにこのオーバーロードを用意する必要があります（そうでなければ SMP0104）。
 
 解決された `CultureInfo` は生成クラス内で `static readonly` フィールドとしてキャッシュされ、変換ごとの `GetCultureInfo(...)` 呼び出しコストを排除します。
 
@@ -565,7 +672,7 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 
 - `Smart.Mapper.csproj` に `<IsAotCompatible>true</IsAotCompatible>` を宣言済み
 - すべての型変換はスペシャライズドメソッドで完結 - 実行時のジェネリックリフレクションフォールバックなし
-- `Activator.CreateInstance` は使用しない。オブジェクト生成はジェネレーターがインライン展開
+- 生成コードは `Activator.CreateInstance` を使用しない。オブジェクト生成はジェネレーターがインライン展開（要素を `new()` で生成する `DefaultCollectionConverter` の `Action` オーバーロードには `RequiresDynamicCode` を付与）
 - `ValueConverterAttribute.ConverterType` と `CollectionConverterAttribute.ConverterType` に `[DynamicallyAccessedMembers]` 注釈付与済み
 
 > **`[MapExpression]` の注意** - 式の中にリフレクション API（`Activator`・`Type.GetType`・`MethodInfo` など）が含まれる場合、SMP0403 が発行されます。AOT 環境では `[MapFrom]` または `[MapUsing]` への置き換えを検討してください。
@@ -579,10 +686,12 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0001 | マッパーメソッドは `static partial` である必要がある | エラー |
 | SMP0002 | マッパーメソッドのパラメーター数が無効 | エラー |
 | SMP0003 | カスタムパラメーターの型が重複している | エラー |
+| SMP0004 | マッパーメソッドのパラメーター名が `__` で始まっている（生成コードの予約名） | エラー |
+| SMP0005 | 生成コードが扱えない修飾子がパラメーターに付いている（`out`、void マッパーの struct の宛先への `in` / `ref readonly`） | エラー |
 | SMP0101 | 同一目的プロパティへのマッピングが重複している | エラー |
 | SMP0102 | `BeforeMap` メソッドのシグネチャが一致しない | エラー |
 | SMP0103 | `AfterMap` メソッドのシグネチャが一致しない | エラー |
-| SMP0104 | コンバーターメソッドのシグネチャが一致しない | エラー |
+| SMP0104 | コンバーターメソッドが見つからない、またはシグネチャが一致しない | エラー |
 | SMP0105 | コンバーターの戻り値型が目的プロパティ型と一致しない | エラー |
 | SMP0106 | プロパティ条件メソッドのシグネチャが一致しない | エラー |
 | SMP0201 | `MapUsing` メソッドのシグネチャが一致しない | エラー |
@@ -596,18 +705,21 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0209 | `[MapCollection]` のターゲットプロパティがコレクション型ではない | エラー |
 | SMP0210 | `MapCollection` 要素マッパーメソッドが見つからないまたはシグネチャが一致しない | エラー |
 | SMP0211 | `MapNested` マッパーメソッドが見つからないまたはシグネチャが一致しない | エラー |
-| SMP0212 | `[MapCollection]` / `[MapNested]` は init 専用 / required メンバーを対象にできない | エラー |
+| SMP0212 | `[MapCollection]` / `[MapNested]` の対象に代入できない（マッパーから呼べるセッターがない、init 専用、required） | エラー |
 | SMP0213 | `[MapProperty]` のソースプロパティが見つからない | エラー |
 | SMP0214 | `[MapProperty]` のターゲットプロパティが見つからない、または代入できない | エラー |
 | SMP0215 | コンストラクタ / 初期化子経由で代入されるターゲットに `[MapCondition]` / `NullBehavior.Skip` を指定 | エラー |
 | SMP0216 | コンストラクタ経由で代入されるメンバーに `[MapIgnore]` を指定 | エラー |
+| SMP0217 | `[MapCollection]` の対象が、生成コードの作るコレクションを受け取れない | エラー |
 | SMP0301 | コンストラクターパラメーターに一致するソースプロパティがない | エラー |
-| SMP0302 | `init` 専用 / `record` 型の目的に `void` マッパーは使用不可 | エラー |
+| SMP0302 | `void` マッパーは `init` 専用メンバー（位置指定 `record` のプロパティなど）に代入できない | エラー |
 | SMP0303 | `required` メンバーがマップされていない | エラー |
 | SMP0401 | `Culture` なしで `DateTimeFormat` / `NumberFormat` を指定している | エラー |
 | SMP0402 | AOT 非対応: 汎用 `Convert<TSource,TDest>` フォールバックに到達する可能性がある | エラー |
 | SMP0403 | AOT 警告: `MapExpression` にリフレクションパターンが含まれる可能性がある | 警告 |
 | SMP0501 | Strict モード: マップされていない目的プロパティがある | 警告 |
+
+それぞれの原因と対処は [Diagnostics.md](Diagnostics.md)（英語）を参照してください。
 
 ---
 
@@ -616,9 +728,10 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) を使用して .NET 10 上で計測。
 
 ```
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8457/25H2)
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8524/25H2/2025Update/HudsonValley2)
 AMD Ryzen 9 5900X 3.70GHz, 1 CPU, 24 logical and 12 physical cores
-.NET SDK 10.0.300  [Host / MediumRun] : .NET 10.0.8, X64 RyuJIT x86-64-v3
+.NET SDK 10.0.300
+  [Host] / MediumRun : .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 ```
 
@@ -626,33 +739,58 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 7.760 ns | 0.238 ns | 0.356 ns | 1.00 | 64 B |
-| SmartMapper | 8.736 ns | 0.334 ns | 0.499 ns | 1.13 | 64 B |
+| Direct | 9.391 ns | 0.478 ns | 0.715 ns | 1.01 | 64 B |
+| SmartMapper | 9.171 ns | 0.361 ns | 0.529 ns | 0.98 | 64 B |
 
 ### 型変換マッピング
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 77.36 ns | 1.149 ns | 1.684 ns | 1.00 | 128 B |
-| SmartMapper | 77.96 ns | 1.183 ns | 1.771 ns | 1.01 | 128 B |
+| Direct | 93.17 ns | 4.364 ns | 6.531 ns | 1.00 | 128 B |
+| SmartMapper | 88.73 ns | 3.195 ns | 4.782 ns | 0.96 | 128 B |
 
 ### ネストマッピング
 
 | Method | Mean | Error | StdDev | Ratio | Allocated |
 |--------|-----:|------:|-------:|------:|----------:|
-| Direct | 8.993 ns | 0.254 ns | 0.380 ns | 1.00 | 72 B |
-| SmartMapper | 8.887 ns | 0.263 ns | 0.385 ns | 0.99 | 72 B |
+| Direct | 11.08 ns | 0.390 ns | 0.584 ns | 1.00 | 72 B |
+| SmartMapper | 13.68 ns | 1.184 ns | 1.772 ns | 1.24 | 72 B |
 
-### コレクションマッピング
+### void のネストマッピング（ラムダの除去）
 
-| Method | ItemCount | Mean | Ratio | Allocated |
-|--------|----------:|-----:|------:|----------:|
-| Direct | 10 | 77.90 ns | 1.00 | 456 B |
-| SmartMapper | 10 | 70.76 ns | 0.91 | 512 B |
-| Direct | 100 | 623.78 ns | 1.00 | 4056 B |
-| SmartMapper | 100 | 561.97 ns | 0.90 | 4112 B |
+| Method | Mean | Error | StdDev | Ratio | Allocated |
+|--------|-----:|------:|-------:|------:|----------:|
+| Direct | 9.038 ns | 0.154 ns | 0.231 ns | 1.00 | 72 B |
+| LegacyLambda | 9.341 ns | 0.283 ns | 0.424 ns | 1.03 | 72 B |
+| SmartMapper | 9.160 ns | 0.395 ns | 0.591 ns | 1.01 | 72 B |
 
-> Smart.Mapper の生成コードは手書きコードとほぼ同等の命令列にコンパイルされます。単純マッピングでの微小なオーバーヘッドはメソッド呼び出し境界によるもので、JIT インライン展開により通常は解消されます。
+### コレクションマッピング — 要素単位（どちらも `List<T>` を返す）
+
+リストは呼び出し側で管理し、SmartMapper は要素ごとのマッピングにだけ使います。
+
+| Method | ItemCount | Mean | Error | StdDev | Ratio | Allocated |
+|--------|----------:|-----:|------:|-------:|------:|----------:|
+| Direct | 10 | 101.1 ns | 2.02 ns | 3.98 ns | 1.00 | 456 B |
+| SmartMapper | 10 | 107.6 ns | 2.22 ns | 6.40 ns | 1.07 | 456 B |
+| Direct | 100 | 812.7 ns | 29.30 ns | 86.40 ns | 1.01 | 4,056 B |
+| SmartMapper | 100 | 745.7 ns | 26.04 ns | 75.96 ns | 0.93 | 4,056 B |
+
+### コレクションマッピング — ラッパー単位（どちらも `CollectionWrapper` を返す）
+
+Direct と SmartMapper のどちらも `CollectionWrapper { Items = List<T> }` を作ります。
+
+| Method | ItemCount | Mean | Error | StdDev | Ratio | Allocated |
+|--------|----------:|-----:|------:|-------:|------:|----------:|
+| Direct | 10 | 114.6 ns | 2.38 ns | 7.02 ns | 1.00 | 512 B |
+| SmartMapper | 10 | 112.2 ns | 3.18 ns | 9.39 ns | 0.98 | 512 B |
+| Direct | 100 | 891.4 ns | 25.95 ns | 76.51 ns | 1.01 | 4,112 B |
+| SmartMapper | 100 | 916.5 ns | 27.90 ns | 82.27 ns | 1.04 | 4,112 B |
+
+> **JIT の分析:**
+> - **単純 / 型変換**: 逆アセンブルで、JIT が同一または同等の命令列を生成することを確認しています。型変換で SmartMapper が速いのは、スペシャライズドな `ConvertToString(InvariantCulture)` の経路がボックス化を避けるためです。
+> - **ネスト（1.24 倍）**: 逆アセンブルでは、`MapNested` と `MapAddress` を完全にインライン展開したあと、Direct と SmartMapper は同等のコード（155 バイトと 157 バイト）になります。報告された比率はばらつきが大きく（StdDev は Direct の 0.58 ns に対して 1.77 ns、P90 は 11.75 ns に対して 15.84 ns）、コードの質の差ではなく、ループの後方分岐の予測によるノイズと考えられます。
+> - **void のネスト**: ラムダを使わない複数文の形（LegacyLambda 1.03 倍 → SmartMapper 1.01 倍）で、クロージャの割り当てによるオーバーヘッドがなくなったことを確認できます。
+> - **コレクション**: 要素単位とラッパー単位のどちらでも、SmartMapper は Direct と統計的なノイズの範囲内（比率 0.93〜1.07）です。割り当てはそれぞれ同じです。要素マッパー（`MapItem`）は JIT で完全にインライン展開されます。
 
 ---
 
@@ -664,20 +802,22 @@ xUnit v3 と Microsoft Testing Platform を使用します。
 
 ```powershell
 # 全テストを実行
-dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
+dotnet run --project Smart.Mapper.Tests/Smart.Mapper.Tests.csproj
 
-# コードカバレッジ付きで実行
-dotnet test Smart.Mapper.Tests/Smart.Mapper.Tests.csproj --settings CodeCoverage.runsettings
+# コードカバレッジ付きで実行（出力フォルダーの TestResults に Cobertura XML を出力）
+dotnet run --project Smart.Mapper.Tests/Smart.Mapper.Tests.csproj -- --coverage --coverage-settings CodeCoverage.runsettings
 ```
 
 Visual Studio のテストエクスプローラーからも実行できます。
+
+> **注:** .NET 10 SDK では Microsoft Testing Platform と VSTest の非互換により `dotnet test` を使えません。`dotnet run --project` を使ってください。
 
 ### ソースジェネレーターテスト（`Smart.Mapper.Generator.Tests`）
 
 Roslyn ソースジェネレーターが正しい出力と診断を生成することを検証します。
 
 ```powershell
-dotnet test Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj
+dotnet run --project Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.csproj
 ```
 
 ### NativeAOT スモークテスト（`Smart.Mapper.AotTests`）

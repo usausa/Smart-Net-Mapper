@@ -204,6 +204,27 @@ public class ReadOnlyStructDestination
     public string Name { get; set; } = default!;
 }
 
+// Parameter modifiers: a mutable struct source passed by in, and a struct destination passed by ref
+public struct MutableStructSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+
+public struct MutableStructDestination
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public int Total { get; set; }
+}
+
+// Custom parameter handed to hooks by in / ref readonly, or declared nullable
+public class HookContext
+{
+    public string Prefix { get; set; } = default!;
+    public bool CopyDescription { get; set; }
+}
+
 // C4-δ: Custom CollectionConverter + array destination
 public class MatrixConverterArrayDst
 {
@@ -286,4 +307,90 @@ public class MatrixToFrozenSetDst
 public class MatrixVoidDst
 {
     public List<MatrixDstItem>? Items { get; set; }
+}
+
+// Regression: several collections that are never null in one mapper (the generated locals were
+// redeclared in the same scope, CS0128), next to a nullable collection and a nested object.
+public class MultiCollectionSource
+{
+    public IReadOnlyList<MatrixSrcItem> Lines { get; set; } = [];
+    public List<MatrixSrcItem> Items { get; set; } = [];
+    public MatrixSrcItem[] Values { get; set; } = [];
+    public IEnumerable<MatrixSrcItem> Sequence { get; set; } = [];
+    public List<MatrixSrcItem>? Optional { get; set; }
+    public NestedObjectSourceChild? Child { get; set; }
+}
+
+public class MultiCollectionDestination
+{
+    public IReadOnlyList<MatrixDstItem> Lines { get; set; } = [];
+    public List<MatrixDstItem> Items { get; set; } = [];
+    public MatrixDstItem[] Values { get; set; } = [];
+    public HashSet<MatrixDstItem> Sequence { get; set; } = [];
+    public List<MatrixDstItem>? Optional { get; set; }
+    public NestedObjectDestinationChild? Child { get; set; }
+}
+
+// Element and nested mappers filling a struct instance through ref
+public struct PointSource
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+public struct PointDestination
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+public class PathSource
+{
+    public List<PointSource> Points { get; set; } = [];
+    public IEnumerable<PointSource> Route { get; set; } = [];
+    public PointSource Origin { get; set; }
+}
+
+public class PathDestination
+{
+    public List<PointDestination> Points { get; set; } = [];
+    public PointDestination[] Route { get; set; } = [];
+    public PointDestination Origin { get; set; }
+}
+
+// Collection converter taking the source collection and the element mapper by in
+internal static class InCollectionConverter
+{
+    public static List<TDest> ToList<TSource, TDest>(in IEnumerable<TSource>? source, in Func<TSource, TDest> mapper) =>
+        source is null ? [] : [.. source.Select(mapper)];
+}
+
+// Converter classes nested in another class, found through the typeof of the attribute
+public class NestedConverterSource
+{
+    public int Value { get; set; }
+    public List<int> Items { get; set; } = [];
+}
+
+public class NestedConverterDestination
+{
+    public string Value { get; set; } = default!;
+    public List<string> Items { get; set; } = [];
+}
+
+internal static class ConverterHost
+{
+    internal static class NestedValueConverter
+    {
+        public static string ConvertToString(int source) => $"N:{source.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+        public static TDestination Convert<TSource, TDestination>(TSource source) => DefaultValueConverter.Convert<TSource, TDestination>(source);
+    }
+
+    // Builds the list in reverse order, so that a test can tell it was called
+    internal static class NestedCollectionConverter<TMarker>
+    {
+        public static List<TDest> ToList<TSource, TDest>(IEnumerable<TSource> source, Func<TSource, TDest> mapper) =>
+            [.. source.Select(mapper).Reverse()];
+    }
 }

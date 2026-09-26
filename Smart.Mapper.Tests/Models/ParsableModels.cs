@@ -149,3 +149,19 @@ public class NullableSpanParsableDestination
 {
     public TestSpanParsableId IdText { get; set; }
 }
+
+// A parsable type reached through a dotted source path
+public class ParsePathChild
+{
+    public string Text { get; set; } = default!;
+}
+
+public class ParsePathSource
+{
+    public ParsePathChild Child { get; set; } = new();
+}
+
+public class ParsePathDestination
+{
+    public TestParsableId Id { get; set; }
+}

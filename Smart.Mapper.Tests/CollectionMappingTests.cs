@@ -290,6 +290,112 @@ public class InPlaceCollectionMappingTests
     }
 }
 
+// Several [MapCollection] whose sources are never null in one mapper
+public class MultipleCollectionMappingTests
+{
+    private static List<MatrixSrcItem> MakeItems(int first, int count) =>
+        [.. Enumerable.Range(first, count).Select(static i => new MatrixSrcItem { Value = i })];
+
+    [Fact]
+    public void MapMultiCollectionMapsEachCollection()
+    {
+        var source = new MultiCollectionSource
+        {
+            Lines = MakeItems(1, 2),
+            Items = MakeItems(10, 3),
+            Values = [.. MakeItems(100, 1)],
+            Sequence = MakeItems(1000, 2),
+            Optional = MakeItems(5, 1),
+            Child = new NestedObjectSourceChild { Value = 7, Text = "Child" }
+        };
+
+        var destination = TestMappers.MapMultiCollection(source);
+
+        Assert.Equal(2, destination.Lines.Count);
+        Assert.Equal(1, destination.Lines[0].Value);
+        Assert.Equal(2, destination.Lines[1].Value);
+        Assert.Equal(3, destination.Items.Count);
+        Assert.Equal(10, destination.Items[0].Value);
+        Assert.Equal(11, destination.Items[1].Value);
+        Assert.Equal(12, destination.Items[2].Value);
+        Assert.Single(destination.Values);
+        Assert.Equal(100, destination.Values[0].Value);
+        var sequence = destination.Sequence.Select(static x => x.Value).OrderBy(static x => x).ToArray();
+        Assert.Equal(2, sequence.Length);
+        Assert.Equal(1000, sequence[0]);
+        Assert.Equal(1001, sequence[1]);
+        Assert.NotNull(destination.Optional);
+        Assert.Single(destination.Optional);
+        Assert.Equal(5, destination.Optional[0].Value);
+        Assert.NotNull(destination.Child);
+        Assert.Equal(7, destination.Child.Value);
+        Assert.Equal("Child", destination.Child.Text);
+    }
+
+    [Fact]
+    public void MapMultiCollectionMapsEmptyCollectionsAndNullSources()
+    {
+        var source = new MultiCollectionSource();
+
+        var destination = TestMappers.MapMultiCollection(source);
+
+        Assert.Empty(destination.Lines);
+        Assert.Empty(destination.Items);
+        Assert.Empty(destination.Values);
+        Assert.Empty(destination.Sequence);
+        Assert.Null(destination.Optional);
+        Assert.Null(destination.Child);
+    }
+
+    [Fact]
+    public void MapMultiCollectionInPlaceRefillsExistingCollections()
+    {
+        var existingItems = new List<MatrixDstItem>
+        {
+            new() { Value = -1 }
+        };
+        var existingSequence = new HashSet<MatrixDstItem>
+        {
+            new() { Value = -2 }
+        };
+        var existingOptional = new List<MatrixDstItem>
+        {
+            new() { Value = -3 }
+        };
+        var destination = new MultiCollectionDestination { Items = existingItems, Sequence = existingSequence, Optional = existingOptional };
+        var source = new MultiCollectionSource
+        {
+            Lines = MakeItems(1, 2),
+            Items = MakeItems(10, 3),
+            Values = [.. MakeItems(100, 1)],
+            Sequence = MakeItems(1000, 2),
+            Optional = null
+        };
+
+        TestMappers.MapMultiCollectionInPlace(source, destination);
+
+        // InPlace targets keep their instances and are refilled
+        Assert.Same(existingItems, destination.Items);
+        Assert.Equal(3, destination.Items.Count);
+        Assert.Equal(10, destination.Items[0].Value);
+        Assert.Equal(12, destination.Items[2].Value);
+        Assert.Same(existingSequence, destination.Sequence);
+        var sequence = destination.Sequence.Select(static x => x.Value).OrderBy(static x => x).ToArray();
+        Assert.Equal(2, sequence.Length);
+        Assert.Equal(1000, sequence[0]);
+        Assert.Equal(1001, sequence[1]);
+        // A null source leaves the InPlace target as it is
+        Assert.Same(existingOptional, destination.Optional);
+        Assert.Single(destination.Optional);
+        Assert.Equal(-3, destination.Optional[0].Value);
+        // Replace targets in the same mapper
+        Assert.Equal(2, destination.Lines.Count);
+        Assert.Equal(1, destination.Lines[0].Value);
+        Assert.Single(destination.Values);
+        Assert.Equal(100, destination.Values[0].Value);
+    }
+}
+
 public class ReadOnlyStructMappingTests
 {
     [Fact]

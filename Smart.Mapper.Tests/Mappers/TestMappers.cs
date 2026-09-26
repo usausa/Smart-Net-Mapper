@@ -20,6 +20,10 @@ internal static partial class TestMappers
     [Mapper]
     public static partial void CopyTo(this BasicSource source, BasicDestination destination);
 
+    // Source parameter named destination (the generated instance is __d, so the names do not collide)
+    [Mapper]
+    public static partial BasicDestination MapNamedDestination(BasicSource destination);
+
     // Different property names mapping
     [Mapper]
     [MapProperty(nameof(DifferentPropertyDestination.DestId), nameof(DifferentPropertySource.SourceId))]
@@ -668,6 +672,217 @@ internal static partial class TestMappers
     [CollectionConverter(typeof(TestCollectionConverter))]
     [MapCollection(nameof(MatrixConverterArrayDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
     public static partial void MapListToArrayWithConverter(MatrixListSource source, MatrixConverterArrayDst destination);
+}
+
+// Regression: several [MapCollection] whose sources are never null in one mapper
+internal static partial class TestMappers
+{
+    // Replace: four non-nullable collections, a nullable one and a nested object
+    [Mapper]
+    [MapCollection(nameof(MultiCollectionDestination.Lines), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Items), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Values), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Sequence), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Optional), Mapper = nameof(MapMatrixItem))]
+    [MapNested(nameof(MultiCollectionDestination.Child), Mapper = nameof(MapNestedChild))]
+    public static partial MultiCollectionDestination MapMultiCollection(MultiCollectionSource source);
+
+    // InPlace mixed with Replace in the same mapper
+    [Mapper]
+    [MapCollection(nameof(MultiCollectionDestination.Lines), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Items), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    [MapCollection(nameof(MultiCollectionDestination.Values), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(MultiCollectionDestination.Sequence), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    [MapCollection(nameof(MultiCollectionDestination.Optional), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    [MapNested(nameof(MultiCollectionDestination.Child), Mapper = nameof(MapNestedChild))]
+    public static partial void MapMultiCollectionInPlace(MultiCollectionSource source, MultiCollectionDestination destination);
+}
+
+// MapExpression: expressions declaring the same variable names in one mapper
+internal static partial class TestMappers
+{
+    // Return type
+    [Mapper]
+    [MapExpression(nameof(ExpressionDestination.First), "int.TryParse(source.First, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.Second), "int.TryParse(source.Second, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.Boxed), "source.Boxed is int n ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.OtherBoxed), "source.OtherBoxed is int n ? n : -1")]
+    public static partial ExpressionDestination MapExpressionToNew(ExpressionSource source);
+
+    // Void: the expressions can also read the destination parameter
+    [Mapper]
+    [MapExpression(nameof(ExpressionDestination.First), "int.TryParse(source.First, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.Second), "int.TryParse(source.Second, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.Boxed), "source.Boxed is int n ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.OtherBoxed), "source.OtherBoxed is int n ? n : -1")]
+    [MapExpression(nameof(ExpressionDestination.Label), "destination.Label ?? \"(none)\"")]
+    public static partial void MapExpressionInto(ExpressionSource source, ExpressionDestination destination);
+
+    // init-only / required targets
+    [Mapper]
+    [MapExpression(nameof(ExpressionInitDestination.First), "int.TryParse(source.First, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionInitDestination.Second), "int.TryParse(source.Second, out var n) ? n : -1")]
+    [MapExpression(nameof(ExpressionInitDestination.Boxed), "source.Boxed is int n ? n : -1")]
+    public static partial ExpressionInitDestination MapExpressionInit(ExpressionSource source);
+
+    // in parameter and custom parameter; Order decides the evaluation order
+    [Mapper]
+    [MapExpression(nameof(ExpressionDestination.First), "int.TryParse(source.Name, out var n) ? n + context.Offset : -1")]
+    [MapExpression(nameof(ExpressionDestination.Second), "source.Name is { Length: > 0 } n ? n.Length : 0")]
+    [MapExpression(nameof(ExpressionDestination.Boxed), "context.Next()", Order = 2)]
+    [MapExpression(nameof(ExpressionDestination.OtherBoxed), "context.Next()", Order = 1)]
+    public static partial ExpressionDestination MapExpressionWithContext(in ReadOnlyStructSource source, ExpressionContext context);
+}
+
+// Parameter modifiers: the implementation repeats the modifier each parameter is declared with
+internal static partial class TestMappers
+{
+    // readonly struct source passed by value
+    [Mapper]
+    public static partial ReadOnlyStructDestination MapReadOnlyStructByValue(ReadOnlyStructSource source);
+
+    // Mutable struct source passed by in, read by an expression
+    [Mapper]
+    [MapExpression(nameof(ReadOnlyStructDestination.Name), "source.Name + \"!\"")]
+    public static partial ReadOnlyStructDestination MapMutableStructIn(in MutableStructSource source);
+
+    // Struct destination passed by ref, so the caller's instance is filled
+    [Mapper]
+    [MapExpression(nameof(MutableStructDestination.Total), "destination.Total + source.Id")]
+    public static partial void MapIntoStruct(MutableStructSource source, ref MutableStructDestination destination);
+
+    // Custom parameter passed by ref readonly, read by an expression and a MapUsing method
+    [Mapper(AutoMap = false)]
+    [MapExpression(nameof(ExpressionDestination.First), "int.TryParse(source.First, out var n) ? n + context.Offset : -1")]
+    [MapUsing(nameof(ExpressionDestination.Label), nameof(BuildContextLabel))]
+    public static partial ExpressionDestination MapWithReadOnlyContext(ExpressionSource source, ref readonly ExpressionContext context);
+
+    private static string BuildContextLabel(ExpressionSource source, ExpressionContext context) => $"{source.Second}:{context.Offset}";
+}
+
+// Hook parameter modifiers: each argument is passed the way the hook's parameter takes it
+internal static partial class TestMappers
+{
+    // AfterMap taking the struct destination by ref: the change reaches the returned instance
+    [Mapper]
+    [AfterMap(nameof(AddTotal))]
+    public static partial MutableStructDestination MapStructWithAfterMap(MutableStructSource source);
+
+    // The same for a destination parameter passed by ref: the change reaches the caller's instance
+    [Mapper]
+    [AfterMap(nameof(AddTotal))]
+    public static partial void MapIntoStructWithAfterMap(MutableStructSource source, ref MutableStructDestination destination);
+
+    private static void AddTotal(MutableStructSource source, ref MutableStructDestination destination) => destination.Total += source.Id * 10;
+
+    // MapUsing taking the readonly struct source by in
+    [Mapper]
+    [MapUsing(nameof(ReadOnlyStructDestination.Name), nameof(DescribeReadOnlyStruct))]
+    public static partial ReadOnlyStructDestination MapWithInHook(in ReadOnlyStructSource source);
+
+    private static string DescribeReadOnlyStruct(in ReadOnlyStructSource source) => $"{source.Name}#{source.Id}";
+
+    // Converter and condition taking the custom parameter by in and ref readonly
+    [Mapper]
+    [MapProperty(nameof(BasicDestination.Name), nameof(BasicSource.Name), Converter = nameof(DecorateName))]
+    [MapCondition(nameof(BasicDestination.Description), nameof(ShouldCopyDescription))]
+    public static partial BasicDestination MapWithHookContext(BasicSource source, in HookContext context);
+
+    private static string DecorateName(string value, in HookContext context) => context.Prefix + value;
+
+    private static bool ShouldCopyDescription(string value, ref readonly HookContext context) => context.CopyDescription;
+}
+
+// Element mappers, collection converters and culture overloads: each argument is passed the way the
+// parameter takes it
+internal static partial class TestMappers
+{
+    // Element and nested mappers taking the element by in: from a span, an array, a foreach variable and
+    // an indexer, and the property value of the nested object
+    [Mapper]
+    [MapCollection(nameof(MultiCollectionDestination.Lines), Mapper = nameof(MapMatrixItemIn))]
+    [MapCollection(nameof(MultiCollectionDestination.Items), Mapper = nameof(MapMatrixItemIn), Strategy = CollectionStrategy.InPlace)]
+    [MapCollection(nameof(MultiCollectionDestination.Values), Mapper = nameof(MapMatrixItemIn))]
+    [MapCollection(nameof(MultiCollectionDestination.Sequence), Mapper = nameof(MapMatrixItemIn))]
+    [MapCollection(nameof(MultiCollectionDestination.Optional), Mapper = nameof(MapMatrixItemIn))]
+    [MapNested(nameof(MultiCollectionDestination.Child), Mapper = nameof(MapNestedChildIn))]
+    public static partial MultiCollectionDestination MapMultiCollectionIn(MultiCollectionSource source);
+
+    private static MatrixDstItem MapMatrixItemIn(in MatrixSrcItem source) => new() { Value = source.Value + 100 };
+
+    private static NestedObjectDestinationChild MapNestedChildIn(in NestedObjectSourceChild source) => new() { Value = source.Value + 100, Text = source.Text };
+
+    // Void mappers filling the struct instance created for each element and for the nested object by ref
+    [Mapper]
+    [MapCollection(nameof(PathDestination.Points), Mapper = nameof(FillPoint))]
+    [MapCollection(nameof(PathDestination.Route), Mapper = nameof(FillPoint))]
+    [MapNested(nameof(PathDestination.Origin), Mapper = nameof(FillPoint))]
+    public static partial PathDestination MapPath(PathSource source);
+
+    private static void FillPoint(in PointSource source, ref PointDestination destination)
+    {
+        destination.X = source.X;
+        destination.Y = source.Y;
+    }
+
+    // Collection converter taking its arguments by in
+    [Mapper]
+    [CollectionConverter(typeof(InCollectionConverter))]
+    [MapCollection(nameof(MatrixToListDst.Items), nameof(MatrixListSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial MatrixToListDst MapListWithInConverter(MatrixListSource source);
+
+    // Culture overload taking the culture by ref readonly
+    [Mapper(Culture = "de-DE")]
+    [ValueConverter(typeof(CultureReferenceConverter))]
+    public static partial CultureReferenceDestination MapWithCultureReference(CultureReferenceSource source);
+}
+
+// Converter classes nested in another class, and a dotted path to a parsable type
+internal static partial class TestMappers
+{
+    // Nested value converter: its specialized method converts the value
+    [Mapper]
+    [ValueConverter(typeof(ConverterHost.NestedValueConverter))]
+    [MapIgnore(nameof(NestedConverterDestination.Items))]
+    public static partial NestedConverterDestination MapWithNestedValueConverter(NestedConverterSource source);
+
+    // Collection converter nested in another class and generic
+    [Mapper]
+    [CollectionConverter(typeof(ConverterHost.NestedCollectionConverter<string>))]
+    [MapCollection(nameof(NestedConverterDestination.Items), Mapper = nameof(FormatNestedItem))]
+    public static partial NestedConverterDestination MapWithNestedCollectionConverter(NestedConverterSource source);
+
+    private static string FormatNestedItem(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // Dotted source path to a parsable type
+    [Mapper]
+    [MapProperty(nameof(ParsePathDestination.Id), "Child.Text")]
+    public static partial ParsePathDestination MapParsePath(ParsePathSource source);
+}
+
+// Nullable annotations of the declaration are repeated on the implementation
+internal static partial class TestMappers
+{
+    // Nullable source, custom parameter and return type
+    [Mapper]
+    [MapUsing(nameof(BasicDestination.Description), nameof(DescribeWithOptionalContext))]
+    public static partial BasicDestination? MapNullableSignature(BasicSource? source, HookContext? context);
+
+    private static string DescribeWithOptionalContext(BasicSource source, HookContext? context) => (context?.Prefix ?? "-") + source.Description;
+
+    // Nullable source into a return type that is not nullable, and into a struct
+    [Mapper]
+    public static partial BasicDestination MapNullableSourceToDestination(BasicSource? source);
+
+    [Mapper]
+    public static partial MutableStructDestination MapNullableSourceToStruct(BasicSource? source);
+
+    // Void mapper with a nullable source, and with a nullable destination
+    [Mapper]
+    public static partial void MapNullableSourceInto(BasicSource? source, BasicDestination destination);
+
+    [Mapper]
+    public static partial void MapIntoNullableDestination(BasicSource source, BasicDestination? destination);
 }
 
 // E3: MapperProfile – class-level defaults applied to all methods

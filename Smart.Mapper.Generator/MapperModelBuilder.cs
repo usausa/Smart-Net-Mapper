@@ -5,7 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 using Smart.Mapper.Generator.Helpers;
 using Smart.Mapper.Generator.Models;
@@ -14,6 +16,11 @@ using SourceGenerateHelper;
 
 internal static class MapperModelBuilder
 {
+    // FullyQualifiedFormat leaves out the ? of nullable reference types. A type the generated code has
+    // to spell exactly as the member declares it, such as a local function's return type, keeps it.
+    private static readonly SymbolDisplayFormat NullableQualifiedFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
     internal static Result<MapperMethodModel> BuildModel(GeneratorAttributeSyntaxContext context)
     {
         var syntax = (MethodDeclarationSyntax)context.TargetNode;
@@ -68,13 +75,50 @@ internal static class MapperModelBuilder
             customParamStartIndex = 1;
         }
 
+        // Names starting with __ are reserved for the locals and local functions of the generated code
+        // (__d, __src, __expression0, ...), which a parameter spelled that way could collide with.
+        for (var i = 0; i < symbol.Parameters.Length; i++)
+        {
+            var parameterName = symbol.Parameters[i].Name;
+            if (parameterName.StartsWith("__", StringComparison.Ordinal))
+            {
+                return Results.Error<MapperMethodModel>(new DiagnosticInfo(
+                    Diagnostics.ReservedParameterName,
+                    syntax.ParameterList.Parameters[i].Identifier.GetLocation(),
+                    symbol.Name,
+                    parameterName));
+            }
+        }
+
+        // The generated code reads every parameter and assigns the destination members. An out parameter
+        // allows neither, and the members of a struct destination passed by readonly reference cannot be
+        // assigned.
+        for (var i = 0; i < symbol.Parameters.Length; i++)
+        {
+            var parameter = symbol.Parameters[i];
+            var isReadOnlyStructDestination = symbol.ReturnsVoid && (i == 1) && parameter.Type.IsValueType &&
+                                              (parameter.RefKind is RefKind.In or RefKind.RefReadOnlyParameter);
+            if ((parameter.RefKind == RefKind.Out) || isReadOnlyStructDestination)
+            {
+                return Results.Error<MapperMethodModel>(new DiagnosticInfo(
+                    Diagnostics.UnsupportedParameterModifier,
+                    syntax.ParameterList.Parameters[i].GetLocation(),
+                    symbol.Name,
+                    parameter.Name,
+                    GetRefKindKeyword(parameter.RefKind)));
+            }
+        }
+
         var customParameters = new List<CustomParameterModel>();
         for (var i = customParamStartIndex; i < symbol.Parameters.Length; i++)
         {
             var param = symbol.Parameters[i];
             customParameters.Add(new CustomParameterModel(
                 param.Name,
-                param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+                param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                DeclaredTypeName: param.Type.ToDisplayString(NullableQualifiedFormat),
+                Modifiers: GetParameterModifiers(syntax, i),
+                RefKind: param.RefKind));
         }
 
         var duplicateType = customParameters
@@ -90,9 +134,6 @@ internal static class MapperModelBuilder
                 duplicateType.Key));
         }
 
-        var isSourceReadOnlyStruct = sourceParam.Type.IsValueType &&
-                                     (sourceParam.Type is INamedTypeSymbol { IsReadOnly: true });
-
         var model = new MapperMethodModel(
             Namespace: ns,
             ClassName: containingType.GetClassName(),
@@ -101,10 +142,20 @@ internal static class MapperModelBuilder
             MethodName: symbol.Name,
             SourceTypeName: sourceParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             SourceParameterName: sourceParam.Name,
-            IsSourceReadOnlyStruct: isSourceReadOnlyStruct,
+            SourceParameterModifiers: GetParameterModifiers(syntax, 0),
+            SourceRefKind: sourceParam.RefKind,
+            SourceDeclaredTypeName: sourceParam.Type.ToDisplayString(NullableQualifiedFormat),
+            IsSourceParameterNullable: IsNullableReference(sourceParam.Type),
+            SourceNonNullableTypeName: GetNonNullableTypeName(sourceParam.Type),
             IsExtensionMethod: symbol.IsExtensionMethod,
             DestinationTypeName: destinationTypeName,
             DestinationParameterName: destinationParameterName,
+            DestinationParameterModifiers: returnsDestination ? string.Empty : GetParameterModifiers(syntax, 1),
+            DestinationRefKind: returnsDestination ? RefKind.None : symbol.Parameters[1].RefKind,
+            DestinationDeclaredTypeName: destinationType.ToDisplayString(NullableQualifiedFormat),
+            IsDestinationParameterNullable: !returnsDestination && IsNullableReference(destinationType),
+            DestinationNonNullableTypeName: GetNonNullableTypeName(destinationType),
+            DefaultReturnValue: destinationType.IsValueType || IsNullableReference(destinationType) ? "default" : "default!",
             ReturnsDestination: returnsDestination,
             CustomParameters: new EquatableArray<CustomParameterModel>(customParameters));
 
@@ -159,6 +210,7 @@ internal static class MapperModelBuilder
                 symbol,
                 sourceType,
                 destinationType,
+                GetEffectiveConstructor(model, destinationType),
                 model.MapConverterTypeName,
                 model.MapConverterMethodName)
         };
@@ -167,6 +219,12 @@ internal static class MapperModelBuilder
         if (converterError is not null)
         {
             return Results.Error<MapperMethodModel>(converterError);
+        }
+
+        var valueConverterError = ValidateValueConverterMethods(symbol, context.SemanticModel.Compilation, ref model, syntax);
+        if (valueConverterError is not null)
+        {
+            return Results.Error<MapperMethodModel>(valueConverterError);
         }
 
         var propertyConditionError = ValidatePropertyConditionMethods(symbol, ref model, syntax);
@@ -189,13 +247,13 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(mapFromError);
         }
 
-        var mapCollectionError = ValidateAndBuildMapCollectionMappings(symbol, ref model, sourceType, destinationType, syntax);
+        var mapCollectionError = ValidateAndBuildMapCollectionMappings(symbol, context.SemanticModel.Compilation, ref model, sourceType, destinationType, syntax);
         if (mapCollectionError is not null)
         {
             return Results.Error<MapperMethodModel>(mapCollectionError);
         }
 
-        var mapNestedError = ValidateAndBuildMapNestedMappings(symbol, ref model, sourceType, destinationType, syntax);
+        var mapNestedError = ValidateAndBuildMapNestedMappings(symbol, context.SemanticModel.Compilation, ref model, sourceType, destinationType, syntax);
         if (mapNestedError is not null)
         {
             return Results.Error<MapperMethodModel>(mapNestedError);
@@ -229,7 +287,7 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(cultureFormatError);
         }
 
-        var typeConverterError = ValidateNoTypeConverterFallback(ref model, syntax);
+        var typeConverterError = ValidateNoTypeConverterFallback(ref model, sourceType, syntax);
         if (typeConverterError is not null)
         {
             return Results.Error<MapperMethodModel>(typeConverterError);
@@ -237,6 +295,78 @@ internal static class MapperModelBuilder
 
         return Results.Success(model);
     }
+
+    // The modifiers of a declared parameter other than this (in, ref readonly, ref, scoped, params), in
+    // their declared order. The implementation of a partial method has to repeat them.
+    private static string GetParameterModifiers(MethodDeclarationSyntax syntax, int index) =>
+        String.Join(" ", syntax.ParameterList.Parameters[index].Modifiers
+            .Where(static m => !m.IsKind(SyntaxKind.ThisKeyword))
+            .Select(static m => m.Text));
+
+    private static string GetRefKindKeyword(RefKind refKind) => refKind switch
+    {
+        RefKind.Ref => "ref",
+        RefKind.Out => "out",
+        RefKind.In => "in",
+        RefKind.RefReadOnlyParameter => "ref readonly",
+        _ => string.Empty
+    };
+
+    // A reference type declared with ?. Types declared with nullable annotations disabled are oblivious
+    // and do not count, so the output for them stays as it was.
+    private static bool IsNullableReference(ITypeSymbol type) =>
+        type.IsReferenceType && (type.NullableAnnotation == NullableAnnotation.Annotated);
+
+    // The declared type without the ? of a nullable reference type, keeping the annotations inside it.
+    private static string GetNonNullableTypeName(ITypeSymbol type) =>
+        (IsNullableReference(type) ? type.WithNullableAnnotation(NullableAnnotation.NotAnnotated) : type)
+            .ToDisplayString(NullableQualifiedFormat);
+
+    // What the generated code passes to a parameter of a method it calls ([MapUsing], converter,
+    // condition, BeforeMap / AfterMap, element mapper): a value such as a property read, a variable it may
+    // only read (an in or ref readonly parameter of the mapper, an element of a read-only span, a foreach
+    // variable, the culture field), or a variable it may write (another parameter, the instance it
+    // creates, an element of an array or span).
+    internal enum ArgumentKind
+    {
+        Value,
+        ReadOnlyVariable,
+        WritableVariable
+    }
+
+    private static ArgumentKind GetVariableKind(RefKind refKind) =>
+        refKind is RefKind.In or RefKind.RefReadOnlyParameter ? ArgumentKind.ReadOnlyVariable : ArgumentKind.WritableVariable;
+
+    // Whether a parameter can take an argument of that kind. By value and in take anything (a value goes
+    // as a copy); ref readonly needs a variable (a value warns, CS9193), ref a writable one (CS1620 /
+    // CS8329), and out none, as the generated code has nothing to receive the result with.
+    internal static bool CanTakeArgument(RefKind refKind, ArgumentKind argument) => refKind switch
+    {
+        RefKind.None or RefKind.In => true,
+        RefKind.RefReadOnlyParameter => argument != ArgumentKind.Value,
+        RefKind.Ref => argument == ArgumentKind.WritableVariable,
+        _ => false
+    };
+
+    private static bool TakesArgument(IParameterSymbol parameter, string typeName, ArgumentKind argument) =>
+        (parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == typeName) &&
+        CanTakeArgument(parameter.RefKind, argument);
+
+    // Among matching overloads, one taking every argument by value is used, as the plain call always
+    // chose it; otherwise the first one.
+    private static IMethodSymbol PreferByValue(IMethodSymbol? current, IMethodSymbol candidate) =>
+        (current is null) || (!TakesAllByValue(current) && TakesAllByValue(candidate)) ? candidate : current;
+
+    private static bool TakesAllByValue(IMethodSymbol method) =>
+        method.Parameters.All(static p => p.RefKind == RefKind.None);
+
+    // Whether a call with that many arguments binds to the method as far as their number goes: the
+    // parameters after them are optional.
+    private static bool TakesArgumentCount(IMethodSymbol method, int count) =>
+        (method.Parameters.Length >= count) && method.Parameters.Skip(count).All(static p => p.IsOptional || p.IsParams);
+
+    private static EquatableArray<RefKind> GetParameterRefKinds(IMethodSymbol? method) =>
+        method is null ? default : new EquatableArray<RefKind>(method.Parameters.Select(static p => p.RefKind).ToArray());
 
     private static DiagnosticInfo? ValidatePropertyConditionMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
@@ -256,7 +386,7 @@ internal static class MapperModelBuilder
                 .Where(m => m.IsStatic && (m.ReturnType.SpecialType == SpecialType.System_Boolean))
                 .ToList();
 
-            var matchResult = FindMatchingPropertyConditionMethod(conditionMethods, mapping, model);
+            var (matchResult, matchedMethod) = FindMatchingPropertyConditionMethod(conditionMethods, mapping, model);
             if (matchResult == ConverterMatchResult.NoMatch)
             {
                 return new DiagnosticInfo(
@@ -267,65 +397,70 @@ internal static class MapperModelBuilder
                     mapping.TargetPath);
             }
 
-            resolved.Add(mapping with { ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
+            resolved.Add(mapping with
+            {
+                ConditionAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams,
+                ConditionParameterRefKinds = GetParameterRefKinds(matchedMethod)
+            });
         }
 
         model = model with { PropertyMappings = new(resolved) };
         return null;
     }
 
-    private static ConverterMatchResult FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
+    private static (ConverterMatchResult Result, IMethodSymbol? Method) FindMatchingPropertyConditionMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
     {
-        var hasMatchWithCustomParams = false;
-        var hasMatchWithoutCustomParams = false;
-        var sourceType = mapping.SourceType;
+        IMethodSymbol? withCustomParams = null;
+        IMethodSymbol? withoutCustomParams = null;
         var customParams = model.CustomParameters;
 
         foreach (var method in candidates)
         {
             if ((customParams.Count > 0) &&
-                (method.Parameters.Length == 1 + customParams.Count))
+                (method.Parameters.Length == 1 + customParams.Count) &&
+                TakesValueAndCustomParameters(method, mapping.SourceType, customParams))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
-
-                var customParamsMatch = true;
-                for (var i = 0; i < customParams.Count; i++)
-                {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
-                    {
-                        customParamsMatch = false;
-                        break;
-                    }
-                }
-
-                if (sourceMatch && customParamsMatch)
-                {
-                    hasMatchWithCustomParams = true;
-                }
+                withCustomParams = PreferByValue(withCustomParams, method);
             }
 
-            if (method.Parameters.Length == 1)
+            if ((method.Parameters.Length == 1) &&
+                TakesArgument(method.Parameters[0], mapping.SourceType, ArgumentKind.Value))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
-
-                if (sourceMatch)
-                {
-                    hasMatchWithoutCustomParams = true;
-                }
+                withoutCustomParams = PreferByValue(withoutCustomParams, method);
             }
         }
 
-        if (hasMatchWithCustomParams)
+        if (withCustomParams is not null)
         {
-            return ConverterMatchResult.MatchWithCustomParams;
+            return (ConverterMatchResult.MatchWithCustomParams, withCustomParams);
         }
 
-        if (hasMatchWithoutCustomParams)
+        if (withoutCustomParams is not null)
         {
-            return ConverterMatchResult.MatchWithoutCustomParams;
+            return (ConverterMatchResult.MatchWithoutCustomParams, withoutCustomParams);
         }
 
-        return ConverterMatchResult.NoMatch;
+        return (ConverterMatchResult.NoMatch, null);
+    }
+
+    // A converter or condition takes the property value, then the mapper's custom parameters. The
+    // parameter count is checked by the caller.
+    private static bool TakesValueAndCustomParameters(IMethodSymbol method, string valueType, EquatableArray<CustomParameterModel> customParams)
+    {
+        if (!TakesArgument(method.Parameters[0], valueType, ArgumentKind.Value))
+        {
+            return false;
+        }
+
+        for (var i = 0; i < customParams.Count; i++)
+        {
+            if (!TakesArgument(method.Parameters[i + 1], customParams[i].TypeName, GetVariableKind(customParams[i].RefKind)))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static DiagnosticInfo? ValidateConverterMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
@@ -346,7 +481,7 @@ internal static class MapperModelBuilder
                 .Where(m => m.IsStatic)
                 .ToList();
 
-            var matchResult = FindMatchingConverterMethod(converterMethods, mapping, model);
+            var (matchResult, matchedMethod) = FindMatchingConverterMethod(converterMethods, mapping, model);
             if (matchResult == ConverterMatchResult.ReturnTypeMismatch)
             {
                 var actualReturnType = converterMethods
@@ -374,7 +509,11 @@ internal static class MapperModelBuilder
                     mapping.TargetPath);
             }
 
-            resolved.Add(mapping with { ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams });
+            resolved.Add(mapping with
+            {
+                ConverterAcceptsCustomParameters = matchResult == ConverterMatchResult.MatchWithCustomParams,
+                ConverterParameterRefKinds = GetParameterRefKinds(matchedMethod)
+            });
         }
 
         model = model with { PropertyMappings = new(resolved) };
@@ -389,10 +528,10 @@ internal static class MapperModelBuilder
         ReturnTypeMismatch
     }
 
-    internal static ConverterMatchResult FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
+    internal static (ConverterMatchResult Result, IMethodSymbol? Method) FindMatchingConverterMethod(List<IMethodSymbol> candidates, PropertyMappingModel mapping, MapperMethodModel model)
     {
-        var hasMatchWithCustomParams = false;
-        var hasMatchWithoutCustomParams = false;
+        IMethodSymbol? withCustomParams = null;
+        IMethodSymbol? withoutCustomParams = null;
         var hasReturnTypeMismatch = false;
         var sourceType = mapping.SourceType;
         var targetType = mapping.TargetType;
@@ -404,67 +543,49 @@ internal static class MapperModelBuilder
             var returnTypeMatches = returnType == targetType;
 
             if ((customParams.Count > 0) &&
-                (method.Parameters.Length == 1 + customParams.Count))
+                (method.Parameters.Length == 1 + customParams.Count) &&
+                TakesValueAndCustomParameters(method, sourceType, customParams))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
-
-                var customParamsMatch = true;
-                for (var i = 0; i < customParams.Count; i++)
+                if (returnTypeMatches)
                 {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
-                    {
-                        customParamsMatch = false;
-                        break;
-                    }
+                    withCustomParams = PreferByValue(withCustomParams, method);
                 }
-
-                if (sourceMatch && customParamsMatch)
+                else
                 {
-                    if (returnTypeMatches)
-                    {
-                        hasMatchWithCustomParams = true;
-                    }
-                    else
-                    {
-                        hasReturnTypeMismatch = true;
-                    }
+                    hasReturnTypeMismatch = true;
                 }
             }
 
-            if (method.Parameters.Length == 1)
+            if ((method.Parameters.Length == 1) &&
+                TakesArgument(method.Parameters[0], sourceType, ArgumentKind.Value))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType;
-
-                if (sourceMatch)
+                if (returnTypeMatches)
                 {
-                    if (returnTypeMatches)
-                    {
-                        hasMatchWithoutCustomParams = true;
-                    }
-                    else
-                    {
-                        hasReturnTypeMismatch = true;
-                    }
+                    withoutCustomParams = PreferByValue(withoutCustomParams, method);
+                }
+                else
+                {
+                    hasReturnTypeMismatch = true;
                 }
             }
         }
 
-        if (hasMatchWithCustomParams)
+        if (withCustomParams is not null)
         {
-            return ConverterMatchResult.MatchWithCustomParams;
+            return (ConverterMatchResult.MatchWithCustomParams, withCustomParams);
         }
 
-        if (hasMatchWithoutCustomParams)
+        if (withoutCustomParams is not null)
         {
-            return ConverterMatchResult.MatchWithoutCustomParams;
+            return (ConverterMatchResult.MatchWithoutCustomParams, withoutCustomParams);
         }
 
         if (hasReturnTypeMismatch)
         {
-            return ConverterMatchResult.ReturnTypeMismatch;
+            return (ConverterMatchResult.ReturnTypeMismatch, null);
         }
 
-        return ConverterMatchResult.NoMatch;
+        return (ConverterMatchResult.NoMatch, null);
     }
 
     internal static DiagnosticInfo? ValidateCallbackMethods(IMethodSymbol mapperMethod, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
@@ -478,12 +599,16 @@ internal static class MapperModelBuilder
                 .Where(m => m.IsStatic)
                 .ToList();
 
-            var matchResult = FindMatchingCallbackMethod(beforeMapMethods, model);
+            var (matchResult, matchedMethod) = FindMatchingCallbackMethod(beforeMapMethods, model);
             if (matchResult == CallbackMatchResult.NoMatch)
             {
                 return new DiagnosticInfo(Diagnostics.InvalidBeforeMapSignature, syntax.GetLocation(), mapperMethod.Name, model.BeforeMapMethod!);
             }
-            model = model with { BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams };
+            model = model with
+            {
+                BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams,
+                BeforeMapParameterRefKinds = GetParameterRefKinds(matchedMethod)
+            };
         }
 
         if (!String.IsNullOrEmpty(model.AfterMapMethod))
@@ -493,12 +618,16 @@ internal static class MapperModelBuilder
                 .Where(m => m.IsStatic)
                 .ToList();
 
-            var matchResult = FindMatchingCallbackMethod(afterMapMethods, model);
+            var (matchResult, matchedMethod) = FindMatchingCallbackMethod(afterMapMethods, model);
             if (matchResult == CallbackMatchResult.NoMatch)
             {
                 return new DiagnosticInfo(Diagnostics.InvalidAfterMapSignature, syntax.GetLocation(), mapperMethod.Name, model.AfterMapMethod!);
             }
-            model = model with { AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams };
+            model = model with
+            {
+                AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams,
+                AfterMapParameterRefKinds = GetParameterRefKinds(matchedMethod)
+            };
         }
 
         return null;
@@ -511,59 +640,60 @@ internal static class MapperModelBuilder
         MatchWithCustomParams
     }
 
-    internal static CallbackMatchResult FindMatchingCallbackMethod(List<IMethodSymbol> candidates, MapperMethodModel model)
+    internal static (CallbackMatchResult Result, IMethodSymbol? Method) FindMatchingCallbackMethod(List<IMethodSymbol> candidates, MapperMethodModel model)
     {
-        var hasMatchWithCustomParams = false;
-        var hasMatchWithoutCustomParams = false;
+        IMethodSymbol? withCustomParams = null;
+        IMethodSymbol? withoutCustomParams = null;
         var customParams = model.CustomParameters;
+
+        // The source and destination are variables: parameters of the mapper, or the instance a
+        // return-type mapper builds, which the callback may write.
+        var sourceKind = GetVariableKind(model.SourceRefKind);
+        var destinationKind = model.ReturnsDestination ? ArgumentKind.WritableVariable : GetVariableKind(model.DestinationRefKind);
+
+        bool TakesSourceAndDestination(IMethodSymbol method) =>
+            TakesArgument(method.Parameters[0], model.SourceTypeName, sourceKind) &&
+            TakesArgument(method.Parameters[1], model.DestinationTypeName, destinationKind);
 
         foreach (var method in candidates)
         {
             if ((customParams.Count > 0) &&
-                (method.Parameters.Length == 2 + customParams.Count))
+                (method.Parameters.Length == 2 + customParams.Count) &&
+                TakesSourceAndDestination(method))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.SourceTypeName;
-                var destMatch = method.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.DestinationTypeName;
-
                 var customParamsMatch = true;
                 for (var i = 0; i < customParams.Count; i++)
                 {
-                    if (method.Parameters[i + 2].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
+                    if (!TakesArgument(method.Parameters[i + 2], customParams[i].TypeName, GetVariableKind(customParams[i].RefKind)))
                     {
                         customParamsMatch = false;
                         break;
                     }
                 }
 
-                if (sourceMatch && destMatch && customParamsMatch)
+                if (customParamsMatch)
                 {
-                    hasMatchWithCustomParams = true;
+                    withCustomParams = PreferByValue(withCustomParams, method);
                 }
             }
 
-            if (method.Parameters.Length == 2)
+            if ((method.Parameters.Length == 2) && TakesSourceAndDestination(method))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.SourceTypeName;
-                var destMatch = method.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == model.DestinationTypeName;
-
-                if (sourceMatch && destMatch)
-                {
-                    hasMatchWithoutCustomParams = true;
-                }
+                withoutCustomParams = PreferByValue(withoutCustomParams, method);
             }
         }
 
-        if (hasMatchWithCustomParams)
+        if (withCustomParams is not null)
         {
-            return CallbackMatchResult.MatchWithCustomParams;
+            return (CallbackMatchResult.MatchWithCustomParams, withCustomParams);
         }
 
-        if (hasMatchWithoutCustomParams)
+        if (withoutCustomParams is not null)
         {
-            return CallbackMatchResult.MatchWithoutCustomParams;
+            return (CallbackMatchResult.MatchWithoutCustomParams, withoutCustomParams);
         }
 
-        return CallbackMatchResult.NoMatch;
+        return (CallbackMatchResult.NoMatch, null);
     }
 
     internal static MapperMethodModel ParseMappingAttributes(IMethodSymbol symbol, MapperMethodModel model)
@@ -1117,6 +1247,8 @@ internal static class MapperModelBuilder
             expressions[i] = destProp is not null
                 ? expressionMapping with
                 {
+                    TargetType = destProp.Type.ToDisplayString(NullableQualifiedFormat),
+                    IsTargetTypeOblivious = destProp.Type.NullableAnnotation == NullableAnnotation.None,
                     IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
                     IsTargetRequired = destProp.IsRequired
                 }
@@ -1250,6 +1382,7 @@ internal static class MapperModelBuilder
                 IsTargetInitOnly = destProp.SetMethod?.IsInitOnly == true,
                 IsTargetRequired = destProp.IsRequired,
                 AcceptsCustomParameters = matchResult.Result == MapUsingMatchResult.MatchWithCustomParams,
+                ParameterRefKinds = GetParameterRefKinds(matchResult.MatchedMethod),
                 MethodReturnType = matchResult.MatchedMethod?.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty
             });
         }
@@ -1279,39 +1412,37 @@ internal static class MapperModelBuilder
         ITypeSymbol sourceType,
         ITypeSymbol targetType)
     {
-        IMethodSymbol? matchedMethod = null;
-        var hasMatchWithCustomParams = false;
-        var hasMatchWithoutCustomParams = false;
+        IMethodSymbol? withCustomParams = null;
+        IMethodSymbol? withoutCustomParams = null;
         string? mismatchedReturnType = null;
 
         var sourceTypeName = sourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var targetTypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var customParams = model.CustomParameters;
+        var sourceKind = GetVariableKind(model.SourceRefKind);
 
         foreach (var method in candidates)
         {
             if ((customParams.Count > 0) &&
-                (method.Parameters.Length == 1 + customParams.Count))
+                (method.Parameters.Length == 1 + customParams.Count) &&
+                TakesArgument(method.Parameters[0], sourceTypeName, sourceKind))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceTypeName;
-
                 var customParamsMatch = true;
                 for (var i = 0; i < customParams.Count; i++)
                 {
-                    if (method.Parameters[i + 1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != customParams[i].TypeName)
+                    if (!TakesArgument(method.Parameters[i + 1], customParams[i].TypeName, GetVariableKind(customParams[i].RefKind)))
                     {
                         customParamsMatch = false;
                         break;
                     }
                 }
 
-                if (sourceMatch && customParamsMatch)
+                if (customParamsMatch)
                 {
                     var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     if ((returnType == targetTypeName) || method.ReturnType.IsAssignableTo(targetType))
                     {
-                        hasMatchWithCustomParams = true;
-                        matchedMethod = method;
+                        withCustomParams = PreferByValue(withCustomParams, method);
                     }
                     else
                     {
@@ -1320,34 +1451,29 @@ internal static class MapperModelBuilder
                 }
             }
 
-            if (method.Parameters.Length == 1)
+            if ((method.Parameters.Length == 1) &&
+                TakesArgument(method.Parameters[0], sourceTypeName, sourceKind))
             {
-                var sourceMatch = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceTypeName;
-
-                if (sourceMatch)
+                var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if ((returnType == targetTypeName) || method.ReturnType.IsAssignableTo(targetType))
                 {
-                    var returnType = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    if ((returnType == targetTypeName) || method.ReturnType.IsAssignableTo(targetType))
-                    {
-                        hasMatchWithoutCustomParams = true;
-                        matchedMethod ??= method;
-                    }
-                    else
-                    {
-                        mismatchedReturnType = returnType;
-                    }
+                    withoutCustomParams = PreferByValue(withoutCustomParams, method);
+                }
+                else
+                {
+                    mismatchedReturnType = returnType;
                 }
             }
         }
 
-        if (hasMatchWithCustomParams)
+        if (withCustomParams is not null)
         {
-            return new MapUsingMatchInfo { Result = MapUsingMatchResult.MatchWithCustomParams, MatchedMethod = matchedMethod };
+            return new MapUsingMatchInfo { Result = MapUsingMatchResult.MatchWithCustomParams, MatchedMethod = withCustomParams };
         }
 
-        if (hasMatchWithoutCustomParams)
+        if (withoutCustomParams is not null)
         {
-            return new MapUsingMatchInfo { Result = MapUsingMatchResult.MatchWithoutCustomParams, MatchedMethod = matchedMethod };
+            return new MapUsingMatchInfo { Result = MapUsingMatchResult.MatchWithoutCustomParams, MatchedMethod = withoutCustomParams };
         }
 
         if (mismatchedReturnType is not null)
@@ -1447,6 +1573,7 @@ internal static class MapperModelBuilder
 
     internal static DiagnosticInfo? ValidateAndBuildMapCollectionMappings(
         IMethodSymbol mapperMethod,
+        Compilation compilation,
         ref MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
@@ -1482,9 +1609,10 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
-            // The emitted loop runs after construction, so init-only targets can never be assigned,
-            // and required targets are left unset by the generator-constructed instance.
-            if ((destProp.SetMethod?.IsInitOnly == true) || (model.ReturnsDestination && destProp.IsRequired))
+            // The emitted loop runs after construction and assigns the target, so a target without a
+            // setter the mapper class can call, or an init-only one, can never be assigned, and required
+            // targets are left unset by the generator-constructed instance.
+            if (!HasAssignableSetter(destProp, containingType, compilation) || (model.ReturnsDestination && destProp.IsRequired))
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnsupportedInitOnlyCollectionTarget,
@@ -1513,8 +1641,60 @@ internal static class MapperModelBuilder
                     mapCollection.TargetName);
             }
 
-            var mapperMethodResult = FindMapperMethod(containingType, mapCollection.Mapper!, sourceElementType, targetElementType);
-            if (mapperMethodResult is null)
+            var sourceShape = DetermineSourceShape(sourceProp.Type);
+            var targetCollectionMethod = DetermineCollectionMethod(destProp.Type);
+            var useHelperPath = (model.CollectionConverterTypeName is not null) || mapCollection.HasCustomConverter();
+            var usesConverter = useHelperPath && !mapCollection.InPlace;
+
+            // Without a collection converter the generated code creates the target collection: the one the
+            // loop builds, or for InPlace the one it creates when the target is null. A target that cannot
+            // take it, such as a collection class of its own, is reported instead of failing in the
+            // generated code.
+            if (!usesConverter &&
+                (GetCreatedCollectionType(mapCollection.InPlace, destProp.Type, targetElementType, compilation) is { } createdType) &&
+                !compilation.ClassifyCommonConversion(createdType, destProp.Type).IsImplicit)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.UnsupportedCollectionTarget,
+                    syntax.GetLocation(),
+                    mapperMethod.Name,
+                    mapCollection.TargetName,
+                    createdType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            }
+
+            // The element mapper is called by the loop the generated code emits, or handed as a delegate to
+            // the method of the collection converter on the helper path, which InPlace does not take.
+            Func<IMethodSymbol, bool> canCallMapper;
+            if (usesConverter)
+            {
+                // A converter method missing, or one that cannot take the source collection and the element
+                // mapper, is reported as a converter signature mismatch instead of leaving the call to fail
+                // in the generated code
+                var converterType = FindConverterType(mapperMethod, Names.CollectionConverterAttribute, Names.DefaultCollectionConverter);
+                var converterMethodName = mapCollection.HasCustomConverter() ? mapCollection.Converter! : targetCollectionMethod;
+                var converterMethods = FindCollectionConverterMethods(converterType, converterMethodName, sourceProp.Type, destProp.Type, sourceElementType, targetElementType, compilation);
+                if (converterMethods.Count == 0)
+                {
+                    return new DiagnosticInfo(
+                        Diagnostics.InvalidConverterSignature,
+                        syntax.GetLocation(),
+                        mapperMethod.Name,
+                        $"{converterType?.ToDisplayString() ?? Names.DefaultCollectionConverter}.{converterMethodName}",
+                        mapCollection.TargetName);
+                }
+
+                canCallMapper = m => converterMethods.Any(c => IsDelegateFor(c.Parameters[1].Type, m));
+            }
+            else
+            {
+                // The loop passes the element, and creates the instance a void mapper fills with new T()
+                var element = GetElementArgumentKind(sourceShape);
+                var canCreateElement = CanCreateInstance(targetElementType, containingType, compilation);
+                canCallMapper = m => TakesMapperArguments(m, element) && (!m.ReturnsVoid || canCreateElement);
+            }
+
+            var elementMapper = FindMapperMethod(containingType, mapCollection.Mapper!, sourceElementType, targetElementType, canCallMapper);
+            if (elementMapper is null)
             {
                 return new DiagnosticInfo(
                     Diagnostics.InvalidMapCollectionMapperMethod,
@@ -1532,14 +1712,15 @@ internal static class MapperModelBuilder
                 TargetElementType = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 IsSourceNullable = sourceProp.Type.IsNullableType(),
                 TargetIsArray = destProp.Type is IArrayTypeSymbol,
-                TargetCollectionMethod = DetermineCollectionMethod(destProp.Type),
-                SourceShape = DetermineSourceShape(sourceProp.Type),
+                TargetCollectionMethod = targetCollectionMethod,
+                SourceShape = sourceShape,
                 TargetShape = DetermineTargetShape(destProp.Type),
-                UseHelperPath = (model.CollectionConverterTypeName is not null) || mapCollection.HasCustomConverter(),
+                UseHelperPath = useHelperPath,
                 InPlaceFallbackTypeName = mapCollection.InPlace
                     ? DetermineInPlaceFallbackTypeName(destProp.Type, targetElementType)
                     : mapCollection.InPlaceFallbackTypeName,
-                MapperReturnsValue = mapperMethodResult.Value
+                MapperReturnsValue = !elementMapper.ReturnsVoid,
+                MapperParameterRefKinds = GetParameterRefKinds(elementMapper)
             });
         }
 
@@ -1549,6 +1730,7 @@ internal static class MapperModelBuilder
 
     internal static DiagnosticInfo? ValidateAndBuildMapNestedMappings(
         IMethodSymbol mapperMethod,
+        Compilation compilation,
         ref MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
@@ -1585,7 +1767,7 @@ internal static class MapperModelBuilder
             }
 
             // Same restriction as MapCollection: the nested-map statements run after construction.
-            if ((destProp.SetMethod?.IsInitOnly == true) || (model.ReturnsDestination && destProp.IsRequired))
+            if (!HasAssignableSetter(destProp, containingType, compilation) || (model.ReturnsDestination && destProp.IsRequired))
             {
                 return new DiagnosticInfo(
                     Diagnostics.UnsupportedInitOnlyCollectionTarget,
@@ -1610,8 +1792,16 @@ internal static class MapperModelBuilder
                 targetUnderlyingType = namedDestType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
             }
 
-            var mapperMethodResult = FindMapperMethod(containingType, mapNested.Mapper, sourceUnderlyingType, targetUnderlyingType);
-            if (mapperMethodResult is null)
+            // The nested mapper gets the property value, and a void one the instance the generated code
+            // creates with new T()
+            var canCreateTarget = CanCreateInstance(targetUnderlyingType, containingType, compilation);
+            var nestedMapper = FindMapperMethod(
+                containingType,
+                mapNested.Mapper,
+                sourceUnderlyingType,
+                targetUnderlyingType,
+                m => TakesMapperArguments(m, ArgumentKind.Value) && (!m.ReturnsVoid || canCreateTarget));
+            if (nestedMapper is null)
             {
                 return new DiagnosticInfo(
                     Diagnostics.InvalidMapNestedMapperMethod,
@@ -1626,7 +1816,8 @@ internal static class MapperModelBuilder
                 SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 TargetType = destProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 IsSourceNullable = sourceProp.Type.IsNullableType(),
-                MapperReturnsValue = mapperMethodResult.Value
+                MapperReturnsValue = !nestedMapper.ReturnsVoid,
+                MapperParameterRefKinds = GetParameterRefKinds(nestedMapper)
             });
         }
 
@@ -1634,45 +1825,239 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static bool? FindMapperMethod(INamedTypeSymbol containingType, string methodName, ITypeSymbol sourceElementType, ITypeSymbol targetElementType)
+    // The mapper of [MapCollection] / [MapNested]: a static method taking the source element and returning
+    // the target one, or taking both and filling the target. Only one the call can pass its arguments to
+    // is used. The first of those decides between the two shapes, as the first match did before, and an
+    // overload of that shape taking every argument by value wins, as the plain call always chose it.
+    internal static IMethodSymbol? FindMapperMethod(
+        INamedTypeSymbol containingType,
+        string methodName,
+        ITypeSymbol sourceElementType,
+        ITypeSymbol targetElementType,
+        Func<IMethodSymbol, bool> canCall)
     {
         var sourceTypeName = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var targetTypeName = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+        IMethodSymbol? found = null;
         var methods = containingType.GetMembers(methodName)
             .OfType<IMethodSymbol>()
             .Where(m => m.IsStatic);
         foreach (var method in methods)
         {
             var methodToCheck = method.PartialDefinitionPart ?? method;
-
-            if ((methodToCheck.Parameters.Length == 1) &&
-                (!methodToCheck.ReturnsVoid))
+            if (IsMapperShape(methodToCheck, sourceTypeName, targetTypeName) &&
+                canCall(methodToCheck) &&
+                ((found is null) || (found.ReturnsVoid == methodToCheck.ReturnsVoid)))
             {
-                var paramType = methodToCheck.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var returnType = methodToCheck.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-                if ((paramType == sourceTypeName) && (returnType == targetTypeName))
-                {
-                    return true;
-                }
-            }
-
-            if ((methodToCheck.Parameters.Length == 2) &&
-                methodToCheck.ReturnsVoid)
-            {
-                var sourceParamType = methodToCheck.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var destParamType = methodToCheck.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-                if ((sourceParamType == sourceTypeName) && (destParamType == targetTypeName))
-                {
-                    return false;
-                }
+                found = PreferByValue(found, methodToCheck);
             }
         }
 
-        return null;
+        return found;
     }
+
+    private static bool IsMapperShape(IMethodSymbol method, string sourceTypeName, string targetTypeName)
+    {
+        if (method.ReturnsVoid)
+        {
+            return (method.Parameters.Length == 2) &&
+                   (method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceTypeName) &&
+                   (method.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == targetTypeName);
+        }
+
+        return (method.Parameters.Length == 1) &&
+               (method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceTypeName) &&
+               (method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == targetTypeName);
+    }
+
+    // Whether a mapper takes the arguments of the call: the source of the given kind, and for a void
+    // mapper the instance the generated code creates for it, a local it may write.
+    private static bool TakesMapperArguments(IMethodSymbol method, ArgumentKind source) =>
+        CanTakeArgument(method.Parameters[0].RefKind, source) &&
+        method.Parameters.Skip(1).All(static p => CanTakeArgument(p.RefKind, ArgumentKind.WritableVariable));
+
+    // What the loop over a source collection passes as the element: an element of an array or of a span
+    // over an array, List<T> or Memory<T>, which it may write; one of a read-only span (ImmutableArray<T>,
+    // ReadOnlyMemory<T>) or a foreach variable, which it may only read; and the value an IList<T> /
+    // IReadOnlyList<T> indexer returns.
+    internal static ArgumentKind GetElementArgumentKind(CollectionSourceShape shape) => shape switch
+    {
+        CollectionSourceShape.Array or CollectionSourceShape.List or CollectionSourceShape.Memory => ArgumentKind.WritableVariable,
+        CollectionSourceShape.IndexedList => ArgumentKind.Value,
+        _ => ArgumentKind.ReadOnlyVariable
+    };
+
+    // The methods of a collection converter the helper path can call as Method<TSourceElement,
+    // TTargetElement>(source, mapper), constructed with the element types: static, taking both arguments as
+    // values, the first one the source collection, meeting the constraints of their type parameters, and
+    // returning something the target property takes.
+    private static List<IMethodSymbol> FindCollectionConverterMethods(
+        ITypeSymbol? converterType,
+        string methodName,
+        ITypeSymbol sourceCollectionType,
+        ITypeSymbol targetCollectionType,
+        ITypeSymbol sourceElementType,
+        ITypeSymbol targetElementType,
+        Compilation compilation)
+    {
+        if (converterType is null)
+        {
+            return [];
+        }
+
+        var typeArguments = new[] { sourceElementType, targetElementType };
+        return converterType.GetMembers(methodName)
+            .OfType<IMethodSymbol>()
+            .Where(m => m.IsStatic &&
+                        (m.Arity == 2) &&
+                        TakesArgumentCount(m, 2) &&
+                        m.Parameters.Take(2).All(static p => CanTakeArgument(p.RefKind, ArgumentKind.Value)) &&
+                        SatisfiesConstraints(m, typeArguments, compilation))
+            .Select(m => m.Construct(typeArguments))
+            .Where(m => compilation.ClassifyCommonConversion(sourceCollectionType, m.Parameters[0].Type).IsImplicit &&
+                        compilation.ClassifyCommonConversion(m.ReturnType, targetCollectionType).IsImplicit)
+            .ToList();
+    }
+
+    // Whether the type arguments meet the constraints of the method's type parameters: new(), class,
+    // struct, and the constraint types that do not refer to the type parameters themselves.
+    private static bool SatisfiesConstraints(IMethodSymbol method, ITypeSymbol[] typeArguments, Compilation compilation)
+    {
+        for (var i = 0; i < method.TypeParameters.Length; i++)
+        {
+            var parameter = method.TypeParameters[i];
+            var argument = typeArguments[i];
+            if ((parameter.HasConstructorConstraint && !SatisfiesNewConstraint(argument)) ||
+                (parameter.HasReferenceTypeConstraint && !argument.IsReferenceType) ||
+                (parameter.HasValueTypeConstraint && (!argument.IsValueType || (argument.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T))) ||
+                parameter.ConstraintTypes.Any(c => !RefersToTypeParameter(c) && !IsConstraintConversion(compilation.ClassifyCommonConversion(argument, c))))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool RefersToTypeParameter(ITypeSymbol type) => type switch
+    {
+        ITypeParameterSymbol => true,
+        IArrayTypeSymbol array => RefersToTypeParameter(array.ElementType),
+        INamedTypeSymbol named => named.TypeArguments.Any(RefersToTypeParameter),
+        _ => false
+    };
+
+    // A constraint type takes an identity, reference or boxing conversion.
+    private static bool IsConstraintConversion(CommonConversion conversion) =>
+        conversion.IsImplicit && !conversion.IsUserDefined && !conversion.IsNumeric && !conversion.IsNullable;
+
+    // new() takes an enum, or a struct or class that is not abstract with a public constructor without
+    // parameters, and not one with required members that constructor leaves unset (CS9040).
+    private static bool SatisfiesNewConstraint(ITypeSymbol type)
+    {
+        if (type is ITypeParameterSymbol typeParameter)
+        {
+            return typeParameter.HasConstructorConstraint || typeParameter.HasValueTypeConstraint;
+        }
+
+        if ((type is not INamedTypeSymbol named) || named.IsAbstract)
+        {
+            return false;
+        }
+
+        if (named.TypeKind == TypeKind.Enum)
+        {
+            return true;
+        }
+
+        var constructor = named.InstanceConstructors.FirstOrDefault(static c => (c.Parameters.Length == 0) && (c.DeclaredAccessibility == Accessibility.Public));
+        return (named.TypeKind is TypeKind.Class or TypeKind.Struct) &&
+               (constructor is not null) &&
+               (!HasRequiredMembers(named) || SetsRequiredMembers(constructor));
+    }
+
+    // Whether the generated code can write new T() for the instance a void mapper fills: an enum, or a
+    // struct or class that is not abstract with a constructor callable without arguments from the mapper
+    // class, and not one with required members that constructor leaves unset (CS9035).
+    private static bool CanCreateInstance(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation)
+    {
+        if (type is ITypeParameterSymbol typeParameter)
+        {
+            return typeParameter.HasConstructorConstraint || typeParameter.HasValueTypeConstraint;
+        }
+
+        if ((type is not INamedTypeSymbol named) || named.IsAbstract || named.IsStatic)
+        {
+            return false;
+        }
+
+        if (named.TypeKind == TypeKind.Enum)
+        {
+            return true;
+        }
+
+        var constructor = named.InstanceConstructors.FirstOrDefault(c =>
+            c.Parameters.All(static p => p.IsOptional || p.IsParams) && compilation.IsSymbolAccessibleWithin(c, within));
+        return (named.TypeKind is TypeKind.Class or TypeKind.Struct) &&
+               (constructor is not null) &&
+               (!HasRequiredMembers(named) || SetsRequiredMembers(constructor));
+    }
+
+    private static bool HasRequiredMembers(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.GetMembers().Any(static m => m is IPropertySymbol { IsRequired: true } or IFieldSymbol { IsRequired: true }))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool SetsRequiredMembers(IMethodSymbol constructor) =>
+        constructor.GetAttributes().Any(static a => a.AttributeClass?.ToDisplayString() == "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute");
+
+    // Whether a statement after construction can assign the property: a setter that is not init-only and
+    // that the mapper class can call.
+    private static bool HasAssignableSetter(IPropertySymbol property, INamedTypeSymbol within, Compilation compilation) =>
+        (property.SetMethod is { IsInitOnly: false } setter) && compilation.IsSymbolAccessibleWithin(setter, within);
+
+    // The collection the generated code creates for a [MapCollection] target without a collection
+    // converter: the one the loop builds for the target shape, or for InPlace the List<T> (HashSet<T> for a
+    // set) it creates when the target is null.
+    private static ITypeSymbol? GetCreatedCollectionType(bool inPlace, ITypeSymbol targetType, ITypeSymbol elementType, Compilation compilation)
+    {
+        if (inPlace)
+        {
+            var isSet = DetermineInPlaceFallbackTypeName(targetType, elementType)
+                .StartsWith("global::System.Collections.Generic.HashSet<", StringComparison.Ordinal);
+            return ConstructType(compilation, isSet ? "System.Collections.Generic.HashSet`1" : "System.Collections.Generic.List`1", elementType);
+        }
+
+        return DetermineTargetShape(targetType) switch
+        {
+            CollectionTargetShape.Array => compilation.CreateArrayTypeSymbol(elementType),
+            CollectionTargetShape.ImmutableArray => ConstructType(compilation, "System.Collections.Immutable.ImmutableArray`1", elementType),
+            CollectionTargetShape.ImmutableList => ConstructType(compilation, "System.Collections.Immutable.ImmutableList`1", elementType),
+            CollectionTargetShape.HashSet => ConstructType(compilation, "System.Collections.Generic.HashSet`1", elementType),
+            CollectionTargetShape.ImmutableHashSet => ConstructType(compilation, "System.Collections.Immutable.ImmutableHashSet`1", elementType),
+            CollectionTargetShape.FrozenSet => ConstructType(compilation, "System.Collections.Frozen.FrozenSet`1", elementType),
+            _ => ConstructType(compilation, "System.Collections.Generic.List`1", elementType)
+        };
+    }
+
+    private static ITypeSymbol? ConstructType(Compilation compilation, string metadataName, ITypeSymbol typeArgument) =>
+        compilation.GetTypeByMetadataName(metadataName)?.Construct(typeArgument);
+
+    // Whether a method converts to the delegate type: a method group does so only when the method takes
+    // each parameter the way the delegate's Invoke does and returns likewise.
+    private static bool IsDelegateFor(ITypeSymbol type, IMethodSymbol method) =>
+        (type is INamedTypeSymbol { DelegateInvokeMethod: { } invoke }) &&
+        (invoke.ReturnsVoid == method.ReturnsVoid) &&
+        invoke.Parameters.Select(static p => p.RefKind).SequenceEqual(method.Parameters.Select(static p => p.RefKind));
 
     internal static string DetermineCollectionMethod(ITypeSymbol targetType)
     {
@@ -1876,7 +2261,7 @@ internal static class MapperModelBuilder
         return null;
     }
 
-    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(ref MapperMethodModel model, MethodDeclarationSyntax syntax)
+    internal static DiagnosticInfo? ValidateNoTypeConverterFallback(ref MapperMethodModel model, ITypeSymbol sourceType, MethodDeclarationSyntax syntax)
     {
         if (model.MapConverterTypeName is not null)
         {
@@ -1935,11 +2320,16 @@ internal static class MapperModelBuilder
             }
 
             {
+                // To a string, a value the conversions above did not claim is formatted with
+                // ToString(format, provider). A type without that method goes on to the fallback,
+                // reported below, rather than leaving the call to fail in the generated code.
                 var lcTargetType = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
                 if (TypeNameHelper.IsStringType(lcTargetType))
                 {
                     var lcSourceType = !String.IsNullOrEmpty(mapping.SourceUnderlyingType) ? mapping.SourceUnderlyingType : mapping.SourceType;
-                    if (!TypeNameHelper.IsBuiltInNumericOrDateType(lcSourceType))
+                    var sourceValueType = PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'))?.Type.GetUnderlyingType();
+                    if (!TypeNameHelper.IsBuiltInNumericOrDateType(lcSourceType) &&
+                        ((sourceValueType is null) || HasFormatToString(sourceValueType)))
                     {
                         resolved[i] = mapping with { UseFormattable = true };
                         continue;
@@ -3030,28 +3420,39 @@ internal static class MapperModelBuilder
         IMethodSymbol mapperMethod,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
+        IMethodSymbol? constructor,
         string? mapConverterTypeName,
         string mapConverterMethodName)
     {
         var hasMapConverter = mapConverterTypeName is not null;
-        var converterType = FindConverterType(mapperMethod, mapConverterTypeName ?? Names.DefaultValueConverter);
+        var converterType = FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
 
         INamedTypeSymbol? parsableSymbol = null;
         INamedTypeSymbol? spanParsableSymbol = null;
-        INamedTypeSymbol? formattableSymbol = null;
         if (!hasMapConverter)
         {
             foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
             {
                 parsableSymbol ??= reference.GetTypeByMetadataName("System.IParsable`1");
                 spanParsableSymbol ??= reference.GetTypeByMetadataName("System.ISpanParsable`1");
-                formattableSymbol ??= reference.GetTypeByMetadataName("System.IFormattable");
-                if ((parsableSymbol is not null) && (spanParsableSymbol is not null) && (formattableSymbol is not null))
+                if ((parsableSymbol is not null) && (spanParsableSymbol is not null))
                 {
                     break;
                 }
             }
         }
+
+        // The declared types of the members, from their symbols: the source property, and the target
+        // property or the constructor parameter a constructor-only target stands for. The type names of
+        // the model are looked up only as a last resort, which misses nested and generic types.
+        ITypeSymbol? GetSourceType(PropertyMappingModel mapping, string typeName) =>
+            PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'))?.Type.GetUnderlyingType() ??
+            mapperMethod.FindTypeByFullyQualifiedName(typeName);
+
+        ITypeSymbol? GetTargetType(PropertyMappingModel mapping, string typeName) =>
+            (PropertyPathHelper.ResolvePropertySymbol(destinationType, mapping.TargetPath.Split('.'))?.Type ??
+             constructor?.Parameters.FirstOrDefault(p => p.Name == mapping.TargetPath)?.Type)?.GetUnderlyingType() ??
+            mapperMethod.FindTypeByFullyQualifiedName(typeName);
 
         PropertyMappingModel[]? analyzed = null;
 
@@ -3093,9 +3494,9 @@ internal static class MapperModelBuilder
             else if ((parsableSymbol is not null) &&
                      requiresConversion && !isEnumMapping && !hasSpecializedConverter && !hasConverter &&
                      (mapping.EffectiveDateTimeFormat is null) && (mapping.EffectiveNumberFormat is null) &&
-                     (effectiveSource == "global::System.String"))
+                     (GetSourceType(mapping, effectiveSource)?.SpecialType == SpecialType.System_String))
             {
-                var targetTypeSymbol = mapperMethod.FindTypeByFullyQualifiedName(effectiveTarget);
+                var targetTypeSymbol = GetTargetType(mapping, effectiveTarget);
                 if (targetTypeSymbol is not null)
                 {
                     if ((spanParsableSymbol is not null)
@@ -3117,10 +3518,8 @@ internal static class MapperModelBuilder
             // User defined conversion operator
             if (!hasMapConverter && requiresConversion && !isEnumMapping && !hasConverter)
             {
-                var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'));
-                var dstProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, mapping.TargetPath.Split('.'));
-                var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveSource);
-                var targetTypeSymbol = dstProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveTarget);
+                var sourceTypeSymbol = GetSourceType(mapping, effectiveSource);
+                var targetTypeSymbol = GetTargetType(mapping, effectiveTarget);
 
                 if ((sourceTypeSymbol is not null) && (targetTypeSymbol is not null))
                 {
@@ -3144,17 +3543,10 @@ internal static class MapperModelBuilder
                 TypeNameHelper.IsStringType(effectiveTarget) &&
                 (mapping.HasCulture() || (mapping.EffectiveDateTimeFormat is not null) || (mapping.EffectiveNumberFormat is not null)))
             {
-                var srcProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, mapping.SourcePath.Split('.'));
-                var sourceTypeSymbol = srcProp?.Type.GetUnderlyingType() ?? mapperMethod.FindTypeByFullyQualifiedName(effectiveSource);
-
+                var sourceTypeSymbol = GetSourceType(mapping, effectiveSource);
                 if (sourceTypeSymbol is not null)
                 {
-                    useFormattable =
-                        ((formattableSymbol is not null) &&
-                         sourceTypeSymbol.AllInterfaces.Any(x =>
-                             SymbolEqualityComparer.Default.Equals(x, formattableSymbol) ||
-                             SymbolEqualityComparer.Default.Equals(x.OriginalDefinition, formattableSymbol))) ||
-                        sourceTypeSymbol.IsImplementsInterfaceByName("System.IFormattable");
+                    useFormattable = HasFormatToString(sourceTypeSymbol);
                 }
             }
 
@@ -3195,31 +3587,20 @@ internal static class MapperModelBuilder
         // ReSharper restore UseCollectionExpression
     }
 
-    internal static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string converterTypeName)
-    {
-        var typeName = converterTypeName;
-        if (typeName.StartsWith("global::", StringComparison.Ordinal))
-        {
-            typeName = typeName.Substring("global::".Length);
-        }
+    // The converter class of a mapper: the type a [ValueConverter] / [CollectionConverter] names with
+    // typeof, on the mapper method or else on its containing type (the order ParseConverterAttributes
+    // follows), and the default class of the library without one. The typeof argument is taken as is, so
+    // nested and generic classes are found as well, which a lookup by the displayed name missed.
+    internal static ITypeSymbol? FindConverterType(IMethodSymbol mapperMethod, string attributeName, string defaultTypeName) =>
+        GetAttributeTypeArgument(mapperMethod.GetAttributes(), attributeName) ??
+        GetAttributeTypeArgument(mapperMethod.ContainingType.GetAttributes(), attributeName) ??
+        mapperMethod.FindTypeByFullyQualifiedName(defaultTypeName);
 
-        var type = mapperMethod.ContainingAssembly.GetTypeByMetadataName(typeName);
-        if (type is not null)
-        {
-            return type;
-        }
-
-        foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
-        {
-            type = reference.GetTypeByMetadataName(typeName);
-            if (type is not null)
-            {
-                return type;
-            }
-        }
-
-        return null;
-    }
+    private static INamedTypeSymbol? GetAttributeTypeArgument(IEnumerable<AttributeData> attributes, string attributeName) =>
+        attributes
+            .Where(a => (a.AttributeClass?.ToDisplayString() == attributeName) && (a.ConstructorArguments.Length >= 1))
+            .Select(static a => a.ConstructorArguments[0].Value as INamedTypeSymbol)
+            .FirstOrDefault(static t => t is not null);
 
     internal static IMethodSymbol? FindSpecializedMethod(
         ITypeSymbol converterType,
@@ -3232,6 +3613,9 @@ internal static class MapperModelBuilder
             .Where(m => m.IsStatic && (m.Parameters.Length == 1))
             .ToList();
 
+        // A method whose parameter cannot take the property value (ref, ref readonly, out) is still
+        // returned when it is the only one, so that ValidateValueConverterMethods can report it.
+        IMethodSymbol? unusable = null;
         foreach (var method in methods)
         {
             var paramType = method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -3239,10 +3623,183 @@ internal static class MapperModelBuilder
 
             if ((paramType == sourceType) && (returnType == targetType))
             {
-                return method;
+                if (CanTakeArgument(method.Parameters[0].RefKind, ArgumentKind.Value))
+                {
+                    return method;
+                }
+
+                unusable ??= method;
             }
+        }
+
+        return unusable;
+    }
+
+    // Methods of a [ValueConverter] class the generated code calls with the property value, which a ref,
+    // ref readonly or out parameter cannot take: the specialized method a conversion found (with a
+    // culture, its overload taking the culture and the format), and the generic one a user converter falls
+    // back to. One that is missing, or that cannot take the arguments, is reported as a converter
+    // signature mismatch instead of leaving the call to fail in the generated code.
+    internal static DiagnosticInfo? ValidateValueConverterMethods(IMethodSymbol mapperMethod, Compilation compilation, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        var converterType = FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
+        if (converterType is null)
+        {
+            return null;
+        }
+
+        var cultureInfoType = compilation.GetTypeByMetadataName("System.Globalization.CultureInfo");
+        var stringType = compilation.GetSpecialType(SpecialType.System_String);
+        PropertyMappingModel[]? resolved = null;
+        for (var i = 0; i < model.PropertyMappings.Count; i++)
+        {
+            var mapping = model.PropertyMappings[i];
+
+            // A converter given to [MapProperty] takes over the conversion
+            if (mapping.HasConverter())
+            {
+                continue;
+            }
+
+            var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;
+            var effectiveTarget = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
+
+            string? unusableMethod = null;
+            if (mapping.HasSpecializedConverter() && mapping.HasCulture() && (cultureInfoType is not null))
+            {
+                var overload = FindCultureOverload(converterType, mapping.SpecializedConverterMethod!, effectiveSource, effectiveTarget, compilation, cultureInfoType, stringType);
+                if (overload is null)
+                {
+                    unusableMethod = mapping.SpecializedConverterMethod;
+                }
+                else if ((overload.Parameters[1].RefKind is RefKind.In or RefKind.RefReadOnlyParameter) &&
+                         (GetCultureArgumentKind(compilation, cultureInfoType, overload.Parameters[1].Type) == ArgumentKind.ReadOnlyVariable))
+                {
+                    resolved ??= [.. model.PropertyMappings];
+                    resolved[i] = mapping with { CultureArgumentModifier = "in " };
+                }
+            }
+            else if (mapping.HasSpecializedConverter())
+            {
+                var method = FindSpecializedMethod(converterType, mapping.SpecializedConverterMethod!, effectiveSource, effectiveTarget);
+                if ((method is not null) && !CanTakeArgument(method.Parameters[0].RefKind, ArgumentKind.Value))
+                {
+                    unusableMethod = method.Name;
+                }
+            }
+            else if ((model.MapConverterTypeName is not null) && UsesGenericConversion(mapping))
+            {
+                var candidates = converterType.GetMembers(model.MapConverterMethodName)
+                    .OfType<IMethodSymbol>()
+                    .Where(static m => m.IsStatic && (m.Arity == 2) && TakesArgumentCount(m, 1))
+                    .ToList();
+                if (!candidates.Any(static m => CanTakeArgument(m.Parameters[0].RefKind, ArgumentKind.Value)))
+                {
+                    unusableMethod = model.MapConverterMethodName;
+                }
+            }
+
+            if (unusableMethod is not null)
+            {
+                return new DiagnosticInfo(
+                    Diagnostics.InvalidConverterSignature,
+                    syntax.GetLocation(),
+                    mapperMethod.Name,
+                    $"{converterType.ToDisplayString()}.{unusableMethod}",
+                    mapping.TargetPath);
+            }
+        }
+
+        if (resolved is not null)
+        {
+            model = model with { PropertyMappings = new(resolved) };
         }
 
         return null;
     }
+
+    // The overload of a specialized method a culture calls, (value, culture, format) returning the target
+    // type, the value typed as the one-parameter method takes it, the culture a type a CultureInfo converts
+    // to and the format one a string converts to. The value and the format go as values. Null when no
+    // overload can take the arguments.
+    private static IMethodSymbol? FindCultureOverload(
+        ITypeSymbol converterType,
+        string methodName,
+        string sourceType,
+        string targetType,
+        Compilation compilation,
+        ITypeSymbol cultureInfoType,
+        ITypeSymbol stringType)
+    {
+        IMethodSymbol? overload = null;
+        var methods = converterType.GetMembers(methodName)
+            .OfType<IMethodSymbol>()
+            .Where(static m => m.IsStatic && TakesArgumentCount(m, 3));
+        foreach (var method in methods)
+        {
+            var culture = GetCultureArgumentKind(compilation, cultureInfoType, method.Parameters[1].Type);
+            if ((method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType) &&
+                (method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == targetType) &&
+                (culture is not null) &&
+                compilation.ClassifyCommonConversion(stringType, method.Parameters[2].Type).IsImplicit &&
+                CanTakeArgument(method.Parameters[0].RefKind, ArgumentKind.Value) &&
+                CanTakeArgument(method.Parameters[1].RefKind, culture.Value) &&
+                CanTakeArgument(method.Parameters[2].RefKind, ArgumentKind.Value))
+            {
+                overload = PreferByValue(overload, method);
+            }
+        }
+
+        return overload;
+    }
+
+    // How the culture field, a static readonly CultureInfo, goes to a parameter: to a CultureInfo as
+    // itself, a read-only variable (in / ref readonly get it by in), and to a type it converts to
+    // (IFormatProvider, object) as the converted value, which goes as is. Null for any other type.
+    private static ArgumentKind? GetCultureArgumentKind(Compilation compilation, ITypeSymbol cultureInfoType, ITypeSymbol parameterType)
+    {
+        var conversion = compilation.ClassifyCommonConversion(cultureInfoType, parameterType);
+        if (conversion.IsIdentity)
+        {
+            return ArgumentKind.ReadOnlyVariable;
+        }
+
+        return conversion.IsImplicit ? ArgumentKind.Value : null;
+    }
+
+    // Whether value.ToString(format, provider) binds, as the IFormattable conversion calls it: a public
+    // instance ToString(string, IFormatProvider) on the type or a base type, or on the interfaces an
+    // interface type extends. An explicit implementation of IFormattable does not make the call bind.
+    private static bool HasFormatToString(ITypeSymbol type)
+    {
+        if (type.TypeKind == TypeKind.Interface)
+        {
+            return DeclaresFormatToString(type) || type.AllInterfaces.Any(DeclaresFormatToString);
+        }
+
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (DeclaresFormatToString(current))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool DeclaresFormatToString(ITypeSymbol type) =>
+        type.GetMembers("ToString").OfType<IMethodSymbol>().Any(static m =>
+            !m.IsStatic &&
+            (m.DeclaredAccessibility == Accessibility.Public) &&
+            (m.Parameters.Length == 2) &&
+            (m.Parameters[0].Type.SpecialType == SpecialType.System_String) &&
+            (m.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.IFormatProvider"));
+
+    // Whether the conversion ends in the generic Convert<TSource, TDestination> of the converter class,
+    // after the specialized, parse, cast, user-defined and IFormattable conversions all passed.
+    private static bool UsesGenericConversion(PropertyMappingModel mapping) =>
+        mapping.RequiresConversion && !mapping.HasConverter() && !mapping.IsEnumMapping() &&
+        !mapping.HasSpecializedConverter() && !mapping.HasParsableMethod() && !mapping.RequiresExplicitNumericCast &&
+        (mapping.UserDefinedConversion == UserDefinedConversionKind.None) && !mapping.UseFormattable;
 }

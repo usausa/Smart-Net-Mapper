@@ -13,8 +13,33 @@ internal sealed record MapperMethodModel(
     string MethodName = default!,
     string SourceTypeName = default!,
     string SourceParameterName = default!,
+    // Modifiers the defining declaration puts on the parameter besides this (in, ref readonly, ref,
+    // scoped, params), which the implementation repeats, and its RefKind, which decides how the
+    // parameter is passed on to the local function of a [MapExpression].
+    string SourceParameterModifiers = "",
+    RefKind SourceRefKind = default,
+    // The source type as declared, nullable annotations included, which the implementation repeats
+    // (CS8611 otherwise). SourceTypeName leaves them out and is what types are compared by.
+    string SourceDeclaredTypeName = default!,
+    // Declared as a nullable reference type. The generated code reads the source, so when it is null
+    // nothing is mapped; past that check the local functions of [MapExpression] take it as
+    // SourceNonNullableTypeName.
+    bool IsSourceParameterNullable = default,
+    string SourceNonNullableTypeName = default!,
     string DestinationTypeName = default!,
     string? DestinationParameterName = default,
+    // The same for the destination parameter of a void mapper.
+    string DestinationParameterModifiers = "",
+    RefKind DestinationRefKind = default,
+    // The return type or the destination parameter type as declared. DestinationTypeName leaves the
+    // annotations out, as the instance is created under it.
+    string DestinationDeclaredTypeName = default!,
+    // The same null check for the destination parameter of a void mapper, which the generated code writes.
+    bool IsDestinationParameterNullable = default,
+    string DestinationNonNullableTypeName = default!,
+    // What a return-type mapper returns for a null source: default, or default! for a reference type
+    // that is not nullable, so that the generated code does not warn.
+    string DefaultReturnValue = "default",
     bool ReturnsDestination = default,
     bool AutoMap = true,
     bool Strict = default,
@@ -25,7 +50,6 @@ internal sealed record MapperMethodModel(
     bool CultureExplicitlySet = default,
     string? DateTimeFormat = default,
     string? NumberFormat = default,
-    bool IsSourceReadOnlyStruct = default,
     // The defining declaration has the this modifier on the source parameter. The implementing
     // declaration must repeat it (CS0755), so the emitter carries it over.
     bool IsExtensionMethod = default,
@@ -49,8 +73,11 @@ internal sealed record MapperMethodModel(
     EquatableArray<MapNestedModel> MapNestedMappings = default,
     string? BeforeMapMethod = default,
     bool BeforeMapAcceptsCustomParameters = default,
+    // RefKinds of the matched callback's parameters, which decide how each argument is passed.
+    EquatableArray<RefKind> BeforeMapParameterRefKinds = default,
     string? AfterMapMethod = default,
     bool AfterMapAcceptsCustomParameters = default,
+    EquatableArray<RefKind> AfterMapParameterRefKinds = default,
     bool UseConstructorMapping = default,
     // TargetPath names the PropertyMappings entry that supplies the argument, carrying its
     // conversion metadata. BuildConstructorParameterMappings guarantees the entry exists: it either

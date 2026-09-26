@@ -8,6 +8,7 @@ public enum CollectionStrategy
 
     // Clear the existing destination collection instance and re-add mapped elements.
     // Useful when the destination collection reference must be preserved (e.g., data-binding scenarios).
-    // If the destination collection is null, a new instance is created.
+    // If the destination collection is null, a new List<T> (HashSet<T> for a set) is created, so the
+    // destination property has to be settable and able to take it (SMP0212 / SMP0217 otherwise).
     InPlace = 1
 }

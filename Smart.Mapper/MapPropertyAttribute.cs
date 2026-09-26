@@ -18,10 +18,12 @@ public sealed class MapPropertyAttribute : Attribute
     // Culture name override for this property's string conversion (e.g. "en-US").
     public string? Culture { get; set; }
 
-    // DateTime format string override for this property. Requires .
+    // DateTime format string override for this property. Requires a culture, from Culture here, the
+    // mapper method or the profile (SMP0401 otherwise).
     public string? DateTimeFormat { get; set; }
 
-    // Numeric format string override for this property. Requires .
+    // Numeric format string override for this property. Requires a culture, from Culture here, the
+    // mapper method or the profile (SMP0401 otherwise).
     public string? NumberFormat { get; set; }
 
     public MapPropertyAttribute(string target)
@@ -54,10 +56,12 @@ public sealed class MapPropertyAttribute<T> : Attribute
     // Culture name override for this property's string conversion (e.g. "en-US").
     public string? Culture { get; set; }
 
-    // DateTime format string override for this property. Requires .
+    // DateTime format string override for this property. Requires a culture, from Culture here, the
+    // mapper method or the profile (SMP0401 otherwise).
     public string? DateTimeFormat { get; set; }
 
-    // Numeric format string override for this property. Requires .
+    // Numeric format string override for this property. Requires a culture, from Culture here, the
+    // mapper method or the profile (SMP0401 otherwise).
     public string? NumberFormat { get; set; }
 
     public MapPropertyAttribute(string target)

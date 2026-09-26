@@ -1,5 +1,9 @@
 namespace Smart.Mapper.Generator.Models;
 
+using Microsoft.CodeAnalysis;
+
+using SourceGenerateHelper;
+
 // Classifies the source collection type for optimized emit strategy selection.
 internal enum CollectionSourceShape
 {
@@ -34,8 +38,10 @@ internal sealed record MapCollectionModel(
     string TargetName = default!,
     string TargetType = default!,
     string TargetElementType = default!,
-    // Mapper method applied to each element
+    // Mapper method applied to each element. The RefKinds of its parameters decide how the element and
+    // the instance a void mapper fills are passed
     string? Mapper = default,
+    EquatableArray<RefKind> MapperParameterRefKinds = default,
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,

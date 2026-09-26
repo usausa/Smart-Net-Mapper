@@ -79,3 +79,24 @@ public static class SpecializedConverter
         return DefaultValueConverter.Convert<TSource, TDestination>(source);
     }
 }
+
+// Value converter whose culture overload takes the culture by ref readonly
+public class CultureReferenceSource
+{
+    public decimal Amount { get; set; }
+}
+
+public class CultureReferenceDestination
+{
+    public string Amount { get; set; } = default!;
+}
+
+internal static class CultureReferenceConverter
+{
+    public static string ConvertToString(decimal source) => source.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public static string ConvertToString(decimal source, ref readonly System.Globalization.CultureInfo culture, string? format) =>
+        $"{source.ToString(format, culture)} ({culture.Name})";
+
+    public static TDestination Convert<TSource, TDestination>(TSource source) => DefaultValueConverter.Convert<TSource, TDestination>(source);
+}

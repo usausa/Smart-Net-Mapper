@@ -22,8 +22,8 @@ public class MapperSourceBuilderTests
         Assert.DoesNotContain(diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
 
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
-        Assert.Contains("destination.Value = src.Value", generated, StringComparison.Ordinal);
-        Assert.Contains("destination.Name = src.Name", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Value = src.Value", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.Name = src.Name", generated, StringComparison.Ordinal);
     }
 
     // Extension method mapper keeps the this modifier on the implementing declaration (CS0755 otherwise)
@@ -129,8 +129,8 @@ public class MapperSourceBuilderTests
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         // Inline collection path: uses CollectionsMarshal.AsSpan for List<T> source
         Assert.Contains("MapItem(", generated, StringComparison.Ordinal);
-        // Assigns to destination.Items
-        Assert.Contains("destination.Items", generated, StringComparison.Ordinal);
+        // Assigns to __d.Items
+        Assert.Contains("__d.Items", generated, StringComparison.Ordinal);
     }
 
     // Void nested mapping generates if (...) { var __nested = new T(); Mapper(...); dest.Prop = __nested; } pattern

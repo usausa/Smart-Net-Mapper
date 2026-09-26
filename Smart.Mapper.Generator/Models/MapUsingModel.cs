@@ -1,5 +1,9 @@
 namespace Smart.Mapper.Generator.Models;
 
+using Microsoft.CodeAnalysis;
+
+using SourceGenerateHelper;
+
 // Represents a MapUsing mapping (target property computed from source via a method in containing class).
 internal sealed record MapUsingModel(
     // Target member
@@ -13,6 +17,8 @@ internal sealed record MapUsingModel(
     int DefinitionOrder = default,
     // Method takes the mapper's custom parameters after the source argument
     bool AcceptsCustomParameters = default,
+    // RefKinds of the method's parameters, which decide how each argument is passed
+    EquatableArray<RefKind> ParameterRefKinds = default,
     // Target member traits. Decide object-initializer entry vs plain assignment
     bool IsTargetInitOnly = default,
     bool IsTargetRequired = default);

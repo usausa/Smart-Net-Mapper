@@ -37,5 +37,6 @@ internal static class Names
     // written into the generated source.
     public const string DefaultValueConverter = Namespace + "DefaultValueConverter";
     public const string QualifiedDefaultValueConverter = Global + DefaultValueConverter;
-    public const string QualifiedDefaultCollectionConverter = Global + Namespace + "DefaultCollectionConverter";
+    public const string DefaultCollectionConverter = Namespace + "DefaultCollectionConverter";
+    public const string QualifiedDefaultCollectionConverter = Global + DefaultCollectionConverter;
 }

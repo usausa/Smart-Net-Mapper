@@ -55,6 +55,19 @@ public class BasicMappingTests
         Assert.Equal("Extension", destination.Name);
         Assert.Equal("Void pattern", destination.Description);
     }
+
+    // The source parameter is named destination; the generated instance is __d, so they do not collide
+    [Fact]
+    public void MapNamedDestinationCopiesAllProperties()
+    {
+        var source = new BasicSource { Id = 9, Name = "Named", Description = "Parameter named destination" };
+
+        var destination = TestMappers.MapNamedDestination(source);
+
+        Assert.Equal(9, destination.Id);
+        Assert.Equal("Named", destination.Name);
+        Assert.Equal("Parameter named destination", destination.Description);
+    }
 }
 
 public class DifferentPropertyMappingTests

@@ -34,6 +34,35 @@ public sealed class PipelineCacheTests
         internal sealed class Unrelated;
         """;
 
+    // Warnings located at the method (SMP0501) and at the attribute (SMP0403)
+    private const string WarningSource =
+        """
+        using Smart.Mapper;
+
+        namespace Test;
+
+        public sealed class Source
+        {
+            public string Name { get; set; } = "";
+        }
+
+        public sealed class Destination
+        {
+            public string Name { get; set; } = "";
+
+            public string Kind { get; set; } = "";
+
+            public int Unmapped { get; set; }
+        }
+
+        public static partial class Mappers
+        {
+            [Mapper(Strict = true)]
+            [MapExpression(nameof(Destination.Kind), "System.Type.GetType(source.Name)!.Name")]
+            public static partial Destination ToDestination(Source source);
+        }
+        """;
+
     private const string AddedTargetSource =
         """
         using Smart.Mapper;
@@ -61,6 +90,20 @@ public sealed class PipelineCacheTests
         Assert.Equal(result.FirstGeneratedText, result.SecondGeneratedText);
         Assert.NotEmpty(result.OutputReasons);
         Assert.DoesNotContain(result.OutputReasons, static x => x.IsChanged());
+    }
+
+    // The model holding located warnings is equal for the same input, so an unrelated edit keeps it cached
+    [Fact]
+    public void UnrelatedEditKeepsModelWithWarningsCached()
+    {
+        // Arrange & Act
+        var result = GeneratorTestHelper.RunIncremental(WarningSource, UnrelatedSource);
+
+        // Assert
+        Assert.Equal(result.FirstGeneratedText, result.SecondGeneratedText);
+        Assert.NotEmpty(result.OutputReasons);
+        Assert.DoesNotContain(result.OutputReasons, static x => x.IsChanged());
+        Assert.Equal(2, result.SecondResult.Diagnostics.Count(static d => d.Id is "SMP0501" or "SMP0403"));
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 
 // Represents a custom parameter passed to a mapper method.
 internal sealed record CustomParameterModel(
+    // As the generated code writes it, a keyword with its @
     string Name,
     // Without nullable annotations, which is what types are compared by
     string TypeName,

@@ -142,4 +142,55 @@ public class NullHandlingTests
         TestMappers.MapSkipNoConv(new SkipNoConvSource { Value = null }, whenNull);
         Assert.Equal(99, whenNull.Value); // skipped: destination preserved
     }
+
+    // NullBehavior.Skip with a converter: the converter, which takes null as well, is called only for a value
+    [Fact]
+    public void MapSkipConverterCallsConverterForValueOnly()
+    {
+        var whenValue = new SkipConverterDestination();
+        TestMappers.MapSkipConverter(new SkipConverterSource { Value = 5 }, whenValue);
+        Assert.Equal("value 5", whenValue.Value);
+
+        var whenNull = new SkipConverterDestination();
+        TestMappers.MapSkipConverter(new SkipConverterSource { Value = null }, whenNull);
+        Assert.Equal("kept", whenNull.Value);
+    }
+
+    // NullValue with a converter: a null source takes NullValue, and the converter is called for a value only
+    [Fact]
+    public void MapNullValueConverterTakesNullValueForNull()
+    {
+        Assert.Equal("none", TestMappers.MapNullValueConverter(new NullValueConverterSource()).Value);
+        Assert.Equal("value 5", TestMappers.MapNullValueConverter(new NullValueConverterSource { Value = 5 }).Value);
+    }
+
+    // A null intermediate member gives NullValue to the target that has one, and leaves the other as it is
+    [Fact]
+    public void MapIntermediateTakesNullValueForNullIntermediate()
+    {
+        var whenNull = new IntermediateDestination();
+        TestMappers.MapIntermediate(new IntermediateSource(), whenNull);
+        Assert.Equal("none", whenNull.Name);
+        Assert.Equal(7, whenNull.Code);
+
+        var whenValue = new IntermediateDestination();
+        TestMappers.MapIntermediate(new IntermediateSource { Leaf = new IntermediateLeaf { Name = "name", Code = 3 } }, whenValue);
+        Assert.Equal("name", whenValue.Name);
+        Assert.Equal(3, whenValue.Code);
+    }
+
+    // A reference declared with nullable annotations disabled takes NullValue and NullBehavior.Skip as well
+    [Fact]
+    public void MapObliviousAppliesNullHandling()
+    {
+        var whenNull = new ObliviousDestination { Name = "old", Note = "kept" };
+        TestMappers.MapOblivious(new ObliviousSource(), whenNull);
+        Assert.Equal("Unknown", whenNull.Name);
+        Assert.Equal("kept", whenNull.Note);
+
+        var whenValue = new ObliviousDestination { Name = "old", Note = "old" };
+        TestMappers.MapOblivious(new ObliviousSource { Name = "name", Note = "note" }, whenValue);
+        Assert.Equal("name", whenValue.Name);
+        Assert.Equal("note", whenValue.Note);
+    }
 }

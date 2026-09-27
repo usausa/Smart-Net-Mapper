@@ -3,7 +3,7 @@ namespace Smart.Mapper.Generator;
 using Microsoft.CodeAnalysis;
 
 // Core Mapper generator diagnostics. IDs follow a phase-based banding aligned with the pipeline:
-//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters)
+//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters / nullable struct source)
 //   SMP01xx  attribute validation(duplicate targets, callbacks, converters, conditions)
 //   SMP02xx  explicit features   (MapUsing / MapFrom / MapCollection / MapNested resolution)
 //   SMP03xx  construction        (constructor parameters, init-only / required members)
@@ -18,7 +18,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor InvalidMethodDefinition { get; } = new(
         id: "SMP0001",
         title: "Invalid mapper method definition",
-        messageFormat: "[Mapper] method must be static partial. method=[{0}]",
+        messageFormat: "[Mapper] method must be static partial, in types that are all partial. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -50,7 +50,15 @@ internal static class Diagnostics
     public static DiagnosticDescriptor UnsupportedParameterModifier { get; } = new(
         id: "SMP0005",
         title: "Unsupported parameter modifier",
-        messageFormat: "[Mapper] parameter modifier is not supported, the generated code reads every parameter and assigns the destination members. method=[{0}], parameter=[{1}], modifier=[{2}]",
+        messageFormat: "[Mapper] parameter modifier is not supported, the generated code reads every parameter and assigns the destination members, which a struct destination takes by ref. method=[{0}], parameter=[{1}], modifier=[{2}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor NullableValueTypeSource { get; } = new(
+        id: "SMP0006",
+        title: "Nullable value type source",
+        messageFormat: "[Mapper] source parameter cannot be a nullable value type, which has none of the members of the struct it holds. method=[{0}], parameter=[{1}], type=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -62,7 +70,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor DuplicateTargetMapping { get; } = new(
         id: "SMP0101",
         title: "Duplicate target mapping",
-        messageFormat: "Multiple attributes specify the same target. method=[{0}], target=[{1}], attributes=[{2}]",
+        messageFormat: "Multiple attributes map or ignore the same target, or map the target and a member of it. method=[{0}], target=[{1}], attributes=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -202,7 +210,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor UnsupportedInitOnlyCollectionTarget { get; } = new(
         id: "SMP0212",
         title: "Unassignable target",
-        messageFormat: "[MapCollection]/[MapNested] target has no setter the mapper can call, or is init-only or required. method=[{0}], target=[{1}]",
+        messageFormat: "[MapCollection]/[MapNested] target has no setter or init accessor the mapper can call, or is init-only in a void mapper. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -217,8 +225,8 @@ internal static class Diagnostics
 
     public static DiagnosticDescriptor UnresolvedMapPropertyTargetProperty { get; } = new(
         id: "SMP0214",
-        title: "Unresolved MapProperty target",
-        messageFormat: "[MapProperty] target is not assignable. method=[{0}], target=[{1}]",
+        title: "Unassignable mapping target",
+        messageFormat: "Mapping target is not found or cannot be assigned. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -226,15 +234,15 @@ internal static class Diagnostics
     public static DiagnosticDescriptor UnsupportedConstructorAssignedOption { get; } = new(
         id: "SMP0215",
         title: "Unsupported constructor-assigned option",
-        messageFormat: "[MapCondition] requires a property assignment. method=[{0}], target=[{1}], option=[{2}]",
+        messageFormat: "[MapCondition] / NullBehavior.Skip requires a property assignment, not a constructor argument or an object initializer entry. method=[{0}], target=[{1}], option=[{2}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     public static DiagnosticDescriptor IgnoredConstructorParameter { get; } = new(
         id: "SMP0216",
-        title: "Ignored constructor parameter",
-        messageFormat: "[MapIgnore] member is assigned by a constructor. method=[{0}], target=[{1}]",
+        title: "Ignored member required by construction",
+        messageFormat: "[MapIgnore] member has to be assigned when the destination is constructed. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -243,6 +251,54 @@ internal static class Diagnostics
         id: "SMP0217",
         title: "Unsupported collection target",
         messageFormat: "[MapCollection] target cannot take the collection the generated code creates for it. method=[{0}], target=[{1}], collection=[{2}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnassignableConstantValue { get; } = new(
+        id: "SMP0218",
+        title: "Unassignable constant value",
+        messageFormat: "Constant value cannot be assigned to the target. method=[{0}], target=[{1}], value=[{2}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnsupportedInPlaceCollectionTarget { get; } = new(
+        id: "SMP0219",
+        title: "Unsupported InPlace target",
+        messageFormat: "[MapCollection] InPlace target cannot be cleared and refilled. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnsupportedConstantValue { get; } = new(
+        id: "SMP0220",
+        title: "Unsupported constant value",
+        messageFormat: "Constant value cannot be written in the generated code. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnguardedConditionTarget { get; } = new(
+        id: "SMP0221",
+        title: "Condition without a property mapping",
+        messageFormat: "[MapCondition] target has no property mapping for the condition to guard. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor ConstructorAssignedTargetPath { get; } = new(
+        id: "SMP0222",
+        title: "Dotted target in a constructor-assigned member",
+        messageFormat: "Dotted target goes into a member the constructor assigns from an argument. method=[{0}], target=[{1}], parameter=[{2}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor DottedIgnoreTarget { get; } = new(
+        id: "SMP0223",
+        title: "Dotted ignore target",
+        messageFormat: "[MapIgnore] target is a member of a member, which the automatic mapping never assigns on its own. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -262,15 +318,31 @@ internal static class Diagnostics
     public static DiagnosticDescriptor InitOnlyDestinationRequiresReturnMapper { get; } = new(
         id: "SMP0302",
         title: "Return-type mapper is required",
-        messageFormat: "Void mapper cannot assign init-only members. method=[{0}], type=[{1}]",
+        messageFormat: "Void mapper cannot assign init-only or constructor-only members. method=[{0}], type=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     public static DiagnosticDescriptor UnmappedRequiredProperty { get; } = new(
         id: "SMP0303",
-        title: "Unmapped required property",
-        messageFormat: "Required property has no mapping. method=[{0}], property=[{1}]",
+        title: "Unmapped required member",
+        messageFormat: "Required member has no mapping. method=[{0}], member=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor RequiredMemberConstructorArgument { get; } = new(
+        id: "SMP0304",
+        title: "Required member assigned by a constructor argument",
+        messageFormat: "Constructor argument assigns a required member, which the object initializer would have to set again. method=[{0}], member=[{1}], parameter=[{2}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UncreatableDestination { get; } = new(
+        id: "SMP0305",
+        title: "Uncreatable destination",
+        messageFormat: "Return-type mapper cannot create the destination: it is abstract or an interface, or has no constructor the mapper can call. method=[{0}], type=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -295,12 +367,29 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    // The same diagnostic for a class, a struct or a collection no conversion takes, telling the attribute that maps it
+    public static DiagnosticDescriptor UnmappedCompositeConversion { get; } = new(
+        id: "SMP0402",
+        title: "TypeConverter fallback is not AOT-safe",
+        messageFormat: "Conversion falls back to a non-AOT-safe path; map a nested member with [MapNested], a collection with [MapCollection], and other types with a converter. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static DiagnosticDescriptor MapExpressionReflectionNotAllowed { get; } = new(
         id: "SMP0403",
         title: "MapExpression uses reflection",
         messageFormat: "[MapExpression] may use reflection. method=[{0}], target=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor InvalidCultureName { get; } = new(
+        id: "SMP0404",
+        title: "Invalid culture name",
+        messageFormat: "Culture is not a culture name. method=[{0}], culture=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     // ==================================================================

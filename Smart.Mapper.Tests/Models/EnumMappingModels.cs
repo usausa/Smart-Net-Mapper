@@ -156,3 +156,18 @@ public class FlagsEnumToStringDestination
 {
     public string Options { get; set; } = default!;
 }
+
+// The same flags enum on both sides is copied as it is, whatever the nullability
+public class FlagsEnumCopySource
+{
+    public FlagOptions Options { get; set; }
+
+    public FlagOptions? Nullable { get; set; }
+}
+
+public class FlagsEnumCopyDestination
+{
+    public FlagOptions Options { get; set; }
+
+    public FlagOptions Nullable { get; set; }
+}

@@ -922,6 +922,31 @@ public partial class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == "SMP0205");
     }
 
+    [Fact]
+    public void Smp0205MapFromPropertyTypeMismatchFormatsMessage()
+    {
+        const string source = """
+            using Smart.Mapper;
+
+            internal static partial class Mappers
+            {
+                [Mapper]
+                [MapFrom(nameof(Dest.Count), "Name")]
+                public static partial void Map(Src src, Dest dst);
+            }
+
+            public class Src { public string Name { get; set; } = ""; }
+            public class Dest { public int Count { get; set; } }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
+
+        var diagnostic = Assert.Single(diagnostics, static d => d.Id == "SMP0205");
+        Assert.Equal(
+            "[MapFrom] member type does not match. method=[Map], member=[Name], expected=[int], actual=[string]",
+            diagnostic.GetMessage(CultureInfo.InvariantCulture));
+    }
+
     // ------------------------------------------------------------
     // SMP0210 / SMP0211 — MapCollection / MapNested のマッパーメソッド不一致
     // SMP0210 / SMP0211 — MapCollection / MapNested mapper method mismatch

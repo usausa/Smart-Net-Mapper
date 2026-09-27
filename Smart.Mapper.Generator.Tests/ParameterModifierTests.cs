@@ -87,13 +87,15 @@ public class ParameterModifierTests
     }
 
     // The generated code reads every parameter and assigns the destination members, which an out
-    // parameter, or a struct destination passed as a readonly reference, does not allow.
+    // parameter, or a struct destination passed as a readonly reference, does not allow. A struct destination
+    // passed by value is a copy the caller never sees filled.
     [Theory]
     [InlineData("public static partial Dst Map(out Src src);", "src", "out")]
     [InlineData("public static partial void Map(Src src, out Dst dst);", "dst", "out")]
     [InlineData("public static partial Dst Map(Src src, out Ctx ctx);", "ctx", "out")]
     [InlineData("public static partial void Map(Src src, in DstStruct dst);", "dst", "in")]
     [InlineData("public static partial void Map(Src src, ref readonly DstStruct dst);", "dst", "ref readonly")]
+    [InlineData("public static partial void Map(Src src, DstStruct dst);", "dst", "none")]
     public void Smp0005UnsupportedParameterModifierEmitsDiagnostic(string declaration, string parameterName, string modifier)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(declaration, null));

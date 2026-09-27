@@ -394,3 +394,145 @@ internal static class ConverterHost
             [.. source.Select(mapper).Reverse()];
     }
 }
+
+// InPlace targets: a get-only one filled when it holds an instance, and a collection class of its own
+// created with its constructor when null
+public class InPlaceTargetSource
+{
+    public List<MatrixSrcItem> Items { get; set; } = [];
+}
+
+public class InPlaceGetOnlyDestination
+{
+    public List<MatrixDstItem> Items { get; } = [new() { Value = -1 }];
+}
+
+public class InPlaceNullGetOnlyDestination
+{
+    public List<MatrixDstItem>? Items { get; }
+}
+
+public class InPlaceObservableDestination
+{
+    public System.Collections.ObjectModel.ObservableCollection<MatrixDstItem>? Items { get; set; }
+}
+
+// Collection classes of their own, as the source and as the target
+public class MatrixSrcItemList : List<MatrixSrcItem>
+{
+}
+
+public class MatrixDstItemList : List<MatrixDstItem>
+{
+}
+
+public class CollectionClassSource
+{
+    public MatrixSrcItemList Items { get; set; } = [];
+}
+
+public class CollectionClassDestination
+{
+    public MatrixDstItemList Items { get; set; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<MatrixDstItem> Observed { get; set; } = [];
+}
+
+// A void mapper never constructs: a constructor taking members without a setter does not keep it from
+// filling the others, and the get-only collection the constructor takes is refilled in place
+public class ConstructedTargetSource
+{
+    public string Id { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public List<MatrixSrcItem> Items { get; set; } = [];
+}
+
+public class ConstructedTargetDestination
+{
+    public ConstructedTargetDestination(string id, List<MatrixDstItem> items)
+    {
+        Id = id;
+        Items = items;
+    }
+
+    public string Id { get; }
+    public string Name { get; set; } = default!;
+    public List<MatrixDstItem> Items { get; }
+}
+
+// Elements that may be null, mapped by a mapper declared to take null, and a member it maps into a target not
+// annotated as nullable
+public class NullableElementSource
+{
+    public List<MatrixSrcItem?> Items { get; set; } = [];
+
+    public MatrixSrcItem Head { get; set; } = new();
+}
+
+public class NullableElementDestination
+{
+    public List<MatrixDstItem?> Items { get; set; } = [];
+
+    public MatrixDstItem?[] Array { get; set; } = [];
+
+    public MatrixDstItem Head { get; set; } = new();
+}
+
+// Dictionary interface targets, which get a Dictionary<TKey, TValue>
+public class DictionarySource
+{
+    public Dictionary<string, MatrixSrcItem> Items { get; set; } = [];
+}
+
+public class DictionaryDestination
+{
+    public IReadOnlyDictionary<string, MatrixDstItem> Items { get; set; } = new Dictionary<string, MatrixDstItem>();
+
+    public IDictionary<string, MatrixDstItem> Editable { get; set; } = new Dictionary<string, MatrixDstItem>();
+}
+
+// Mappers matched through conversions: the result into an interface it implements, the source into a base class,
+// and a nullable struct as the value it holds
+public interface IConvertedChild
+{
+    int Value { get; }
+}
+
+public class ConvertedChild : IConvertedChild
+{
+    public int Value { get; set; }
+}
+
+public class ConvertedBase
+{
+    public int Value { get; set; }
+}
+
+public class ConvertedDerived : ConvertedBase
+{
+}
+
+public record struct ConvertedPoint(int X);
+
+public record struct ConvertedPointDto(int X);
+
+public class ConversionSource
+{
+    public ConvertedDerived Child { get; set; } = new();
+
+    public ConvertedPoint? Point { get; set; }
+
+    public List<ConvertedDerived> Children { get; set; } = [];
+
+    public List<ConvertedPoint?> Points { get; set; } = [];
+}
+
+public class ConversionDestination
+{
+    public IConvertedChild? Child { get; set; }
+
+    public ConvertedPointDto Point { get; set; }
+
+    public List<IConvertedChild> Children { get; set; } = [];
+
+    public List<ConvertedPointDto?> Points { get; set; } = [];
+}

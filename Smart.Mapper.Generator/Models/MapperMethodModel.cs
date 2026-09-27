@@ -6,12 +6,21 @@ using SourceGenerateHelper;
 
 // Represents a mapper method model.
 internal sealed record MapperMethodModel(
+    // The names of the namespace, the class and the method as declared, which name the generated file and
+    // the diagnostics; the generated code writes them escaped (IdentifierHelper). ClassName is the chain of
+    // the containing types (Outer.Inner), and TypeDeclarations declares each of them, outermost first, as
+    // the generated code repeats it (class Outer<T>, record Inner)
     string Namespace = default!,
     string ClassName = default!,
-    bool IsValueType = default,
+    EquatableArray<string> TypeDeclarations = default,
     Accessibility MethodAccessibility = default,
     string MethodName = default!,
+    // The type parameters of a generic mapper method (<T>) and their constraints ( where T : class), which
+    // the implementing declaration repeats (CS0759 without the type parameters, CS0761 with other constraints)
+    string TypeParameterList = "",
+    string ConstraintClauses = "",
     string SourceTypeName = default!,
+    // The parameter names as the generated code writes them, a keyword with its @
     string SourceParameterName = default!,
     // Modifiers the defining declaration puts on the parameter besides this (in, ref readonly, ref,
     // scoped, params), which the implementation repeats, and its RefKind, which decides how the
@@ -64,6 +73,9 @@ internal sealed record MapperMethodModel(
     // (Converter, NullValue, Culture, Order) from here instead.
     EquatableArray<PropertyMappingModel> ExplicitPropertyMappings = default,
     EquatableArray<string> IgnoredProperties = default,
+    // The targets of the [MapIgnore] attributes; IgnoredProperties also holds the targets the other
+    // attributes assign, which the automatic mapping leaves out
+    EquatableArray<string> IgnoreTargets = default,
     EquatableArray<PropertyConditionModel> PropertyConditions = default,
     EquatableArray<ConstantMappingModel> ConstantMappings = default,
     EquatableArray<ExpressionMappingModel> ExpressionMappings = default,
@@ -79,8 +91,35 @@ internal sealed record MapperMethodModel(
     bool AfterMapAcceptsCustomParameters = default,
     EquatableArray<RefKind> AfterMapParameterRefKinds = default,
     bool UseConstructorMapping = default,
-    // TargetPath names the PropertyMappings entry that supplies the argument, carrying its
-    // conversion metadata. BuildConstructorParameterMappings guarantees the entry exists: it either
-    // flags an existing mapping or synthesizes one under the parameter's own name.
-    EquatableArray<(string ParamName, string TargetPath)> ConstructorParameters = default,
-    EquatableArray<(DiagnosticDescriptor Descriptor, string Arg0, string Arg1)> Warnings = default);
+    // The constructor a return mapper calls with arguments, as its index in the instance constructors of the
+    // destination type, or -1 when it constructs without arguments or never does (a void mapper). It is chosen
+    // once, before anything reads it, so that every stage binds the same one (SelectConstructor).
+    int ConstructorIndex = -1,
+    // TargetPath names the entry that supplies the argument, of the collection Kind tells: a PropertyMappings
+    // entry carrying its conversion metadata, or the attribute assigning the member, flagged as a constructor
+    // argument. BuildConstructorParameterMappings guarantees the entry exists: it either flags an existing
+    // mapping or synthesizes one under the parameter's own name. An optional parameter without a value is left
+    // out, and the arguments after it are passed by name (IsNamed).
+    EquatableArray<(string ParamName, string TargetPath, ConstructorArgumentKind Kind, bool IsNamed)> ConstructorParameters = default,
+    // The required members the object initializer creates, as the dotted paths that write into them do so
+    // after construction only: the member (Path) and the type it is created as (TypeName)
+    EquatableArray<NestedPathSegment> RequiredMemberCreations = default,
+    // The warnings of a model built without errors, located like the errors (the file path and the spans of the
+    // method or the attribute), which keeps them comparable for the incremental pipeline
+    EquatableArray<DiagnosticInfo> Warnings = default,
+    // The locations of the attributes of the mapper method, and of the profile and converter attributes of its
+    // class, which the diagnostics about them point to. The entries built from an attribute keep its index
+    // (AttributeIndex), which does not change as the code moves; the source generation takes the models without
+    // the locations, so that it is not run again for code that only moved.
+    EquatableArray<LocationInfo> AttributeLocations = default,
+    // The indexes of the attributes the method-level diagnostics are about: [Mapper], [BeforeMap], [AfterMap],
+    // the one giving Culture ([Mapper] or [MapperProfile]), the one giving DateTimeFormat / NumberFormat, and
+    // [ValueConverter] (of the method or the class); -1 without one
+    int MapperAttributeIndex = -1,
+    int BeforeMapAttributeIndex = -1,
+    int AfterMapAttributeIndex = -1,
+    int CultureAttributeIndex = -1,
+    int FormatAttributeIndex = -1,
+    int ValueConverterAttributeIndex = -1,
+    // The index of the [MapIgnore] of each of IgnoreTargets
+    EquatableArray<int> IgnoreAttributeIndices = default);

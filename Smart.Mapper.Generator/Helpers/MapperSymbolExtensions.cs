@@ -8,6 +8,99 @@ using SourceGenerateHelper;
 internal static class MapperSymbolExtensions
 {
     // -------------------------------------------------------
+    // Properties
+    // -------------------------------------------------------
+
+    // The accessors a read or an assignment of a property calls: its own, or else those of the property it
+    // overrides, which a property overriding one accessor only inherits the other one of.
+    public static IMethodSymbol? GetSetter(this IPropertySymbol property)
+    {
+        for (var current = property; current is not null; current = current.OverriddenProperty)
+        {
+            if (current.SetMethod is { } setter)
+            {
+                return setter;
+            }
+        }
+
+        return null;
+    }
+
+    public static IMethodSymbol? GetGetter(this IPropertySymbol property)
+    {
+        for (var current = property; current is not null; current = current.OverriddenProperty)
+        {
+            if (current.GetMethod is { } getter)
+            {
+                return getter;
+            }
+        }
+
+        return null;
+    }
+
+    // -------------------------------------------------------
+    // Obsolete
+    // -------------------------------------------------------
+
+    // How C# reports a use of the member: the [Obsolete] of its original definition, as member lookup finds the
+    // member an override overrides (one only an override has is reported where it is declared, CS0809, and not
+    // where it is used).
+    public static ObsoleteKind GetObsoleteKind(this ISymbol symbol)
+    {
+        var original = symbol switch
+        {
+            IPropertySymbol property => GetOriginalDefinition(property),
+            IMethodSymbol method => GetOriginalDefinition(method),
+            _ => symbol
+        };
+        foreach (var attribute in original.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() == "System.ObsoleteAttribute")
+            {
+                return (attribute.ConstructorArguments.Length == 2) && (attribute.ConstructorArguments[1].Value is true)
+                    ? ObsoleteKind.Error
+                    : ObsoleteKind.Warning;
+            }
+        }
+
+        return ObsoleteKind.None;
+    }
+
+    // How C# reports a read or an assignment of the property: the [Obsolete] of the property, or of the accessor
+    // called, whichever is reported more strictly.
+    public static ObsoleteKind GetReadObsoleteKind(this IPropertySymbol property) =>
+        Max(property.GetObsoleteKind(), property.GetGetter()?.GetObsoleteKind() ?? ObsoleteKind.None);
+
+    public static ObsoleteKind GetWriteObsoleteKind(this IPropertySymbol property) =>
+        Max(property.GetObsoleteKind(), property.GetSetter()?.GetObsoleteKind() ?? ObsoleteKind.None);
+
+    private static ObsoleteKind Max(ObsoleteKind left, ObsoleteKind right) =>
+        left > right ? left : right;
+
+    private static IPropertySymbol GetOriginalDefinition(IPropertySymbol property)
+    {
+        var current = property;
+        while (current.OverriddenProperty is { } overridden)
+        {
+            current = overridden;
+        }
+
+        return current;
+    }
+
+    private static IMethodSymbol GetOriginalDefinition(IMethodSymbol method)
+    {
+        var current = method;
+        while (current.OverriddenMethod is { } overridden)
+        {
+            current = overridden;
+        }
+
+        return current;
+    }
+
+    // -------------------------------------------------------
     // Collections
     // -------------------------------------------------------
 
@@ -15,7 +108,7 @@ internal static class MapperSymbolExtensions
     // Memory<T> / ReadOnlyMemory<T>, which the shared GetCollectionElementType helper does not.
     public static ITypeSymbol? GetCollectionOrMemoryElementType(this ITypeSymbol type)
     {
-        var elementType = type.GetCollectionElementType();
+        var elementType = type.GetEnumerableElementType();
         if (elementType is not null)
         {
             return elementType;
@@ -31,6 +124,22 @@ internal static class MapperSymbolExtensions
         }
 
         return null;
+    }
+
+    // Returns the element type of a collection, falling back to the IEnumerable<T> a type implements
+    // through its base type or interfaces (such as class ItemList : List<Item>), which the shared
+    // GetCollectionElementType helper does not look for. A string is not taken as a collection of chars.
+    public static ITypeSymbol? GetEnumerableElementType(this ITypeSymbol type)
+    {
+        var elementType = type.GetCollectionElementType();
+        if ((elementType is not null) || (type.SpecialType == SpecialType.System_String))
+        {
+            return elementType;
+        }
+
+        return type.AllInterfaces
+            .FirstOrDefault(static i => i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)?
+            .TypeArguments[0];
     }
 
     // -------------------------------------------------------
@@ -69,7 +178,8 @@ internal static class MapperSymbolExtensions
 
     // Returns true when a user-defined implicit (isImplicit=true) or explicit
     // conversion operator exists between sourceType and targetType.
-    // Both source-declared and target-declared operators are checked.
+    // Both source-declared and target-declared operators are checked. One obsolete as an error is not used, as
+    // the generated code could not call it (CS0619).
     public static bool HasUserDefinedConversion(ITypeSymbol sourceType, ITypeSymbol targetType, bool isImplicit)
     {
         var operatorName = isImplicit
@@ -80,7 +190,7 @@ internal static class MapperSymbolExtensions
         {
             foreach (var member in declaringType.GetMembers(operatorName).OfType<IMethodSymbol>())
             {
-                if ((member.MethodKind != MethodKind.Conversion) || !member.IsStatic)
+                if ((member.MethodKind != MethodKind.Conversion) || !member.IsStatic || (member.GetObsoleteKind() == ObsoleteKind.Error))
                 {
                     continue;
                 }

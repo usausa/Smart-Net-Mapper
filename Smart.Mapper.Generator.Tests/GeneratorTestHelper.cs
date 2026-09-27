@@ -25,4 +25,7 @@ internal static class GeneratorTestHelper
 
     public static IncrementalRunResult RunIncremental(string source, string addedSource) =>
         Runner.WithTracking().RunIncremental(source, addedSource);
+
+    public static (GeneratorDriver Driver, Compilation Compilation) CreateTrackingDriver(string source) =>
+        Runner.WithTracking().CreateDriver(source);
 }

@@ -27,12 +27,25 @@ public sealed class MapperGenerator : IIncrementalGenerator
                 static (context, _) => MapperModelBuilder.BuildModel(context))
             .Collect();
 
-        context.RegisterSourceOutput(
-            methodProvider,
-            static (context, methods) => ReportDiagnostics(context, methods));
+        // The syntax trees of the mapper methods, which the warnings are located in, so that a #pragma directive
+        // suppresses them as it does a diagnostic of the compiler. A tree of a file not edited stays the same
+        // instance, so this changes only with a file declaring a mapper.
+        var treeProvider = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                Names.MapperAttribute,
+                static (syntax, _) => IsMethodSyntax(syntax),
+                static (context, _) => context.TargetNode.SyntaxTree)
+            .Collect();
 
+        context.RegisterSourceOutput(
+            methodProvider.Combine(treeProvider),
+            static (context, pair) => ReportDiagnostics(context, pair.Left, pair.Right));
+
+        // The source does not depend on the locations the diagnostics are reported at (the warnings, and the
+        // attributes), which change as the code around them moves
         var groups = methodProvider.SelectMany(static (methods, _) =>
             methods.SelectValue()
+                .Select(static x => x with { Warnings = default, AttributeLocations = default })
                 .GroupBy(static x => new { x.Namespace, x.ClassName })
                 .Select(static g => new ClassMethodsModel(g.Key.Namespace, g.Key.ClassName, new EquatableArray<MapperMethodModel>(g)))
                 .ToImmutableArray());
@@ -54,21 +67,33 @@ public sealed class MapperGenerator : IIncrementalGenerator
 
     // パーサーから受け取ったモデルをクラスごとにグループ化し、ソースファイルを生成する。診断も発行する。
     // Groups parsed mapper models by class, generates one source file per class, and reports diagnostics.
-    private static void ReportDiagnostics(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods)
+    private static void ReportDiagnostics(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods, ImmutableArray<SyntaxTree> trees)
     {
         foreach (var info in methods.SelectError())
         {
-            context.ReportDiagnostic(info);
+            context.ReportDiagnostic(ToDiagnostic(info, trees));
         }
 
-        // Report strict-mode warnings
+        // Report the warnings of the models built without errors, at the method or the attribute they concern
         foreach (var model in methods.SelectValue())
         {
-            foreach (var (descriptor, arg0, arg1) in model.Warnings)
+            foreach (var info in model.Warnings)
             {
-                context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, arg0, arg1));
+                context.ReportDiagnostic(ToDiagnostic(info, trees));
             }
         }
+    }
+
+    // A diagnostic located in the syntax tree the model located it in: a location in a tree is what a #pragma
+    // directive suppresses and an editor underlines, which one of the file path alone is not
+    private static Diagnostic ToDiagnostic(DiagnosticInfo info, ImmutableArray<SyntaxTree> trees)
+    {
+        var location = info.Location is { } located
+            ? trees.FirstOrDefault(t => t.FilePath == located.FilePath) is { } tree
+                ? Location.Create(tree, located.TextSpan)
+                : located.ToLocation()
+            : Location.None;
+        return Diagnostic.Create(info.Descriptor, location, info.Properties, [.. info.MessageArgs]);
     }
 
     private static void Execute(SourceProductionContext context, ClassMethodsModel group)

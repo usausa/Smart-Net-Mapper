@@ -154,17 +154,15 @@ public class GeneratedCodeErrorDiagnosticTests
     // ------------------------------------------------------------------
 
     [Theory]
-    // Replace builds a List<T> for a collection class of its own
-    [InlineData("public ObservableCollection<E2> Items { get; set; } = [];", "", "SMP0217")]
+    // Replace builds a List<T> for a type that is not a collection class it can create
     [InlineData("public Queue<E2> Items { get; set; } = new();", "", "SMP0217")]
-    // InPlace creates a List<T> (HashSet<T> for a set) when the target is null
-    [InlineData("public E2[] Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0217")]
-    [InlineData("public ImmutableArray<E2> Items { get; set; }", ", Strategy = CollectionStrategy.InPlace", "SMP0217")]
-    [InlineData("public ObservableCollection<E2> Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0217")]
-    // A target without a setter the mapper class can call
+    // InPlace refills the target, which a read-only type cannot take (see InPlaceTargetTests)
+    [InlineData("public E2[] Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
+    [InlineData("public ImmutableArray<E2> Items { get; set; }", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
+    [InlineData("public IReadOnlyList<E2> Items { get; set; } = new List<E2>();", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
+    // A target without a setter the mapper class can call, which Replace has to assign
     [InlineData("public List<E2> Items { get; } = [];", "", "SMP0212")]
     [InlineData("public List<E2> Items { get; private set; } = [];", "", "SMP0212")]
-    [InlineData("public List<E2> Items { get; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0212")]
     public void UnsupportedCollectionTargetEmitsDiagnostic(string targetMember, string options, string id)
     {
         var types = "public class Src { public List<E1> Items { get; set; } = []; } public class Dst { " + targetMember + " }";
@@ -179,7 +177,11 @@ public class GeneratedCodeErrorDiagnosticTests
     [InlineData("public List<E2> Items { get; internal set; } = [];", "")]
     [InlineData("public IList<E2> Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace")]
     [InlineData("public ISet<E2> Items { get; set; } = new HashSet<E2>();", ", Strategy = CollectionStrategy.InPlace")]
-    [InlineData("public IReadOnlyList<E2> Items { get; set; } = new List<E2>();", ", Strategy = CollectionStrategy.InPlace")]
+    // A collection class of its own is created with its constructor, and a get-only InPlace target is
+    // filled when it holds an instance
+    [InlineData("public ObservableCollection<E2> Items { get; set; } = [];", "")]
+    [InlineData("public ObservableCollection<E2> Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace")]
+    [InlineData("public List<E2> Items { get; } = [];", ", Strategy = CollectionStrategy.InPlace")]
     public void SupportedCollectionTargetCompiles(string targetMember, string options)
     {
         var types = "public class Src { public List<E1> Items { get; set; } = []; } public class Dst { " + targetMember + " }";

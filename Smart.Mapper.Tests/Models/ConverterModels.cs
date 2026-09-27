@@ -100,3 +100,23 @@ internal static class CultureReferenceConverter
 
     public static TDestination Convert<TSource, TDestination>(TSource source) => DefaultValueConverter.Convert<TSource, TDestination>(source);
 }
+
+// A converter class whose specialized method is obsolete as an error, which gives way to its generic method
+public class ObsoleteConverterSource
+{
+    public int Amount { get; set; }
+}
+
+public class ObsoleteConverterDestination
+{
+    public string Amount { get; set; } = default!;
+}
+
+public static class ObsoleteSpecializedConverter
+{
+    [Obsolete("Use Convert", true)]
+    public static string ConvertToString(int source) => "specialized";
+
+    public static TDestination Convert<TSource, TDestination>(TSource source) =>
+        DefaultValueConverter.Convert<string, TDestination>("generic " + DefaultValueConverter.Convert<TSource, string>(source));
+}

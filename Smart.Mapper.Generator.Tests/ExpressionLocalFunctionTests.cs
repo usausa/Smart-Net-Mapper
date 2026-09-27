@@ -302,8 +302,8 @@ public class ExpressionLocalFunctionTests
         Assert.True((callA < function0) && (function0 < function2), generated);
     }
 
-    // An unresolved target has no type to declare the function with, so the expression stays inline and
-    // the missing member is reported as before.
+    // An unresolved target has no type to declare the function with, and is reported as a target that is not
+    // found (SMP0214) instead of failing in the generated code (CS1061).
     [Fact]
     public void UnresolvedTargetReportsMissingMember()
     {
@@ -326,6 +326,7 @@ public class ExpressionLocalFunctionTests
             .Select(static d => d.Id)
             .ToList();
 
-        Assert.Equal("CS1061", Assert.Single(errors));
+        Assert.Contains("SMP0214", errors);
+        Assert.DoesNotContain("CS1061", errors);
     }
 }

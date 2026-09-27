@@ -216,4 +216,14 @@ public class EnumMappingTests
 
         Assert.Equal("B", destination.Options);
     }
+
+    // The same enum is copied as it is, so a combination of flags, which no member has, is kept
+    [Fact]
+    public void MapSameFlagsEnumKeepsCombinedValue()
+    {
+        var destination = TestMappers.MapFlagsEnumCopy(new FlagsEnumCopySource { Options = FlagOptions.A | FlagOptions.B, Nullable = FlagOptions.A | FlagOptions.B });
+
+        Assert.Equal(FlagOptions.A | FlagOptions.B, destination.Options);
+        Assert.Equal(FlagOptions.A | FlagOptions.B, destination.Nullable);
+    }
 }

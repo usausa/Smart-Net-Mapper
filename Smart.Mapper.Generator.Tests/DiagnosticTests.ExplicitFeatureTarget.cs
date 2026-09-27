@@ -8,7 +8,9 @@ using Microsoft.CodeAnalysis;
 // Verifies acceptance and rejection of explicit feature mappings targeting init-only / required members.
 //   - constant/expression/using/from × init/required × return mapper: accepted, assigned via object initializer
 //   - any init-only target × void mapper: rejected with SMP0302 (cannot assign init-only on an existing instance)
-//   - MapCollection/MapNested × init-only (or required × return): rejected with SMP0212 (loop cannot run in an initializer)
+//   - MapCollection/MapNested × init-only or required × return mapper: accepted, made before construction and set in
+//     the object initializer
+//   - MapCollection/MapNested × init-only × void mapper: rejected with SMP0212
 public partial class DiagnosticTests
 {
     private static IReadOnlyList<Diagnostic> AllDiagnostics(string source) =>
@@ -99,12 +101,16 @@ public partial class DiagnosticTests
     }
 
     [Fact]
-    public void Smp0212CollectionOnInitOnlyIsRejectedEmitsDiagnostic() =>
-        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true), "SMP0212");
+    public void CollectionOnInitOnlyReturnMapperCompiles() =>
+        AssertCompiles(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true));
 
     [Fact]
-    public void Smp0212CollectionOnRequiredReturnMapperIsRejectedEmitsDiagnostic() =>
-        AssertRejected(CollectionSource("public required List<E2> Items { get; set; }", returns: true), "SMP0212");
+    public void Smp0212CollectionOnInitOnlyVoidMapperIsRejectedEmitsDiagnostic() =>
+        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: false), "SMP0212");
+
+    [Fact]
+    public void CollectionOnRequiredReturnMapperCompiles() =>
+        AssertCompiles(CollectionSource("public required List<E2> Items { get; set; }", returns: true));
 
     [Fact]
     public void CollectionOnRequiredVoidMapperCompiles() =>

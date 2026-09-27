@@ -459,6 +459,10 @@ internal static partial class TestMappers
     [Mapper]
     public static partial void MapFlagsEnumToString(FlagsEnumToStringSource source, FlagsEnumToStringDestination destination);
 
+    // A2: the same flags enum is copied as it is
+    [Mapper]
+    public static partial FlagsEnumCopyDestination MapFlagsEnumCopy(FlagsEnumCopySource source);
+
     // B4: Method-level Culture + NumberFormat (double -> string)
     [Mapper(Culture = "fr-FR", NumberFormat = "N2")]
     public static partial CultureFormatDestination MapWithCultureFormat(CultureFormatSource source);
@@ -860,6 +864,317 @@ internal static partial class TestMappers
     public static partial ParsePathDestination MapParsePath(ParsePathSource source);
 }
 
+// Collection targets: InPlace without a setter or of a collection class, collection classes of their own
+internal static partial class TestMappers
+{
+    // Get-only targets, filled when they hold an instance
+    [Mapper]
+    [MapCollection(nameof(InPlaceGetOnlyDestination.Items), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapInPlaceGetOnly(InPlaceTargetSource source, InPlaceGetOnlyDestination destination);
+
+    [Mapper]
+    [MapCollection(nameof(InPlaceNullGetOnlyDestination.Items), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapInPlaceNullGetOnly(InPlaceTargetSource source, InPlaceNullGetOnlyDestination destination);
+
+    // ObservableCollection<T> target, created when null
+    [Mapper]
+    [MapCollection(nameof(InPlaceObservableDestination.Items), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapInPlaceObservable(InPlaceTargetSource source, InPlaceObservableDestination destination);
+
+    // Collection classes of their own, and an ObservableCollection<T> the loop builds
+    [Mapper]
+    [MapCollection(nameof(CollectionClassDestination.Items), Mapper = nameof(MapMatrixItem))]
+    [MapCollection(nameof(CollectionClassDestination.Observed), nameof(CollectionClassSource.Items), Mapper = nameof(MapMatrixItem))]
+    public static partial CollectionClassDestination MapCollectionClass(CollectionClassSource source);
+}
+
+// Setters the mapper cannot call, and constants
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial PrivateSetterDestination MapPrivateSetter(PrivateSetterSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapConstant(nameof(ConstantConversionDestination.Big), 1)]
+    [MapConstant(nameof(ConstantConversionDestination.Small), 2)]
+    [MapConstant<short>(nameof(ConstantConversionDestination.Count), 3)]
+    public static partial ConstantConversionDestination MapConstantConversion(PrivateSetterSource source);
+}
+
+// Culture and formats from the method and then the profile, each on its own
+[MapperProfile(Culture = "ja-JP", NumberFormat = "N0")]
+internal static partial class CultureProfileMappers
+{
+    [Mapper]
+    public static partial CultureProfileDestination MapProfileFormat(CultureProfileSource source);
+
+    [Mapper(NumberFormat = "N2")]
+    public static partial CultureProfileDestination MapMethodFormat(CultureProfileSource source);
+
+    [Mapper(Culture = "de-DE")]
+    public static partial CultureProfileDestination MapMethodCulture(CultureProfileSource source);
+}
+
+// Constants and NullValues of every kind: enums, types, arrays, floating-point numbers, escaped text
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapConstant(nameof(ConstantKindDestination.Kind), ConstantKind.Second)]
+    [MapConstant(nameof(ConstantKindDestination.Undefined), (ConstantKind)9)]
+    [MapConstant(nameof(ConstantKindDestination.Access), ConstantAccess.Read | ConstantAccess.Run)]
+    [MapConstant(nameof(ConstantKindDestination.Type), typeof(Dictionary<string, int>))]
+    [MapConstant(nameof(ConstantKindDestination.Numbers), new[] { 1, -2, 3 })]
+    [MapConstant(nameof(ConstantKindDestination.Texts), new[] { "a\"b", null, "c\\d\r\n" })]
+    [MapConstant(nameof(ConstantKindDestination.Values), new object?[] { 1, "x", null, typeof(int), ConstantKind.First })]
+    [MapConstant(nameof(ConstantKindDestination.Ratio), 0.1)]
+    [MapConstant(nameof(ConstantKindDestination.Scale), 1.5e-7f)]
+    [MapConstant(nameof(ConstantKindDestination.Zero), -0.0)]
+    [MapConstant(nameof(ConstantKindDestination.Missing), double.NaN)]
+    [MapConstant(nameof(ConstantKindDestination.Quote), '\'')]
+    [MapConstant(nameof(ConstantKindDestination.Text), "tab\tline\U00002028end\U0001F600")]
+    public static partial ConstantKindDestination MapConstantKinds(ConstantKindSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(ConstantKindDestination.Kind), NullValue = ConstantKind.Second)]
+    [MapProperty(nameof(ConstantKindDestination.Type), NullValue = typeof(string))]
+    [MapProperty(nameof(ConstantKindDestination.Numbers), NullValue = new[] { 7, 8 })]
+    [MapProperty(nameof(ConstantKindDestination.Ratio), NullValue = double.NaN)]
+    [MapProperty(nameof(ConstantKindDestination.Text), NullValue = "none\t\"x\"")]
+    public static partial ConstantKindDestination MapNullValueKinds(ConstantKindSource source);
+}
+
+// Dotted target paths through members the mapper cannot assign, and a void mapper into a type whose
+// constructor takes members without a setter
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty($"{nameof(HeldPathDestination.Held)}.{nameof(HeldPathChild.Value)}", nameof(HeldPathSource.Value))]
+    [MapProperty($"{nameof(HeldPathDestination.Held)}.{nameof(HeldPathChild.Text)}", nameof(HeldPathSource.Text))]
+    [MapProperty($"{nameof(HeldPathDestination.Held)}.{nameof(HeldPathChild.Leaf)}.{nameof(HeldPathLeaf.Value)}", nameof(HeldPathSource.Value))]
+    [MapProperty($"{nameof(HeldPathDestination.Missing)}.{nameof(HeldPathChild.Value)}", nameof(HeldPathSource.Value))]
+    [MapProperty($"{nameof(HeldPathDestination.Private)}.{nameof(HeldPathChild.Value)}", nameof(HeldPathSource.Value))]
+    [MapProperty($"{nameof(HeldPathDestination.Init)}.{nameof(HeldPathChild.Value)}", nameof(HeldPathSource.Value))]
+    public static partial void MapHeldPath(HeldPathSource source, HeldPathDestination destination);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty($"{nameof(HeldPathDestination.Held)}.{nameof(HeldPathChild.Value)}", nameof(HeldPathSource.Value))]
+    [MapProperty($"{nameof(HeldPathDestination.Init)}.{nameof(HeldPathChild.Text)}", nameof(HeldPathSource.Text))]
+    public static partial HeldPathDestination MapHeldPathToNew(HeldPathSource source);
+
+    [Mapper]
+    [MapCollection(nameof(ConstructedTargetDestination.Items), Mapper = nameof(MapMatrixItem), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapConstructedTarget(ConstructedTargetSource source, ConstructedTargetDestination destination);
+}
+
+// Keywords used as names: enum members, and the parameters of the mapper and of the methods it calls
+internal static partial class TestMappers
+{
+    [Mapper]
+    [MapUsing(nameof(KeywordDestination.Id), nameof(IdOf))]
+    public static partial KeywordDestination MapKeywords(KeywordSource @class, int @checked);
+
+    private static int IdOf(KeywordSource source, int @checked) => source.Id + @checked;
+}
+
+// Integer constants without a literal of their own, and required fields
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapConstant(nameof(SmallIntegerDestination.Value), (byte)1)]
+    [MapConstant(nameof(SmallIntegerDestination.Values), new object[] { (short)-2, (sbyte)-3, (ushort)4 })]
+    [MapConstant(nameof(SmallIntegerDestination.Bytes), new byte[] { 5, 6 })]
+    public static partial SmallIntegerDestination MapSmallIntegers(TargetPathSource source);
+
+    [Mapper]
+    [MapConstant(nameof(RequiredFieldDestination.Key), 7)]
+    [MapUsing(nameof(RequiredFieldDestination.Label), nameof(LabelOf))]
+    [MapProperty(nameof(RequiredFieldDestination.Id), nameof(TargetPathSource.X))]
+    public static partial RequiredFieldDestination MapRequiredFields(TargetPathSource source);
+
+    [Mapper]
+    [MapProperty(nameof(RequiredFieldDestination.Id), nameof(TargetPathSource.X))]
+    public static partial void MapRequiredFieldsInto(TargetPathSource source, ref RequiredFieldDestination destination);
+
+    private static string LabelOf(TargetPathSource source) => "#" + source.Y.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+// Dotted target paths through a struct property, a type the mapper cannot create, and init-only members
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty($"{nameof(TargetPathDestination.Point)}.{nameof(PathPoint.X)}", nameof(TargetPathSource.X))]
+    [MapConstant($"{nameof(TargetPathDestination.Point)}.{nameof(PathPoint.Y)}", 5)]
+    [MapProperty($"{nameof(TargetPathDestination.Abstract)}.{nameof(PathAbstractChild.Value)}", nameof(TargetPathSource.X))]
+    [MapUsing($"{nameof(TargetPathDestination.Created)}.{nameof(PathInitChild.Plain)}", nameof(SumOf))]
+    [MapExpression($"{nameof(TargetPathDestination.Held)}.{nameof(PathInitChild.Plain)}", "source.Y * 10")]
+    public static partial void MapPaths(TargetPathSource source, TargetPathDestination destination);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty($"{nameof(PathInitDestination.Child)}.{nameof(PathInitChild.Value)}", nameof(TargetPathSource.X))]
+    [MapConstant($"{nameof(PathInitDestination.Child)}.{nameof(PathInitChild.Other)}", 9)]
+    [MapProperty($"{nameof(PathInitDestination.Child)}.{nameof(PathInitChild.Plain)}", nameof(TargetPathSource.Y))]
+    [MapProperty(nameof(PathInitDestination.Top), nameof(TargetPathSource.Y))]
+    public static partial PathInitDestination MapInitPaths(TargetPathSource source);
+
+    private static int SumOf(TargetPathSource source) => source.X + source.Y;
+}
+
+// A constructor with [SetsRequiredMembers]: the required member left out keeps what it set
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial SetsRequiredDestination MapSetsRequired(BasicSource source);
+}
+
+// Mappers in nested types, implemented in the declarations of the containing types
+internal static partial class NestedTypeMappers
+{
+    internal static partial class Inner
+    {
+        [Mapper]
+        public static partial BasicDestination Map(BasicSource source);
+    }
+
+    internal readonly partial struct Formatting
+    {
+        [Mapper(Culture = "de-DE", NumberFormat = "N2")]
+        [MapProperty(nameof(BasicDestination.Name), nameof(CultureProfileSource.Amount))]
+        public static partial BasicDestination Map(CultureProfileSource source);
+    }
+}
+
+// The profile's name comparison for the names written in the attributes, fields as well
+[MapperProfile(NameComparison = StringComparison.OrdinalIgnoreCase)]
+internal static partial class NameComparisonProfileMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty("target", "value")]
+    [MapConstant("field", 3)]
+    [MapFrom("count", "getcount")]
+    public static partial NameComparisonDestination Map(NameComparisonSource source);
+}
+
+// Dotted paths into a member the automatic mapping leaves to them, internal required members, and members
+// inherited from a base class or an interface
+internal static partial class TestMappers
+{
+    [Mapper]
+    [MapConstant($"{nameof(DottedPathDestination.Child)}.{nameof(DottedPathChild.Value)}", 3)]
+    [MapExpression($"{nameof(DottedPathDestination.Child)}.{nameof(DottedPathChild.Other)}", "source.Number * 2")]
+    public static partial DottedPathDestination MapDottedPaths(DottedPathSource source);
+
+    [Mapper]
+    [MapUsing(nameof(InternalRequiredDestination.Code), nameof(CodeOf))]
+    [MapConstant(nameof(InternalRequiredDestination.Level), 2)]
+    public static partial InternalRequiredDestination MapInternalRequired(BasicSource source);
+
+    [Mapper]
+    public static partial void MapInternalRequiredInto(BasicSource source, InternalRequiredDestination destination);
+
+    [Mapper]
+    [MapFrom(nameof(InheritedLookupDestination.Total), nameof(InheritedLookupSource.Sum))]
+    public static partial InheritedLookupDestination MapInherited(InheritedLookupSource source);
+
+    [Mapper]
+    [MapFrom(nameof(InheritedLookupDestination.Total), nameof(IInheritedLookupSource.Twice))]
+    public static partial InheritedLookupDestination MapInherited(IInheritedLookupSource source);
+
+    private static string CodeOf(BasicSource source) => "#" + source.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+// Properties hiding or overriding one of a base type, a required member the dotted paths write into, and a
+// constructor taking the values of the attributes
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial HidingDestination MapHiding(BasicSource source);
+
+    [Mapper]
+    public static partial RequiredOverrideDestination MapRequiredOverride(BasicSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(GetterOverrideDestination.Id), nameof(BasicSource.Id))]
+    [MapConstant(nameof(GetterOverrideDestination.Label), "label")]
+    public static partial GetterOverrideDestination MapGetterOverride(BasicSource source);
+
+    [Mapper]
+    [MapProperty($"{nameof(RequiredPathDestination.Child)}.{nameof(DottedPathChild.Value)}", nameof(BasicSource.Id))]
+    public static partial RequiredPathDestination MapRequiredPath(BasicSource source);
+
+    [Mapper]
+    public static partial DottedPathChild CopyPathChild(DottedPathChild source);
+
+    [Mapper]
+    [MapNested(nameof(ConstructorArgumentDestination.Child), Mapper = nameof(CopyPathChild))]
+    [MapConstant(nameof(ConstructorArgumentDestination.Code), 7)]
+    [MapUsing(nameof(ConstructorArgumentDestination.Label), nameof(LabelOfNumber))]
+    [MapCollection(nameof(ConstructorArgumentDestination.Children), Mapper = nameof(CopyPathChild))]
+    public static partial ConstructorArgumentDestination MapConstructorArguments(ConstructorArgumentSource source);
+
+    private static string LabelOfNumber(ConstructorArgumentSource source) => "#" + source.Number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+// Constructor arguments of the parameter's type, parameters named by the attributes, and a name a member the
+// mapping does not take hides
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial ParameterTypeDestination MapParameterType(ConstructorSource source);
+
+    [Mapper]
+    [MapConstant("number", 3)]
+    [MapUsing("label", nameof(LabelOfCode))]
+    public static partial ParameterOnlyDestination MapParameterOnly(ConstructorSource source);
+
+    [Mapper]
+    [MapProperty("value", nameof(ConstructorSource.Other))]
+    public static partial ParameterNameDestination MapParameterName(ConstructorSource source);
+
+    [Mapper]
+    public static partial HidingInternalDestination MapHidingInternal(ConstructorSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapConstant(nameof(HidingInternalDestination.Level), "set")]
+    public static partial HidingInternalDestination MapHidingInternalConstant(ConstructorSource source);
+
+    private static string LabelOfCode(ConstructorSource source) => "#" + source.Code.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+// Constructors chosen by the values the mapping has for their parameters
+internal static partial class TestMappers
+{
+    [Mapper]
+    public static partial ConstructorSetterDestination MapConstructorSetter(ConstructorChoiceSource source);
+
+    [Mapper]
+    public static partial ConstructorIdDestination MapConstructorId(ConstructorChoiceSource source);
+
+    [Mapper]
+    public static partial OptionalParameterDestination MapOptionalParameter(ConstructorChoiceSource source);
+
+    [Mapper]
+    [MapProperty(nameof(PreferredConstructorDestination.Label), nameof(PreferredConstructorSource.Name))]
+    public static partial PreferredConstructorDestination MapPreferredConstructor(PreferredConstructorSource source);
+
+    [Mapper]
+    public static partial ObsoleteParameterlessDestination MapObsoleteParameterless(PreferredConstructorSource source);
+
+    [Mapper]
+    [MapProperty(nameof(ObsoleteTieDestination.Code), nameof(ObsoleteMemberSource.Other))]
+    public static partial ObsoleteTieDestination MapObsoleteTie(ObsoleteMemberSource source);
+
+    [Mapper]
+    public static partial ObsoleteMemberDestination MapObsoleteMember(ObsoleteMemberSource source);
+
+    [Mapper]
+    [ValueConverter(typeof(ObsoleteSpecializedConverter))]
+    public static partial ObsoleteConverterDestination MapObsoleteConverter(ObsoleteConverterSource source);
+
+    [Mapper]
+    [MapConstant(nameof(ObsoleteEnumDestination.Fixed), (ObsoleteDestinationColor)20)]
+    public static partial ObsoleteEnumDestination MapObsoleteEnum(ObsoleteEnumSource source);
+}
+
 // Nullable annotations of the declaration are repeated on the implementation
 internal static partial class TestMappers
 {
@@ -980,4 +1295,224 @@ internal static partial class TestMappers
     [Mapper]
     [ValueConverter(typeof(CovConverter))]
     public static partial void MapConverterCov(ConverterCovSource source, ConverterCovDestination destination);
+}
+
+// NullBehavior.Skip with a converter, generic mapper methods, and a mapper returning a nullable result
+internal static partial class TestMappers
+{
+    [Mapper]
+    [MapProperty(nameof(SkipConverterDestination.Value), NullBehavior = NullBehavior.Skip, Converter = nameof(FormatValue))]
+    public static partial void MapSkipConverter(SkipConverterSource source, SkipConverterDestination destination);
+
+    private static string FormatValue(int? value) =>
+        value is null ? "null" : "value " + value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    [Mapper]
+    public static partial GenericWrap<T> MapGenericBox<T>(GenericBox<T> source);
+
+    [Mapper]
+    public static partial T CreateGenericEntity<T>(GenericEntitySource source)
+        where T : GenericEntity, new();
+
+    [Mapper]
+    [MapCollection(nameof(NullableElementDestination.Items), Mapper = nameof(MapNullableElement))]
+    [MapCollection(nameof(NullableElementDestination.Array), nameof(NullableElementSource.Items), Mapper = nameof(MapNullableElement))]
+    [MapNested(nameof(NullableElementDestination.Head), Mapper = nameof(MapNullableElement))]
+    public static partial NullableElementDestination MapNullableElements(NullableElementSource source);
+
+    [Mapper]
+    public static partial MatrixDstItem? MapNullableElement(MatrixSrcItem? source);
+
+    // A nullable struct is returned as the struct it holds, created and filled
+    [Mapper]
+    public static partial NullableStructValue? MapNullableStruct(GenericEntitySource? source);
+
+    // NullValue with a converter, and for a null intermediate member of a dotted source
+    [Mapper]
+    [MapProperty(nameof(NullValueConverterDestination.Value), NullValue = "none", Converter = nameof(FormatValue))]
+    public static partial NullValueConverterDestination MapNullValueConverter(NullValueConverterSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(IntermediateDestination.Name), "Leaf.Name", NullValue = "none")]
+    [MapProperty(nameof(IntermediateDestination.Code), "Leaf.Code")]
+    public static partial void MapIntermediate(IntermediateSource source, IntermediateDestination destination);
+
+    // Mappers matched through conversions
+    [Mapper]
+    [MapNested(nameof(ConversionDestination.Child), Mapper = nameof(MapConvertedChild))]
+    [MapNested(nameof(ConversionDestination.Point), Mapper = nameof(MapConvertedPoint))]
+    [MapCollection(nameof(ConversionDestination.Children), Mapper = nameof(MapConvertedChild))]
+    [MapCollection(nameof(ConversionDestination.Points), Mapper = nameof(MapConvertedPoint))]
+    public static partial ConversionDestination MapConversion(ConversionSource source);
+
+    [Mapper]
+    public static partial ConvertedChild MapConvertedChild(ConvertedBase source);
+
+    [Mapper]
+    public static partial ConvertedPointDto MapConvertedPoint(ConvertedPoint source);
+
+    // Dictionary interface targets
+    [Mapper]
+    [MapCollection(nameof(DictionaryDestination.Items), Mapper = nameof(MapItemPair))]
+    [MapCollection(nameof(DictionaryDestination.Editable), nameof(DictionarySource.Items), Mapper = nameof(MapItemPair))]
+    public static partial DictionaryDestination MapDictionary(DictionarySource source);
+
+    private static KeyValuePair<string, MatrixDstItem> MapItemPair(KeyValuePair<string, MatrixSrcItem> pair) =>
+        new(pair.Key, new MatrixDstItem { Value = pair.Value.Value });
+
+    // NullValue and NullBehavior.Skip on references declared with nullable annotations disabled
+    [Mapper]
+    [MapProperty(nameof(ObliviousDestination.Name), NullValue = "Unknown")]
+    [MapProperty(nameof(ObliviousDestination.Note), NullBehavior = NullBehavior.Skip)]
+    public static partial void MapOblivious(ObliviousSource source, ObliviousDestination destination);
+
+    // [MapFrom] through members that may be null, and values of [MapUsing] / [MapFrom] a type converts to implicitly
+    [Mapper(AutoMap = false)]
+    [MapFrom(nameof(NullablePathDestination.Zip), "Mid.Leaf.Zip")]
+    [MapFrom(nameof(NullablePathDestination.Code), "Mid.Leaf.Code")]
+    [MapFrom(nameof(NullablePathDestination.Count), "Items.Count")]
+    [MapFrom(nameof(NullablePathDestination.Nick), nameof(NullablePathSource.GetAlias))]
+    [MapUsing(nameof(NullablePathDestination.Total), nameof(SumItems))]
+    public static partial void MapNullablePath(NullablePathSource source, NullablePathDestination destination);
+
+    [Mapper]
+    [MapFrom(nameof(NullablePathRecord.Zip), "Mid.Leaf.Zip")]
+    [MapFrom(nameof(NullablePathRecord.Code), "Mid.Leaf.Code")]
+    public static partial NullablePathRecord MapNullablePathRecord(NullablePathSource source);
+
+    private static decimal SumItems(NullablePathSource source) => source.Items?.Sum() ?? 0;
+}
+
+// Methods whose parameter does not take null, init-only and required targets of [MapNested] / [MapCollection], implicit
+// conversions, unmatched enum values going to a nullable target, and InPlace into a dictionary interface
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(NonNullDestination.Name), Converter = nameof(TrimText))]
+    [MapProperty(nameof(NonNullDestination.Note), Converter = nameof(TrimText), NullValue = "none")]
+    [MapCondition(nameof(NonNullDestination.Code), nameof(IsShortText))]
+    [MapProperty(nameof(NonNullDestination.Code))]
+    [MapUsing(nameof(NonNullDestination.Found), nameof(FindCode))]
+    public static partial void MapNonNull(NonNullSource source, NonNullDestination destination);
+
+    [Mapper]
+    [MapProperty(nameof(NonNullRecord.Name), Converter = nameof(TrimText))]
+    [MapProperty(nameof(NonNullRecord.Code), Converter = nameof(TrimText))]
+    public static partial NonNullRecord MapNonNullRecord(NonNullSource source);
+
+    private static string TrimText(string value) => value.Trim();
+
+    private static bool IsShortText(string value) => value.Length < 5;
+
+    private static string? FindCode(NonNullSource source) => source.Code;
+
+    [Mapper]
+    public static partial ReferenceElementItemDto MapReferenceElement(ReferenceElementItem source);
+
+    [Mapper]
+    [MapCollection(nameof(ReferenceElementDestination.Items), Mapper = nameof(MapReferenceElement))]
+    public static partial ReferenceElementDestination MapReferenceElements(ReferenceElementSource source);
+
+    [Mapper]
+    [MapNested(nameof(InitTargetDestination.Head), Mapper = nameof(MapReferenceElement))]
+    [MapCollection(nameof(InitTargetDestination.Items), Mapper = nameof(MapReferenceElement))]
+    public static partial InitTargetDestination MapInitTarget(InitTargetSource source);
+
+    [Mapper]
+    [MapProperty(nameof(WideningConversionDestination.Price), Converter = nameof(ParseAmount))]
+    public static partial WideningConversionDestination MapWideningConversion(WideningConversionSource source);
+
+    private static decimal ParseAmount(string value) => Decimal.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+
+    [Mapper]
+    public static partial UnmatchedEnumDestination MapUnmatchedEnum(UnmatchedEnumSource source);
+
+    [Mapper]
+    [MapCollection(nameof(InPlaceDictionaryDestination.Items), Mapper = nameof(MapReferencePair), Strategy = CollectionStrategy.InPlace)]
+    public static partial void MapInPlaceDictionary(InPlaceDictionarySource source, InPlaceDictionaryDestination destination);
+
+    private static KeyValuePair<string, ReferenceElementItemDto> MapReferencePair(KeyValuePair<string, ReferenceElementItem> pair) =>
+        new(pair.Key, new ReferenceElementItemDto { Value = pair.Value.Value });
+}
+
+// Methods taking the value by an implicit reference conversion, and the struct a nullable struct holds
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapUsing(nameof(ParameterConversionDestination.Title), nameof(DescribeNamed))]
+    [MapProperty(nameof(ParameterConversionDestination.OwnerName), nameof(ParameterConversionSource.Owner), Converter = nameof(DescribeNamed))]
+    [MapProperty(nameof(ParameterConversionDestination.TagText), nameof(ParameterConversionSource.Tags), Converter = nameof(JoinTags))]
+    [MapProperty(nameof(ParameterConversionDestination.QuantityText), nameof(ParameterConversionSource.Quantity), Converter = nameof(FormatCount))]
+    [MapProperty(nameof(ParameterConversionDestination.ScoreText), nameof(ParameterConversionSource.Score), Converter = nameof(FormatCount), NullValue = "-")]
+    [MapCondition(nameof(ParameterConversionDestination.Score), nameof(IsPositiveCount))]
+    [MapProperty(nameof(ParameterConversionDestination.Score))]
+    public static partial void MapParameterConversion(ParameterConversionSource source, ParameterConversionDestination destination);
+
+    [Mapper]
+    [MapProperty(nameof(ParameterConversionRecord.QuantityText), nameof(ParameterConversionSource.Quantity), Converter = nameof(FormatCount))]
+    [MapProperty(nameof(ParameterConversionRecord.ScoreText), nameof(ParameterConversionSource.Score), Converter = nameof(FormatCount))]
+    public static partial ParameterConversionRecord MapParameterConversionRecord(ParameterConversionSource source);
+
+    private static string DescribeNamed(IConversionNamed value) => "[" + value.Name + "]";
+
+    private static string JoinTags(IEnumerable<string> values) => String.Join(",", values);
+
+    private static string FormatCount(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static bool IsPositiveCount(int value) => value > 0;
+}
+
+// Methods found in a base class of the mapper class and in the class containing it, a callback taking the source and
+// the destination as interfaces, and converters taking the value by boxing, a wider number or a user-defined conversion
+public abstract class LookupMapperBase
+{
+    protected static string FormatAmount(decimal value) => value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    protected static LookupChildDto ToLookupChild(LookupChild child) => new() { Id = child.Id };
+
+    protected static void Stamp(ILookupEntity source, ILookupStamped destination) =>
+        destination.Stamp = "stamped " + source.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+// An update into the members of a member, each left as it is without a value
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty("Address.City", nameof(PatchCustomerRequest.City), NullBehavior = NullBehavior.Skip)]
+    [MapProperty("Address.Zip", nameof(PatchCustomerRequest.Zip), NullBehavior = NullBehavior.Skip)]
+    public static partial void Patch(PatchCustomerRequest request, PatchCustomer customer);
+}
+
+// A converter shared through a global using static directive (GlobalUsing.cs)
+public static class LookupSharedConverters
+{
+    public static string ToSharedText(int value) => "shared " + value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+public static partial class LookupOuter
+{
+    private static string Upper(string value) => value.ToUpperInvariant();
+
+    private static string Describe(object value) => "<" + value + ">";
+
+    private static string FormatNumber(int value) => "#" + value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public sealed partial class LookupMappers : LookupMapperBase
+    {
+        [Mapper]
+        [MapProperty(nameof(LookupDestination.Name), Converter = nameof(Upper))]
+        [MapProperty(nameof(LookupDestination.Count), Converter = nameof(Describe))]
+        [MapProperty(nameof(LookupDestination.Stock), Converter = nameof(Describe))]
+        [MapProperty(nameof(LookupDestination.Owner), Converter = nameof(FormatNumber))]
+        [MapProperty(nameof(LookupDestination.Total), Converter = nameof(FormatWide))]
+        [MapProperty(nameof(LookupDestination.Amount), Converter = nameof(FormatAmount))]
+        [MapNested(nameof(LookupDestination.Child), Mapper = nameof(ToLookupChild))]
+        [MapProperty(nameof(LookupDestination.Reserve), Converter = nameof(FormatWide))]
+        [MapProperty(nameof(LookupDestination.Keeper), Converter = nameof(FormatNumber))]
+        [MapProperty(nameof(LookupDestination.Shared), Converter = nameof(ToSharedText))]
+        [AfterMap(nameof(Stamp))]
+        public static partial LookupDestination Map(LookupSource source);
+
+        private static string FormatWide(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L";
+    }
 }

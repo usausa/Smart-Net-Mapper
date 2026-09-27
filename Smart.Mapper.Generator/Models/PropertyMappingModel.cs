@@ -70,8 +70,21 @@ internal sealed record PropertyMappingModel(
     string? ConditionMethod = default,
     bool ConditionAcceptsCustomParameters = default,
     EquatableArray<RefKind> ConditionParameterRefKinds = default,
+    // The parameter of the converter / the condition taking the source value does not take null (a reference
+    // annotated as not null, [DisallowNull], or the struct a nullable struct source holds, which goes to it as its
+    // Value), so a nullable source goes to it only when it has a value. A converter returning a nullable reference
+    // into a target not annotated as nullable is taken with !
+    bool ConverterUnwrapsSource = default,
+    bool ConverterRejectsNull = default,
+    bool ConverterForgivesNull = default,
+    bool ConditionUnwrapsSource = default,
+    bool ConditionRejectsNull = default,
     NullBehaviorType NullBehavior = NullBehaviorType.Default,
     string? NullValue = default,
+    // Set for a NullValue that cannot be written (NullValue is then null, SMP0220), and for one that is
+    // an array holding null
+    bool IsNullValueUnsupported = default,
+    bool NullValueHasNullElement = default,
     string? EffectiveCulture = default,
     string? EffectiveDateTimeFormat = default,
     string? EffectiveNumberFormat = default,
@@ -85,7 +98,14 @@ internal sealed record PropertyMappingModel(
     bool UseFormattable = default,
     EnumMappingKind EnumMappingKind = EnumMappingKind.None,
     EquatableArray<string> SourceEnumMembers = default,
-    EquatableArray<string> DestEnumMembers = default);
+    EquatableArray<string> DestEnumMembers = default,
+    // Parallel to the member names: the number a member marked [Obsolete] is written as, cast to the enum
+    // type, as naming it warns (CS0618) or fails (CS0619); empty for a member written by its name
+    EquatableArray<string> SourceEnumCastValues = default,
+    EquatableArray<string> DestEnumCastValues = default,
+    // The attribute this was declared by, as its index in MapperMethodModel.AttributeLocations, which the
+    // diagnostics about it point to; -1 for one the automatic mapping made
+    int AttributeIndex = -1);
 
 internal static class PropertyMappingModelExtensions
 {
@@ -107,6 +127,14 @@ internal static class PropertyMappingModelExtensions
 
     public static bool RequiresNullCheck(this PropertyMappingModel m) =>
         m.SourcePathSegments.Any(s => s.IsNullable);
+
+    // Whether the assignment of the mapping is written under a check of its own, which may leave the target as it is:
+    // a condition, NullBehavior.Skip for a nullable source, or, for a nullable source, a converter whose parameter
+    // does not take null and no NullValue to give instead. Such an assignment creates the intermediate members of its
+    // target path only when it assigns.
+    public static bool IsAssignmentGuarded(this PropertyMappingModel m) =>
+        m.HasCondition() ||
+        (m.IsSourceNullable && ((m.NullBehavior == NullBehaviorType.Skip) || (m.HasConverter() && m.ConverterRejectsNull && !m.HasNullValue())));
 
     public static bool RequiresNullCoalescing(this PropertyMappingModel m) =>
         m.IsSourceNullable && !m.IsTargetNullable && (m.NullBehavior == NullBehaviorType.Default) && !m.HasNullValue();

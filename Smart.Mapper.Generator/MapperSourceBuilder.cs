@@ -184,13 +184,16 @@ internal static class MapperSourceBuilder
     private static string GetCallArgumentModifier(EquatableArray<RefKind> parameterRefKinds, int index) =>
         index < parameterRefKinds.Count ? GetArgumentModifier(parameterRefKinds[index]) : string.Empty;
 
-    // The modifiers of the defining declaration besides static and partial, which the implementation repeats
+    // The modifiers of the defining declaration, which the implementation repeats: static for a static mapper, and
+    // partial
     private static void AppendDeclarationModifiers(SourceBuilder builder, MapperMethodModel method)
     {
         if (method.DeclarationModifiers.Length > 0)
         {
             builder.Append(method.DeclarationModifiers).Append(" ");
         }
+
+        builder.Append(method.IsInstance ? "partial " : "static partial ");
     }
 
     // The implementation of a mapper reported with an error, so that the implementation missing is not reported along
@@ -200,8 +203,7 @@ internal static class MapperSourceBuilder
     {
         builder.Indent();
         AppendDeclarationModifiers(builder, method);
-        builder.Append("static partial ")
-               .Append(method.PlaceholderReturnType).Append(" ")
+        builder.Append(method.PlaceholderReturnType).Append(" ")
                .Append(IdentifierHelper.Escape(method.MethodName)).Append(method.TypeParameterList)
                .Append("(").Append(method.PlaceholderParameters).Append(")").Append(method.ConstraintClauses).NewLine();
         builder.BeginScope();
@@ -239,7 +241,6 @@ internal static class MapperSourceBuilder
 
         builder.Indent();
         AppendDeclarationModifiers(builder, method);
-        builder.Append("static partial ");
         builder.Append(method.ReturnsDestination ? method.DestinationDeclaredTypeName : "void").Append(" ");
         builder.Append(IdentifierHelper.Escape(method.MethodName)).Append(method.TypeParameterList).Append("(");
         AppendParameters(builder, method, forImplementation: true);
@@ -344,7 +345,7 @@ internal static class MapperSourceBuilder
 
         if (!String.IsNullOrEmpty(method.BeforeMapMethod))
         {
-            AppendCallbackCall(builder, method, method.BeforeMapMethod!, method.BeforeMapParameterRefKinds, method.BeforeMapAcceptsCustomParameters, destVarName);
+            AppendCallbackCall(builder, method, method.BeforeMapMethod!, method.BeforeMapParameterRefKinds, method.BeforeMapCustomArguments, destVarName);
         }
 
         // Feature mappings already emitted in the object initializer are skipped here.
@@ -524,7 +525,7 @@ internal static class MapperSourceBuilder
 
         if (!String.IsNullOrEmpty(method.AfterMapMethod))
         {
-            AppendCallbackCall(builder, method, method.AfterMapMethod!, method.AfterMapParameterRefKinds, method.AfterMapAcceptsCustomParameters, destVarName);
+            AppendCallbackCall(builder, method, method.AfterMapMethod!, method.AfterMapParameterRefKinds, method.AfterMapCustomArguments, destVarName);
         }
 
         if (method.ReturnsDestination)
@@ -686,7 +687,7 @@ internal static class MapperSourceBuilder
             {
                 builder.Append(sourceAccess).Append(" is not null ? ");
             }
-            builder.Append(mapper).Append("(").Append(sourceArgument).Append(")");
+            builder.Append(mapper).Append("(").Append(sourceArgument).Append(mapNested.MapperCustomArguments).Append(")");
             if (mapNested.ForgivesMapperResult)
             {
                 builder.Append("!");
@@ -708,7 +709,7 @@ internal static class MapperSourceBuilder
             builder.Indent().Append("if (").Append(sourceAccess).Append(" is not null)").NewLine();
             builder.BeginScope();
             builder.Indent().Append("var ").Append(nestedVarName).Append(" = new ").Append(mapNested.TargetType).Append("();").NewLine();
-            builder.Indent().Append(mapper).Append("(").Append(sourceArgument).Append(", ").Append(instanceModifier).Append(nestedVarName).Append(");").NewLine();
+            builder.Indent().Append(mapper).Append("(").Append(sourceArgument).Append(", ").Append(instanceModifier).Append(nestedVarName).Append(mapNested.MapperCustomArguments).Append(");").NewLine();
             builder.Indent().Append(targetAccess).Append(" = ").Append(nestedVarName).Append(";").NewLine();
             builder.EndScope();
             builder.Indent().Append("else").NewLine();
@@ -719,28 +720,25 @@ internal static class MapperSourceBuilder
         else
         {
             builder.Indent().Append("var ").Append(nestedVarName).Append(" = new ").Append(mapNested.TargetType).Append("();").NewLine();
-            builder.Indent().Append(mapper).Append("(").Append(sourceAccess).Append(", ").Append(instanceModifier).Append(nestedVarName).Append(");").NewLine();
+            builder.Indent().Append(mapper).Append("(").Append(sourceAccess).Append(", ").Append(instanceModifier).Append(nestedVarName).Append(mapNested.MapperCustomArguments).Append(");").NewLine();
             builder.Indent().Append(targetAccess).Append(" = ").Append(nestedVarName).Append(";").NewLine();
         }
     }
 
-    // BeforeMap / AfterMap: the source, the destination and the custom parameters, each passed the way
+    // BeforeMap / AfterMap: the source, the destination and the custom parameters it takes, each passed the way
     // the callback's parameter takes it.
     private static void AppendCallbackCall(
         SourceBuilder builder,
         MapperMethodModel method,
         string callback,
         EquatableArray<RefKind> parameterRefKinds,
-        bool acceptsCustomParameters,
+        EquatableArray<int> customArguments,
         string destVarName)
     {
         builder.Indent().Append(IdentifierHelper.Escape(callback)).Append("(")
             .Append(GetCallArgumentModifier(parameterRefKinds, 0)).Append(method.SourceParameterName).Append(", ")
             .Append(GetCallArgumentModifier(parameterRefKinds, 1)).Append(destVarName);
-        if (acceptsCustomParameters)
-        {
-            AppendCustomArguments(builder, method, parameterRefKinds, 2);
-        }
+        AppendCustomArguments(builder, method, parameterRefKinds, 2, customArguments);
         builder.Append(");").NewLine();
     }
 
@@ -750,12 +748,9 @@ internal static class MapperSourceBuilder
     {
         var call = new StringBuilder(IdentifierHelper.Escape(mapUsing.Method));
         call.Append('(').Append(GetCallArgumentModifier(mapUsing.ParameterRefKinds, 0)).Append(method.SourceParameterName);
-        if (mapUsing.AcceptsCustomParameters)
+        for (var i = 0; i < mapUsing.CustomArguments.Count; i++)
         {
-            for (var i = 0; i < method.CustomParameters.Count; i++)
-            {
-                call.Append(", ").Append(GetCallArgumentModifier(mapUsing.ParameterRefKinds, i + 1)).Append(method.CustomParameters[i].Name);
-            }
+            call.Append(", ").Append(GetCallArgumentModifier(mapUsing.ParameterRefKinds, i + 1)).Append(method.CustomParameters[mapUsing.CustomArguments[i]].Name);
         }
         call.Append(')');
         if (mapUsing.ForgivesNull)
@@ -805,12 +800,13 @@ internal static class MapperSourceBuilder
     private static void AppendAssignment(SourceBuilder builder, string target, string value) =>
         builder.Indent().Append(target).Append(" = ").Append(value).Append(";").NewLine();
 
-    // The custom parameters as the arguments following the first ones of a called method.
-    private static void AppendCustomArguments(SourceBuilder builder, MapperMethodModel method, EquatableArray<RefKind> parameterRefKinds, int firstIndex)
+    // The custom parameters a called method takes, as the arguments following its first ones, in the order of its
+    // parameters.
+    private static void AppendCustomArguments(SourceBuilder builder, MapperMethodModel method, EquatableArray<RefKind> parameterRefKinds, int firstIndex, EquatableArray<int> customArguments)
     {
-        for (var i = 0; i < method.CustomParameters.Count; i++)
+        for (var i = 0; i < customArguments.Count; i++)
         {
-            builder.Append(", ").Append(GetCallArgumentModifier(parameterRefKinds, firstIndex + i)).Append(method.CustomParameters[i].Name);
+            builder.Append(", ").Append(GetCallArgumentModifier(parameterRefKinds, firstIndex + i)).Append(method.CustomParameters[customArguments[i]].Name);
         }
     }
 
@@ -845,9 +841,10 @@ internal static class MapperSourceBuilder
 
     // Each [MapExpression] becomes a static local function at the end of the method that takes the
     // mapper's parameters under the same names. Variables the expression declares (out var, patterns)
-    // stay inside that function instead of colliding in the method body, and being static, it can take
-    // in parameters and ref structs, which a capturing one could not. It returns the target member's
-    // type, so the expression converts to the target as it would in a direct assignment.
+    // stay inside that function instead of colliding in the method body, and taking them as parameters,
+    // it can take in parameters and ref structs, which a capturing one could not. It returns the target
+    // member's type, so the expression converts to the target as it would in a direct assignment. For an
+    // instance mapper it is not static, so that the expression can use the instance members.
     internal static void EmitExpressionFunctions(SourceBuilder builder, MapperMethodModel method)
     {
         var separated = false;
@@ -875,7 +872,7 @@ internal static class MapperSourceBuilder
                 builder.Append(annotationsDisabled ? "#nullable disable annotations" : "#nullable enable annotations").NewLine();
             }
 
-            builder.Indent().Append("static ").Append(expression.TargetType).Append(" ").Append(GetExpressionFunctionName(i)).Append("(");
+            builder.Indent().Append(method.IsInstance ? string.Empty : "static ").Append(expression.TargetType).Append(" ").Append(GetExpressionFunctionName(i)).Append("(");
             AppendParameters(builder, method, forImplementation: false);
             builder.Append(") => ").Append(expression.Expression).Append(";").NewLine();
         }
@@ -1080,8 +1077,8 @@ internal static class MapperSourceBuilder
         if (mapCollection.MapperReturnsValue)
         {
             var call = mapCollection.UnwrapsSource
-                ? $"{itemExpr} is {{ }} __value ? {mapper}(__value){GetElementResultSuffix(mapCollection)} : {mapCollection.NullResult}"
-                : $"{mapper}({GetElementArgumentModifier(mapCollection)}{itemExpr}){GetElementResultSuffix(mapCollection)}";
+                ? $"{itemExpr} is {{ }} __value ? {mapper}(__value{mapCollection.MapperCustomArguments}){GetElementResultSuffix(mapCollection)} : {mapCollection.NullResult}"
+                : $"{mapper}({GetElementArgumentModifier(mapCollection)}{itemExpr}{mapCollection.MapperCustomArguments}){GetElementResultSuffix(mapCollection)}";
             builder.Indent().Append(store(call)).NewLine();
             return;
         }
@@ -1094,7 +1091,7 @@ internal static class MapperSourceBuilder
 
         var argument = mapCollection.UnwrapsSource ? "__value" : GetElementArgumentModifier(mapCollection) + itemExpr;
         builder.Indent().Append("var __dest = new ").Append(mapCollection.TargetElementType).Append("();").NewLine();
-        builder.Indent().Append(mapper).Append("(").Append(argument).Append(", ").Append(GetInstanceArgumentModifier(mapCollection)).Append("__dest);").NewLine();
+        builder.Indent().Append(mapper).Append("(").Append(argument).Append(", ").Append(GetInstanceArgumentModifier(mapCollection)).Append("__dest").Append(mapCollection.MapperCustomArguments).Append(");").NewLine();
         builder.Indent().Append(store("__dest")).NewLine();
 
         if (mapCollection.UnwrapsSource)
@@ -1736,10 +1733,7 @@ internal static class MapperSourceBuilder
                 builder.Append(".Value");
             }
 
-            if (mapping.ConditionAcceptsCustomParameters)
-            {
-                AppendCustomArguments(builder, method, mapping.ConditionParameterRefKinds, 1);
-            }
+            AppendCustomArguments(builder, method, mapping.ConditionParameterRefKinds, 1, mapping.ConditionCustomArguments);
             builder.Append("))").NewLine();
             builder.BeginScope();
         }
@@ -1914,11 +1908,7 @@ internal static class MapperSourceBuilder
             builder.Append(".Value");
         }
 
-        if (mapping.ConverterAcceptsCustomParameters)
-        {
-            AppendCustomArguments(builder, method, mapping.ConverterParameterRefKinds, 1);
-        }
-
+        AppendCustomArguments(builder, method, mapping.ConverterParameterRefKinds, 1, mapping.ConverterCustomArguments);
         builder.Append(")");
         if (mapping.ConverterForgivesNull)
         {
@@ -2046,7 +2036,7 @@ internal static class MapperSourceBuilder
                        .Append(sourceAccessor)
                        .Append(".GetValueOrDefault(), ")
                        .Append(mapping.CultureArgumentModifier)
-                       .Append(GetCultureFieldName(mapping.EffectiveCulture!))
+                       .Append(mapping.CultureArgument!)
                        .Append(formatArg)
                        .Append(")");
             }
@@ -2063,9 +2053,7 @@ internal static class MapperSourceBuilder
         else if (mapping.HasParsableMethod())
         {
             var targetTypeForParse = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            var cultureArg = mapping.HasCulture()
-                ? GetCultureFieldName(mapping.EffectiveCulture!)
-                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var cultureArg = mapping.CultureArgument ?? Names.InvariantCulture;
             if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
                 builder.Append(targetTypeForParse).Append(".Parse(global::System.MemoryExtensions.AsSpan(")
@@ -2096,9 +2084,7 @@ internal static class MapperSourceBuilder
         else if (mapping.UseFormattable)
         {
             var formatArg = DetermineFormatArg(mapping);
-            var cultureArg = mapping.HasCulture()
-                ? GetCultureFieldName(mapping.EffectiveCulture!)
-                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var cultureArg = mapping.CultureArgument ?? Names.InvariantCulture;
             var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
             builder.Append(sourceAccessor).Append(".GetValueOrDefault().ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
         }
@@ -2236,7 +2222,7 @@ internal static class MapperSourceBuilder
                        .Append(sourceExpr)
                        .Append(", ")
                        .Append(mapping.CultureArgumentModifier)
-                       .Append(GetCultureFieldName(mapping.EffectiveCulture!))
+                       .Append(mapping.CultureArgument!)
                        .Append(formatArg)
                        .Append(")");
             }
@@ -2253,9 +2239,7 @@ internal static class MapperSourceBuilder
         else if (mapping.HasParsableMethod())
         {
             var targetTypeForParse = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
-            var cultureArg = mapping.HasCulture()
-                ? GetCultureFieldName(mapping.EffectiveCulture!)
-                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var cultureArg = mapping.CultureArgument ?? Names.InvariantCulture;
             if (mapping.ParseMethod == ParseMethodKind.SpanParsable)
             {
                 builder.Append(targetTypeForParse).Append(".Parse(global::System.MemoryExtensions.AsSpan(")
@@ -2284,9 +2268,7 @@ internal static class MapperSourceBuilder
         else if (mapping.UseFormattable)
         {
             var formatArg = DetermineFormatArg(mapping);
-            var cultureArg = mapping.HasCulture()
-                ? GetCultureFieldName(mapping.EffectiveCulture!)
-                : "global::System.Globalization.CultureInfo.InvariantCulture";
+            var cultureArg = mapping.CultureArgument ?? Names.InvariantCulture;
             var formatStr = formatArg.Length > 2 ? formatArg.Substring(2) : "null";
             builder.Append(sourceExpr).Append(".ToString(").Append(formatStr).Append(", ").Append(cultureArg).Append(")");
         }

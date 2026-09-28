@@ -1,6 +1,6 @@
 namespace Smart.Mapper;
 
-// Calls the method after the mapping, as BeforeMap calls its method (SMP0103 for one that does not match).
+// Calls the named method after the mapping, with the source and the destination
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class AfterMapAttribute : Attribute
 {

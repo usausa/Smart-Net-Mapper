@@ -31,22 +31,53 @@ internal static partial class MapperModelBuilder
             }
         }
 
-        if (String.IsNullOrEmpty(model.Culture) && (!String.IsNullOrEmpty(model.DateTimeFormat) || !String.IsNullOrEmpty(model.NumberFormat)))
-        {
-            return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, LocationOf(model, model.FormatAttributeIndex, syntax), model.MethodName, "(method)");
-        }
-
-        foreach (var mapping in model.PropertyMappings)
-        {
-            if (String.IsNullOrEmpty(mapping.EffectiveCulture) &&
-                (!String.IsNullOrEmpty(mapping.EffectiveDateTimeFormat) || !String.IsNullOrEmpty(mapping.EffectiveNumberFormat)))
-            {
-                return new DiagnosticInfo(Diagnostics.FormatWithoutCulture, LocationOf(model, mapping.AttributeIndex, syntax), model.MethodName, mapping.TargetPath);
-            }
-        }
-
         return null;
     }
+
+    // The culture of [Mapper] is not used by a method taking a CultureInfo, which gives the culture instead
+    internal static IEnumerable<DiagnosticInfo> CollectCultureParameterWarnings(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        if ((model.CultureParameterName is not null) && model.CultureExplicitlySet)
+        {
+            yield return new DiagnosticInfo(
+                Diagnostics.CultureOverriddenByParameter,
+                LocationOf(model, model.CultureAttributeIndex, syntax),
+                model.MethodName,
+                model.Culture ?? string.Empty,
+                model.CultureParameterName);
+        }
+    }
+
+    // The culture a conversion goes with, as its name, whose field the generated code declares, and the argument the
+    // conversion takes: the culture of [MapProperty] first, then the CultureInfo parameter, the culture of [Mapper] or
+    // of a profile, and the current culture under DefaultCulture Current. A null CultureInfo gives the culture the
+    // method takes without one. Without any of these the conversion goes without a culture, the converter's invariant
+    // one, or with the invariant culture when a format applies to it.
+    private static (string? Name, string? Argument) ResolveCulture(MapperMethodModel model, string? propertyCulture, bool formatApplies)
+    {
+        if (!String.IsNullOrEmpty(propertyCulture))
+        {
+            return (propertyCulture, MapperSourceBuilder.GetCultureFieldName(propertyCulture!));
+        }
+
+        var name = String.IsNullOrEmpty(model.Culture) ? null : model.Culture;
+        var methodCulture = name is not null
+            ? MapperSourceBuilder.GetCultureFieldName(name)
+            : model.UseCurrentCulture ? Names.CurrentCulture : null;
+        if (model.CultureParameterName is { } parameter)
+        {
+            return model.IsCultureParameterNullable
+                ? (name, "(" + parameter + " ?? " + (methodCulture ?? Names.InvariantCulture) + ")")
+                : (null, parameter);
+        }
+
+        return (name, methodCulture ?? (formatApplies ? Names.InvariantCulture : null));
+    }
+
+    // The format a conversion between the types takes: the date and time format for a date or a time, the numeric one
+    // otherwise, as the generated call passes it (MapperSourceBuilder.DetermineFormatArg)
+    private static string? GetApplyingFormat(string? sourceType, string? targetType, string? dateTimeFormat, string? numberFormat) =>
+        TypeNameHelper.IsDateTimeType(sourceType ?? string.Empty) || TypeNameHelper.IsDateTimeType(targetType ?? string.Empty) ? dateTimeFormat : numberFormat;
 
     // A culture name as CultureInfo takes one: a language of 1 to 8 ASCII letters, subtags of 1 to 8 ASCII
     // letters and digits after hyphens (zh-Hant-TW), and an alternate sort order after an underscore
@@ -1348,7 +1379,7 @@ internal static partial class MapperModelBuilder
         var nullValue = default(string?);
         var nullValueUnsupported = false;
         var nullValueHasNullElement = false;
-        string? propEffectiveCulture;
+        string? propertyCulture = null;
         string? propEffectiveDateTimeFormat;
         string? propEffectiveNumberFormat;
         if (originalMappings.TryGetValue(targetName, out var origMapping))
@@ -1359,16 +1390,20 @@ internal static partial class MapperModelBuilder
             nullValue = origMapping.NullValue;
             nullValueUnsupported = origMapping.IsNullValueUnsupported;
             nullValueHasNullElement = origMapping.NullValueHasNullElement;
-            propEffectiveCulture = origMapping.EffectiveCulture ?? model.Culture;
+            propertyCulture = origMapping.EffectiveCulture;
             propEffectiveDateTimeFormat = origMapping.EffectiveDateTimeFormat ?? model.DateTimeFormat;
             propEffectiveNumberFormat = origMapping.EffectiveNumberFormat ?? model.NumberFormat;
         }
         else
         {
-            propEffectiveCulture = model.Culture;
             propEffectiveDateTimeFormat = model.DateTimeFormat;
             propEffectiveNumberFormat = model.NumberFormat;
         }
+
+        var (propEffectiveCulture, cultureArgument) = ResolveCulture(
+            model,
+            propertyCulture,
+            GetApplyingFormat(sourceUnderlyingTypeName, targetUnderlyingTypeName, propEffectiveDateTimeFormat, propEffectiveNumberFormat) is not null);
 
         // A value the target takes by an implicit reference conversion, through variance as well
         // (IReadOnlyList<Circle> to IReadOnlyList<Shape>), is assigned as it is
@@ -1399,6 +1434,7 @@ internal static partial class MapperModelBuilder
             EffectiveCulture: propEffectiveCulture,
             EffectiveDateTimeFormat: propEffectiveDateTimeFormat,
             EffectiveNumberFormat: propEffectiveNumberFormat,
+            CultureArgument: cultureArgument,
             AttributeIndex: origMapping?.AttributeIndex ?? -1);
 
         mapping = DetectEnumMappingKind(mapping, sourceUnderlyingType, targetUnderlyingType);
@@ -1441,17 +1477,22 @@ internal static partial class MapperModelBuilder
         {
             if (declared.TargetPath.Contains('.') || declared.SourcePath.Contains('.'))
             {
-                // The culture and the formats of the method or the profile apply to a path as they do to a member
+                // The culture and the formats of the method or the profile apply to a path as they do to a member,
+                // the culture once the path gives the types it converts
                 var parameter = declared.TargetPath.Contains('.') ? null : FindParameter(declared.TargetPath);
-                var withDefaults = (model.Culture is null) && (model.DateTimeFormat is null) && (model.NumberFormat is null)
+                var withDefaults = (model.DateTimeFormat is null) && (model.NumberFormat is null)
                     ? declared
                     : declared with
                     {
-                        EffectiveCulture = declared.EffectiveCulture ?? model.Culture,
                         EffectiveDateTimeFormat = declared.EffectiveDateTimeFormat ?? model.DateTimeFormat,
                         EffectiveNumberFormat = declared.EffectiveNumberFormat ?? model.NumberFormat
                     };
                 var mapping = ResolveNestedMapping(withDefaults, sourceType, destinationType, within, compilation, parameter?.Type);
+                var (cultureName, cultureArgument) = ResolveCulture(
+                    model,
+                    declared.EffectiveCulture,
+                    GetApplyingFormat(mapping.SourceUnderlyingType, mapping.TargetUnderlyingType, mapping.EffectiveDateTimeFormat, mapping.EffectiveNumberFormat) is not null);
+                mapping = mapping with { EffectiveCulture = cultureName, CultureArgument = cultureArgument };
 
                 // A dotted source path still lands on a plain destination member, which may be
                 // init-only or required. Without these flags the emitters treat it as an ordinary
@@ -2179,13 +2220,14 @@ internal static partial class MapperModelBuilder
             string? unusableMethod = null;
             if (mapping.HasSpecializedConverter() && mapping.HasCulture() && (cultureInfoType is not null))
             {
-                var overload = FindCultureOverload(converterType, mapping.SpecializedConverterMethod!, effectiveSource, effectiveTarget, compilation, cultureInfoType, stringType);
+                var cultureArgument = IsCultureArgumentVariable(model, mapping) ? ArgumentKind.ReadOnlyVariable : ArgumentKind.Value;
+                var overload = FindCultureOverload(converterType, mapping.SpecializedConverterMethod!, effectiveSource, effectiveTarget, compilation, cultureInfoType, stringType, cultureArgument);
                 if (overload is null)
                 {
                     unusableMethod = mapping.SpecializedConverterMethod;
                 }
                 else if ((overload.Parameters[1].RefKind is RefKind.In or RefKind.RefReadOnlyParameter) &&
-                         (GetCultureArgumentKind(compilation, cultureInfoType, overload.Parameters[1].Type) == ArgumentKind.ReadOnlyVariable))
+                         (GetCultureArgumentKind(compilation, cultureInfoType, overload.Parameters[1].Type, cultureArgument) == ArgumentKind.ReadOnlyVariable))
                 {
                     resolved ??= [.. model.PropertyMappings];
                     resolved[i] = mapping with { CultureArgumentModifier = "in " };
@@ -2232,8 +2274,8 @@ internal static partial class MapperModelBuilder
 
     // The overload of a specialized method a culture calls, (value, culture, format) returning the target
     // type, the value typed as the one-parameter method takes it, the culture a type a CultureInfo converts
-    // to and the format one a string converts to. The value and the format go as values. Null when no
-    // overload can take the arguments.
+    // to and the format one a string converts to. The value and the format go as values, and the culture as
+    // cultureArgument tells. Null when no overload can take the arguments.
     private static IMethodSymbol? FindCultureOverload(
         ITypeSymbol converterType,
         string methodName,
@@ -2241,7 +2283,8 @@ internal static partial class MapperModelBuilder
         string targetType,
         Compilation compilation,
         ITypeSymbol cultureInfoType,
-        ITypeSymbol stringType)
+        ITypeSymbol stringType,
+        ArgumentKind cultureArgument)
     {
         IMethodSymbol? overload = null;
         var methods = converterType.GetMembers(methodName)
@@ -2249,7 +2292,7 @@ internal static partial class MapperModelBuilder
             .Where(static m => m.IsStatic && TakesArgumentCount(m, 3) && (m.GetObsoleteKind() != ObsoleteKind.Error));
         foreach (var method in methods)
         {
-            var culture = GetCultureArgumentKind(compilation, cultureInfoType, method.Parameters[1].Type);
+            var culture = GetCultureArgumentKind(compilation, cultureInfoType, method.Parameters[1].Type, cultureArgument);
             if ((method.Parameters[0].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == sourceType) &&
                 (method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == targetType) &&
                 (culture is not null) &&
@@ -2265,19 +2308,27 @@ internal static partial class MapperModelBuilder
         return overload;
     }
 
-    // How the culture field, a static readonly CultureInfo, goes to a parameter: to a CultureInfo as
-    // itself, a read-only variable (in / ref readonly get it by in), and to a type it converts to
-    // (IFormatProvider, object) as the converted value, which goes as is. Null for any other type.
-    private static ArgumentKind? GetCultureArgumentKind(Compilation compilation, ITypeSymbol cultureInfoType, ITypeSymbol parameterType)
+    // How the culture goes to a parameter: to a CultureInfo as itself, the field of a culture name or the CultureInfo
+    // parameter as a read-only variable (in / ref readonly get it by in), the current or the invariant culture as a
+    // value, and to a type it converts to (IFormatProvider, object) as the converted value, which goes as is. Null for
+    // any other type.
+    private static ArgumentKind? GetCultureArgumentKind(Compilation compilation, ITypeSymbol cultureInfoType, ITypeSymbol parameterType, ArgumentKind cultureArgument)
     {
         var conversion = compilation.ClassifyCommonConversion(cultureInfoType, parameterType);
         if (conversion.IsIdentity)
         {
-            return ArgumentKind.ReadOnlyVariable;
+            return cultureArgument;
         }
 
         return conversion.IsImplicit ? ArgumentKind.Value : null;
     }
+
+    // Whether the culture the conversion goes with is a variable: the field of a culture name, or the CultureInfo
+    // parameter, which the generated code passes on and never writes
+    private static bool IsCultureArgumentVariable(MapperMethodModel model, PropertyMappingModel mapping) =>
+        (mapping.CultureArgument is { } argument) &&
+        ((argument == model.CultureParameterName) ||
+         ((mapping.EffectiveCulture is { } name) && (argument == MapperSourceBuilder.GetCultureFieldName(name))));
 
     // Whether value.ToString(format, provider) binds, as the IFormattable conversion calls it: a public
     // instance ToString(string, IFormatProvider) on the type or a base type, or on the interfaces an

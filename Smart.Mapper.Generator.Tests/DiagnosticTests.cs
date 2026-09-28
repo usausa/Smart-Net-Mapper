@@ -9,8 +9,8 @@ using Microsoft.CodeAnalysis;
 public partial class DiagnosticTests
 {
     // ------------------------------------------------------------
-    // SMP0001 — [Mapper] をインスタンスメソッドまたは非 partial メソッドに付与
-    // SMP0001 — [Mapper] applied to an instance method or a non-partial method
+    // SMP0001 — [Mapper] を非 partial メソッドに付与 (インスタンスメソッドは可)
+    // SMP0001 — [Mapper] applied to a non-partial method (an instance method is allowed)
     // ------------------------------------------------------------
 
     [Fact]
@@ -35,7 +35,7 @@ public partial class DiagnosticTests
     }
 
     [Fact]
-    public void Smp0001InstanceMethodEmitsDiagnostic()
+    public void InstanceMethodEmitsNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -52,7 +52,7 @@ public partial class DiagnosticTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        Assert.Contains(diagnostics, d => d.Id == "SMP0001");
+        Assert.Empty(diagnostics);
     }
 
     // ------------------------------------------------------------
@@ -79,12 +79,12 @@ public partial class DiagnosticTests
     }
 
     // ------------------------------------------------------------
-    // SMP0003 — カスタムパラメーターの型が重複
-    // SMP0003 — duplicate custom parameter type
+    // 同じ型のカスタムパラメーターは可
+    // Custom parameters of the same type are allowed
     // ------------------------------------------------------------
 
     [Fact]
-    public void Smp0003DuplicateCustomParameterTypeEmitsDiagnostic()
+    public void CustomParametersOfSameTypeEmitNoDiagnostic()
     {
         const string source = """
             using Smart.Mapper;
@@ -101,7 +101,7 @@ public partial class DiagnosticTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        Assert.Contains(diagnostics, d => d.Id == "SMP0003");
+        Assert.Empty(diagnostics);
     }
 
     // ------------------------------------------------------------
@@ -243,12 +243,12 @@ public partial class DiagnosticTests
     }
 
     // ------------------------------------------------------------
-    // SMP0401 — Culture なしで Format 指定
-    // SMP0401 — Format specified without Culture
+    // Culture なしの Format は Invariant で適用
+    // A format without Culture applies with the invariant culture
     // ------------------------------------------------------------
 
     [Fact]
-    public void Smp0401FormatWithoutCultureEmitsDiagnostic()
+    public void FormatWithoutCultureAppliesWithInvariantCulture()
     {
         const string source = """
             using Smart.Mapper;
@@ -265,11 +265,12 @@ public partial class DiagnosticTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        Assert.Contains(diagnostics, d => d.Id == "SMP0401");
+        Assert.Empty(diagnostics);
+        Assert.Contains("ConvertToString(src.Price, global::System.Globalization.CultureInfo.InvariantCulture, \"N2\")", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Smp0401FormatWithCultureEmitsNoDiagnostic()
+    public void FormatWithCultureAppliesWithCulture()
     {
         const string source = """
             using Smart.Mapper;
@@ -286,7 +287,8 @@ public partial class DiagnosticTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == "SMP0401");
+        Assert.Empty(diagnostics);
+        Assert.Contains("ConvertToString(src.Price, __culture_ja_JP, \"N2\")", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------

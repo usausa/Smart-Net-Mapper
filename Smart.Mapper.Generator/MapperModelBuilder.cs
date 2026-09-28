@@ -27,6 +27,9 @@ internal static partial class MapperModelBuilder
         globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces);
 
+    // The name of the CultureInfo parameter giving the culture of the conversions when the mapper takes several
+    private const string CultureParameterName = "culture";
+
     internal static Result<MapperMethodModel> BuildModel(GeneratorAttributeSyntaxContext context)
     {
         var syntax = (MethodDeclarationSyntax)context.TargetNode;
@@ -37,9 +40,9 @@ internal static partial class MapperModelBuilder
 
         // The generated code declares the containing types again, outermost first, so each of them has to be
         // partial, or that declaration would not compile (CS0260), and none of them file-local, as the declaration is
-        // in another file (CS0759)
+        // in another file (CS0759). The mapper is a static or an instance method.
         var typeChain = GetContainingTypes(symbol.ContainingType);
-        if (!symbol.IsStatic || !symbol.IsPartialDefinition || !typeChain.All(IsPartialType) || typeChain.Any(static t => t.IsFileLocal))
+        if (!symbol.IsPartialDefinition || !typeChain.All(IsPartialType) || typeChain.Any(static t => t.IsFileLocal))
         {
             return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodDefinition, syntax.Identifier.GetLocation(), symbol.Name));
         }
@@ -167,6 +170,8 @@ internal static partial class MapperModelBuilder
                 type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }
 
+        // The custom parameters, which may be of the same type: the methods the attributes name take them by type, or
+        // by name for several of a type (MapCustomArguments)
         var customParameters = new List<CustomParameterModel>();
         for (var i = customParamStartIndex; i < symbol.Parameters.Length; i++)
         {
@@ -179,18 +184,26 @@ internal static partial class MapperModelBuilder
                 RefKind: param.RefKind));
         }
 
-        var duplicateType = customParameters
-            .GroupBy(p => p.TypeName)
-            .FirstOrDefault(g => g.Count() > 1);
-
-        if (duplicateType is not null)
+        // A custom parameter of type CultureInfo gives the culture of the conversions as well, and of several, the one
+        // named culture, as the culture parameter of the converter is named
+        var cultureParameters = Enumerable.Range(customParamStartIndex, symbol.Parameters.Length - customParamStartIndex)
+            .Where(i => symbol.Parameters[i].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == Names.QualifiedCultureInfo)
+            .ToList();
+        var cultureParameterIndex = cultureParameters.Count == 1
+            ? cultureParameters[0]
+            : cultureParameters.Where(i => symbol.Parameters[i].Name == CultureParameterName).DefaultIfEmpty(-1).First();
+        if ((cultureParameters.Count > 1) && (cultureParameterIndex < 0))
         {
             return Results.Error<MapperMethodModel>(new DiagnosticInfo(
-                Diagnostics.DuplicateCustomParameterType,
+                Diagnostics.AmbiguousCultureParameter,
                 syntax.GetLocation(),
                 symbol.Name,
-                duplicateType.Key));
+                CultureParameterName));
         }
+
+        var cultureParameterName = cultureParameterIndex >= 0 ? IdentifierHelper.Escape(symbol.Parameters[cultureParameterIndex].Name) : null;
+        var isCultureParameterNullable = (cultureParameterIndex >= 0) &&
+                                         (symbol.Parameters[cultureParameterIndex].Type.NullableAnnotation != NullableAnnotation.NotAnnotated);
 
         // The destination as the method declares it: the return type, a nullable struct as it is, or the type of the
         // destination parameter. The destination is created under its name without its ?, which differs from the name
@@ -227,6 +240,9 @@ internal static partial class MapperModelBuilder
                                     CanApplyNotNullIfNotNull(context.SemanticModel.Compilation, containingType)
                 ? sourceParam.Name
                 : null,
+            CultureParameterName: cultureParameterName,
+            IsCultureParameterNullable: isCultureParameterNullable,
+            IsInstance: !symbol.IsStatic,
             CustomParameters: new EquatableArray<CustomParameterModel>(customParameters));
 
         model = ParseMappingAttributes(symbol, model);
@@ -381,6 +397,7 @@ internal static partial class MapperModelBuilder
         }
 
         warnings.AddRange(CollectMapExpressionReflectionWarnings(model, syntax));
+        warnings.AddRange(CollectCultureParameterWarnings(model, syntax));
 
         model = model with { Warnings = new(warnings) };
 
@@ -484,6 +501,7 @@ internal static partial class MapperModelBuilder
             MethodName: symbol.Name,
             TypeParameterList: GetTypeParameterList(symbol),
             ConstraintClauses: GetConstraintClauses(symbol),
+            IsInstance: !symbol.IsStatic,
             IsPlaceholder: true,
             PlaceholderReturnType: returnType,
             PlaceholderParameters: String.Join(", ", parameters));
@@ -715,10 +733,6 @@ internal static partial class MapperModelBuilder
         _ => false
     };
 
-    private static bool TakesArgument(IParameterSymbol parameter, string typeName, ArgumentKind argument) =>
-        (parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == typeName) &&
-        CanTakeArgument(parameter.RefKind, argument);
-
     // Among matching overloads, one taking every argument by value is used, as the plain call always
     // chose it; otherwise the first one.
     private static IMethodSymbol PreferByValue(IMethodSymbol? current, IMethodSymbol candidate) =>
@@ -779,9 +793,14 @@ internal static partial class MapperModelBuilder
                 continue;
             }
 
+            if (InstanceMethodOfStaticMapper(model, containingType, mapping.ConditionMethod!, ConditionAttributeIndex(model, mapping.TargetPath), compilation, syntax) is { } instanceError)
+            {
+                return instanceError;
+            }
+
             var valueType = GetSourceValueType(mapping, sourceType, containingType, compilation);
             var match = MatchValueMethod(
-                LookupStaticMethods(containingType, mapping.ConditionMethod!, compilation),
+                LookupMethods(containingType, mapping.ConditionMethod!, model.IsInstance, compilation),
                 new ValueCall(valueType, mapping.SourceType, ArgumentKind.Value, customTypes),
                 model.CustomParameters,
                 static m => m.ReturnType.SpecialType == SpecialType.System_Boolean,
@@ -799,7 +818,7 @@ internal static partial class MapperModelBuilder
             var unwraps = match.Match is ValueMatch.Unwrap or ValueMatch.UnwrapConvert;
             resolved.Add(mapping with
             {
-                ConditionAcceptsCustomParameters = match.Result == ConverterMatchResult.MatchWithCustomParams,
+                ConditionCustomArguments = match.CustomArguments,
                 ConditionParameterRefKinds = GetParameterRefKinds(match.Method),
                 ConditionUnwrapsSource = unwraps,
                 ConditionRejectsNull = unwraps || RejectsNull(match.Method, valueType, compilation)
@@ -832,15 +851,24 @@ internal static partial class MapperModelBuilder
         UnwrapConvert
     }
 
-    // The method a converter, a condition or a [MapUsing] method call binds to and how the value goes to it, or for a
-    // return type mismatch, the method the call binds to all the same.
-    internal readonly record struct ValueMethodMatch(ConverterMatchResult Result, IMethodSymbol? Method, ValueMatch Match, IMethodSymbol? Mismatched);
+    // The method a converter, a condition or a [MapUsing] method call binds to, how the value goes to it and the custom
+    // parameters it takes (CustomArguments), or for a return type mismatch, the method the call binds to all the same.
+    internal readonly record struct ValueMethodMatch(
+        ConverterMatchResult Result,
+        IMethodSymbol? Method,
+        ValueMatch Match,
+        IMethodSymbol? Mismatched,
+        EquatableArray<int> CustomArguments = default);
 
-    // Matches the methods of the name taking the source value, then the mapper's custom parameters when they take them,
-    // and returning what the target takes (returnsTarget), as the generated call (call) binds: one taking the custom
-    // parameters over one without, as before, each arity bound on its own (BindValueCall). The custom parameters go to
-    // parameters of their own types. The methods are the static methods the name is looked up as (LookupStaticMethods),
-    // which the call binds among.
+    // A method a call may bind to, how the value goes to it, and the custom parameters its parameters after the value
+    // take (MapCustomArguments), null when they do not all take one
+    internal readonly record struct ValueCandidate(IMethodSymbol Method, ValueMatch Match, int[]? Custom);
+
+    // Matches the methods of the name taking the source value, then the custom parameters of the mapper they declare,
+    // and returning what the target takes (returnsTarget), as the generated call (call) binds: one taking more of the
+    // custom parameters over one taking fewer, as one taking them went before one without, each number of them bound on
+    // its own (BindValueCall). The methods are those the name is looked up as (LookupMethods), which the call binds
+    // among.
     private static ValueMethodMatch MatchValueMethod(
         IEnumerable<IMethodSymbol> methods,
         ValueCall call,
@@ -852,25 +880,27 @@ internal static partial class MapperModelBuilder
             .Select(static m => m.PartialDefinitionPart ?? m)
             .Distinct(SymbolEqualityComparer.Default)
             .Cast<IMethodSymbol>()
-            .Where(static m => m.IsStatic && (m.Parameters.Length > 0))
-            .Select(m => (Method: m, Match: MatchValueParameter(m.Parameters[0], call.ValueType, call.ValueTypeName, call.Argument, compilation)))
+            .Where(static m => m.Parameters.Length > 0)
+            .Select(m => new ValueCandidate(m, MatchValueParameter(m.Parameters[0], call.ValueType, call.ValueTypeName, call.Argument, compilation), MapCustomArguments(m, 1, customParams)))
             .ToList();
 
-        var (withMethod, withMatch, withMismatched) = customParams.Count > 0
-            ? BindValueCall(candidates, call, 1 + customParams.Count, m => TakesCustomArguments(m, customParams, 1), returnsTarget, compilation)
-            : default;
-        if (withMethod is not null)
+        IMethodSymbol? mismatched = null;
+        foreach (var count in candidates.Where(static c => c.Custom is not null).Select(static c => c.Custom!.Length).Distinct().OrderByDescending(static c => c))
         {
-            return new ValueMethodMatch(ConverterMatchResult.MatchWithCustomParams, withMethod, withMatch, null);
+            var (method, match, custom, bindMismatched) = BindValueCall(candidates, call, count, returnsTarget, compilation);
+            if (method is not null)
+            {
+                return new ValueMethodMatch(
+                    count > 0 ? ConverterMatchResult.MatchWithCustomParams : ConverterMatchResult.MatchWithoutCustomParams,
+                    method,
+                    match,
+                    null,
+                    new EquatableArray<int>(custom!));
+            }
+
+            mismatched ??= bindMismatched;
         }
 
-        var (withoutMethod, withoutMatch, withoutMismatched) = BindValueCall(candidates, call, 1, static _ => true, returnsTarget, compilation);
-        if (withoutMethod is not null)
-        {
-            return new ValueMethodMatch(ConverterMatchResult.MatchWithoutCustomParams, withoutMethod, withoutMatch, null);
-        }
-
-        var mismatched = withMismatched ?? withoutMismatched;
         return mismatched is not null
             ? new ValueMethodMatch(ConverterMatchResult.ReturnTypeMismatch, null, ValueMatch.None, mismatched)
             : new ValueMethodMatch(ConverterMatchResult.NoMatch, null, ValueMatch.None, null);
@@ -913,19 +943,40 @@ internal static partial class MapperModelBuilder
         return (held is not null) && IsImplicitlyConvertible(held, parameter.Type, compilation) ? ValueMatch.UnwrapConvert : ValueMatch.None;
     }
 
-    // Whether the parameters from the index take the mapper's custom parameters (the first count of them, all by
-    // default), each as its own type.
-    private static bool TakesCustomArguments(IMethodSymbol method, EquatableArray<CustomParameterModel> customParams, int firstIndex, int count = -1)
+    // The custom parameters of the mapper the parameters of a method from the index take, as their indexes in the order
+    // of the method's parameters: each parameter takes the custom parameter of its type, or, when the mapper or the
+    // method has several parameters of that type, the one of its name, whatever the order, and the method declares the
+    // ones it takes only. Null when a parameter takes none, or cannot take the one it gets (a ref parameter a read-only
+    // one would go to), or two parameters would take the same one.
+    internal static int[]? MapCustomArguments(IMethodSymbol method, int firstIndex, EquatableArray<CustomParameterModel> customParams)
     {
-        for (var i = 0; i < (count < 0 ? customParams.Count : count); i++)
+        var count = method.Parameters.Length - firstIndex;
+        if (count < 0)
         {
-            if (!TakesArgument(method.Parameters[firstIndex + i], customParams[i].TypeName, GetVariableKind(customParams[i].RefKind)))
-            {
-                return false;
-            }
+            return null;
         }
 
-        return true;
+        var typeNames = method.Parameters.Skip(firstIndex).Select(static p => p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).ToList();
+        var result = new int[count];
+        for (var i = 0; i < count; i++)
+        {
+            var parameter = method.Parameters[firstIndex + i];
+            var typeName = typeNames[i];
+            var ofType = Enumerable.Range(0, customParams.Count).Where(j => customParams[j].TypeName == typeName).ToList();
+            var index = (ofType.Count == 1) && (typeNames.Count(t => t == typeName) == 1)
+                ? ofType[0]
+                : ofType.Where(j => customParams[j].Name == IdentifierHelper.Escape(parameter.Name)).DefaultIfEmpty(-1).First();
+            if ((index < 0) ||
+                !CanTakeArgument(parameter.RefKind, GetVariableKind(customParams[index].RefKind)) ||
+                (Array.IndexOf(result, index, 0, i) >= 0))
+            {
+                return null;
+            }
+
+            result[i] = index;
+        }
+
+        return result;
     }
 
     // What the call of a converter, a condition or a [MapUsing] method passes: the value, of the type (its symbol, null
@@ -933,8 +984,8 @@ internal static partial class MapperModelBuilder
     // as the method takes it), and the custom parameters, of their types.
     internal sealed record ValueCall(ITypeSymbol? ValueType, string ValueTypeName, ArgumentKind Argument, IReadOnlyList<ITypeSymbol> CustomTypes);
 
-    // The method a call with that many arguments binds to. The candidates matched are the methods taking that many, not
-    // generic ones, the custom parameters as their own types (takesCustomArguments). A candidate taking the value as
+    // The method a call taking that many of the custom parameters binds to. The candidates matched are the methods
+    // taking that many (MapCustomArguments), not generic ones. A candidate taking the value as
     // its own type goes first: of those, one callable returning what the target takes, taking every argument by value
     // first, as before, a mismatch when none returns it, and nothing when none is callable (obsolete as an error). The
     // call binds to the one chosen, as C# binds it among all the methods the name is looked up as (BindCall), or else
@@ -946,26 +997,25 @@ internal static partial class MapperModelBuilder
     // or params, one taking the value to a parameter by in with a conversion, or by a conversion obsolete as an error),
     // or to one obsolete as an error, matches nothing. A mismatch is the method the call binds to that does not return
     // what the target takes, which another candidate does not stand in for.
-    private static (IMethodSymbol? Method, ValueMatch Match, IMethodSymbol? Mismatched) BindValueCall(
-        List<(IMethodSymbol Method, ValueMatch Match)> candidates,
+    private static (IMethodSymbol? Method, ValueMatch Match, int[]? Custom, IMethodSymbol? Mismatched) BindValueCall(
+        List<ValueCandidate> candidates,
         ValueCall call,
-        int count,
-        Func<IMethodSymbol, bool> takesCustomArguments,
+        int customCount,
         Func<IMethodSymbol, bool> returnsTarget,
         Compilation compilation)
     {
         var applicable = candidates
-            .Where(x => (x.Match != ValueMatch.None) && !x.Method.IsGenericMethod && (x.Method.Parameters.Length == count) && takesCustomArguments(x.Method))
+            .Where(x => (x.Match != ValueMatch.None) && !x.Method.IsGenericMethod && (x.Custom is { } custom) && (custom.Length == customCount))
             .ToList();
         var methods = candidates.Select(static x => x.Method).ToList();
 
-        (IMethodSymbol? Method, ValueMatch Match, IMethodSymbol? Mismatched) Decide(IMethodSymbol method, ValueMatch match) =>
-            method.GetObsoleteKind() == ObsoleteKind.Error
-                ? (null, ValueMatch.None, null)
-                : returnsTarget(method) ? (method, match, null) : (null, ValueMatch.None, method);
+        (IMethodSymbol? Method, ValueMatch Match, int[]? Custom, IMethodSymbol? Mismatched) Decide(ValueCandidate candidate) =>
+            candidate.Method.GetObsoleteKind() == ObsoleteKind.Error
+                ? (null, ValueMatch.None, null, null)
+                : returnsTarget(candidate.Method) ? (candidate.Method, candidate.Match, candidate.Custom, null) : (null, ValueMatch.None, null, candidate.Method);
 
-        bool BindsTo(IMethodSymbol method, ValueMatch match) =>
-            SymbolEqualityComparer.Default.Equals(BindCall(methods, GetValueCallArguments(method, match, call, count), compilation), method);
+        bool BindsTo(ValueCandidate candidate) =>
+            SymbolEqualityComparer.Default.Equals(BindCall(methods, GetValueCallArguments(candidate, call), compilation), candidate.Method);
 
         var exact = applicable.Where(static x => x.Match == ValueMatch.Exact).ToList();
         if (exact.Count > 0)
@@ -973,60 +1023,62 @@ internal static partial class MapperModelBuilder
             var callable = exact.Where(static x => x.Method.GetObsoleteKind() != ObsoleteKind.Error).ToList();
             if (callable.Count == 0)
             {
-                return (null, ValueMatch.None, null);
+                return (null, ValueMatch.None, null, null);
             }
 
-            IMethodSymbol? chosen = null;
-            foreach (var (method, _) in callable)
+            ValueCandidate? chosen = null;
+            foreach (var candidate in callable)
             {
-                if (returnsTarget(method))
+                if (returnsTarget(candidate.Method))
                 {
-                    chosen = PreferByValue(chosen, method);
+                    chosen = (chosen is null) || (!TakesAllByValue(chosen.Value.Method) && TakesAllByValue(candidate.Method)) ? candidate : chosen;
                 }
             }
 
-            if (chosen is null)
+            if (chosen is not { } selected)
             {
-                return (null, ValueMatch.None, callable[0].Method);
+                return (null, ValueMatch.None, null, callable[0].Method);
             }
 
-            if ((call.ValueType is null) || BindsTo(chosen, ValueMatch.Exact))
+            if ((call.ValueType is null) || BindsTo(selected))
             {
-                return (chosen, ValueMatch.Exact, null);
+                return (selected.Method, ValueMatch.Exact, selected.Custom, null);
             }
 
-            var bound = BindCall(methods, GetValueCallArguments(chosen, ValueMatch.Exact, call, count), compilation);
-            var (other, otherMatch) = applicable.FirstOrDefault(x => SymbolEqualityComparer.Default.Equals(x.Method, bound));
-            return (other is not null) && BindsTo(other, otherMatch) ? Decide(other, otherMatch) : (null, ValueMatch.None, null);
+            var bound = BindCall(methods, GetValueCallArguments(selected, call), compilation);
+            var other = applicable.FirstOrDefault(x => SymbolEqualityComparer.Default.Equals(x.Method, bound));
+            return (other.Method is not null) && BindsTo(other) ? Decide(other) : (null, ValueMatch.None, null, null);
         }
 
         // The value a nullable struct holds to the struct first, then the value by a conversion, then the value a
         // nullable struct holds by a conversion
-        foreach (var (method, match) in applicable.OrderBy(static x => x.Match switch { ValueMatch.Unwrap => 0, ValueMatch.Convert => 1, _ => 2 }))
+        foreach (var candidate in applicable.OrderBy(static x => x.Match switch { ValueMatch.Unwrap => 0, ValueMatch.Convert => 1, _ => 2 }))
         {
-            if (BindsTo(method, match))
+            if (BindsTo(candidate))
             {
-                return Decide(method, match);
+                return Decide(candidate);
             }
         }
 
-        return (null, ValueMatch.None, null);
+        return (null, ValueMatch.None, null, null);
     }
 
     // The arguments the call passes to a candidate: the value, or the value a nullable struct holds, as a value, or for
-    // a variable with the modifier of the parameter taking it, and the custom parameters as the candidate takes them.
-    private static List<CallArgument> GetValueCallArguments(IMethodSymbol method, ValueMatch match, ValueCall call, int count)
+    // a variable with the modifier of the parameter taking it, and the custom parameters the candidate takes, in the
+    // order of its parameters.
+    private static List<CallArgument> GetValueCallArguments(ValueCandidate candidate, ValueCall call)
     {
-        var unwraps = match is ValueMatch.Unwrap or ValueMatch.UnwrapConvert;
+        var method = candidate.Method;
+        var unwraps = candidate.Match is ValueMatch.Unwrap or ValueMatch.UnwrapConvert;
         var arguments = new List<CallArgument>
         {
             new(
                 unwraps ? GetNullableValueType(call.ValueType!)! : call.ValueType!,
                 unwraps || (call.Argument == ArgumentKind.Value) ? RefKind.None : GetArgumentModifierKind(method.Parameters[0].RefKind))
         };
-        for (var i = 1; i < count; i++)
+        for (var i = 0; i < candidate.Custom!.Length; i++)
         {
-            arguments.Add(new CallArgument(call.CustomTypes[i - 1], GetArgumentModifierKind(method.Parameters[i].RefKind)));
+            arguments.Add(new CallArgument(call.CustomTypes[candidate.Custom[i]], GetArgumentModifierKind(method.Parameters[1 + i].RefKind)));
         }
 
         return arguments;
@@ -1069,19 +1121,18 @@ internal static partial class MapperModelBuilder
         _ => RefKind.None
     };
 
-    // The method a call of the static methods with the arguments binds to, as C# binds it, or null when
-    // none takes them or the call is ambiguous (CS0121): the one taking them better than all the others (IsBetterCall).
-    // The methods are those the name is looked up as (LookupStaticMethods), of which one of a derived class taking the
-    // arguments leaves out those of its base classes. A method obsolete as an error takes part, as C# binds the call to
-    // it and then reports it (CS0619). A generic method takes the arguments its type parameters are inferred from as
-    // the types they are inferred as (InferParameterType), the constraints aside.
+    // The method a call of the methods with the arguments binds to, as C# binds it, or null when none takes them or
+    // the call is ambiguous (CS0121): the one taking them better than all the others (IsBetterCall). The methods are
+    // those the name is looked up as (LookupMethods), of which one of a derived class taking the arguments leaves out
+    // those of its base classes. A method obsolete as an error takes part, as C# binds the call to it and then reports
+    // it (CS0619). A generic method takes the arguments its type parameters are inferred from as the types they are
+    // inferred as (InferParameterType), the constraints aside.
     private static IMethodSymbol? BindCall(IEnumerable<IMethodSymbol> methods, IReadOnlyList<CallArgument> arguments, Compilation compilation)
     {
         var taking = new List<CallCandidate>();
         foreach (var method in methods)
         {
-            if (method.IsStatic &&
-                ((ApplyCall(method, arguments, false, compilation) ?? ApplyCall(method, arguments, true, compilation)) is { } candidate))
+            if ((ApplyCall(method, arguments, false, compilation) ?? ApplyCall(method, arguments, true, compilation)) is { } candidate)
             {
                 taking.Add(candidate);
             }
@@ -1110,15 +1161,16 @@ internal static partial class MapperModelBuilder
         return false;
     }
 
-    // The static methods a call of the name in the mapper class binds among, as C# looks the simple name of a call up:
-    // the members of the name the mapper class can access and the call can invoke, in it and its base classes, or, when
-    // it has none, in the class containing it and its base classes, and so on outward, and last the methods the global
-    // using static directives import (LookupGlobalStaticImports). The first of these classes having such a member is
-    // the only one looked in, even when its methods do not take the arguments; a member the call cannot invoke (a
-    // property or a field not of a delegate type, or a nested type) is passed over, as C# passes it over for a call. A
-    // member of a derived class hides one of a base class of the same signature, and every member of a base class when
-    // it is not a method. Instance methods are left out, as the static mapper cannot call them.
-    internal static List<IMethodSymbol> LookupStaticMethods(INamedTypeSymbol mapperClass, string name, Compilation compilation)
+    // The methods a call of the name in the mapper binds among, as C# looks the simple name of a call up: the members
+    // of the name the mapper class can access and the call can invoke, in it and its base classes, or, when it has
+    // none, in the class containing it and its base classes, and so on outward, and last the methods the global using
+    // static directives import (LookupGlobalStaticImports). The first of these classes having such a member is the
+    // only one looked in, even when its methods do not take the arguments; a member the call cannot invoke (a property
+    // or a field not of a delegate type, or a nested type) is passed over, as C# passes it over for a call. A member of
+    // a derived class hides one of a base class of the same signature, and every member of a base class when it is not
+    // a method. Instance methods are those of the mapper class and its base classes, which an instance mapper calls on
+    // itself; a static mapper, and any mapper for the classes containing the mapper class, calls static methods only.
+    internal static List<IMethodSymbol> LookupMethods(INamedTypeSymbol mapperClass, string name, bool instance, Compilation compilation)
     {
         for (var scope = mapperClass; scope is not null; scope = scope.ContainingType)
         {
@@ -1133,11 +1185,37 @@ internal static partial class MapperModelBuilder
 
             if (members.Count > 0)
             {
-                return StaticMethodsOf(members);
+                return MethodsOf(members, instance && SymbolEqualityComparer.Default.Equals(scope, mapperClass));
             }
         }
 
         return LookupGlobalStaticImports(mapperClass, name, compilation);
+    }
+
+    // A static mapper naming a method the mapper class and its base classes have only as instance methods, which it
+    // cannot call, reported at the attribute naming it
+    internal static DiagnosticInfo? InstanceMethodOfStaticMapper(
+        MapperMethodModel model,
+        INamedTypeSymbol mapperClass,
+        string name,
+        int attributeIndex,
+        Compilation compilation,
+        MethodDeclarationSyntax syntax) =>
+        !model.IsInstance && NamesInstanceMethodsOnly(mapperClass, name, compilation)
+            ? new DiagnosticInfo(Diagnostics.InstanceMethodOfStaticMapper, LocationOf(model, attributeIndex, syntax), model.MethodName, name)
+            : null;
+
+    // Whether the name finds instance methods only in the mapper class and its base classes, which a static mapper
+    // cannot call (SMP0107)
+    private static bool NamesInstanceMethodsOnly(INamedTypeSymbol mapperClass, string name, Compilation compilation)
+    {
+        var methods = new List<IMethodSymbol>();
+        for (var type = mapperClass; type is not null; type = type.BaseType)
+        {
+            methods.AddRange(type.GetMembers(name).OfType<IMethodSymbol>().Where(m => compilation.IsSymbolAccessibleWithin(m, mapperClass)));
+        }
+
+        return (methods.Count > 0) && methods.All(static m => !m.IsStatic);
     }
 
     // Whether a call can invoke the member: a method or an event, or a property or a field of a delegate type (or
@@ -1150,10 +1228,10 @@ internal static partial class MapperModelBuilder
         _ => false
     };
 
-    private static List<IMethodSymbol> StaticMethodsOf(IEnumerable<ISymbol> members) =>
+    private static List<IMethodSymbol> MethodsOf(IEnumerable<ISymbol> members, bool instance) =>
         members
             .OfType<IMethodSymbol>()
-            .Where(static m => m.IsStatic)
+            .Where(m => m.IsStatic || instance)
             .Select(static m => m.PartialDefinitionPart ?? m)
             .Distinct(SymbolEqualityComparer.Default)
             .Cast<IMethodSymbol>()
@@ -1188,7 +1266,7 @@ internal static partial class MapperModelBuilder
             }
         }
 
-        return StaticMethodsOf(members);
+        return MethodsOf(members, instance: false);
     }
 
     // Whether a member of a base class is hidden by those of the derived classes found before it: by one that is not a
@@ -1395,12 +1473,17 @@ internal static partial class MapperModelBuilder
                 continue;
             }
 
+            if (InstanceMethodOfStaticMapper(model, containingType, mapping.ConverterMethod!, mapping.AttributeIndex, compilation, syntax) is { } instanceError)
+            {
+                return instanceError;
+            }
+
             // A converter returns the target type, or a type converting to it implicitly as the assignment of its
             // result does
             var targetType = GetMappingTargetType(mapping, model, destinationType, constructor, containingType, compilation);
             var valueType = GetSourceValueType(mapping, sourceType, containingType, compilation);
             var match = MatchValueMethod(
-                LookupStaticMethods(containingType, mapping.ConverterMethod!, compilation),
+                LookupMethods(containingType, mapping.ConverterMethod!, model.IsInstance, compilation),
                 new ValueCall(valueType, mapping.SourceType, ArgumentKind.Value, customTypes),
                 model.CustomParameters,
                 m => (m.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == mapping.TargetType) ||
@@ -1438,7 +1521,7 @@ internal static partial class MapperModelBuilder
                              !(model.UseConstructorMapping && (mapping.IsTargetInitOnly || mapping.IsTargetRequired)));
             resolved.Add(mapping with
             {
-                ConverterAcceptsCustomParameters = match.Result == ConverterMatchResult.MatchWithCustomParams,
+                ConverterCustomArguments = match.CustomArguments,
                 ConverterParameterRefKinds = GetParameterRefKinds(matchedMethod),
                 ConverterUnwrapsSource = unwraps,
                 ConverterRejectsNull = rejectsNull,
@@ -1472,8 +1555,13 @@ internal static partial class MapperModelBuilder
 
         if (!String.IsNullOrEmpty(model.BeforeMapMethod))
         {
-            var (matchResult, matchedMethod) = FindMatchingCallbackMethod(
-                LookupStaticMethods(containingType, model.BeforeMapMethod!, compilation),
+            if (InstanceMethodOfStaticMapper(model, containingType, model.BeforeMapMethod!, model.BeforeMapAttributeIndex, compilation, syntax) is { } instanceError)
+            {
+                return instanceError;
+            }
+
+            var (matchResult, matchedMethod, customArguments) = FindMatchingCallbackMethod(
+                LookupMethods(containingType, model.BeforeMapMethod!, model.IsInstance, compilation),
                 model,
                 sourceType,
                 destinationType,
@@ -1485,15 +1573,20 @@ internal static partial class MapperModelBuilder
             }
             model = model with
             {
-                BeforeMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams,
+                BeforeMapCustomArguments = customArguments,
                 BeforeMapParameterRefKinds = GetParameterRefKinds(matchedMethod)
             };
         }
 
         if (!String.IsNullOrEmpty(model.AfterMapMethod))
         {
-            var (matchResult, matchedMethod) = FindMatchingCallbackMethod(
-                LookupStaticMethods(containingType, model.AfterMapMethod!, compilation),
+            if (InstanceMethodOfStaticMapper(model, containingType, model.AfterMapMethod!, model.AfterMapAttributeIndex, compilation, syntax) is { } instanceError)
+            {
+                return instanceError;
+            }
+
+            var (matchResult, matchedMethod, customArguments) = FindMatchingCallbackMethod(
+                LookupMethods(containingType, model.AfterMapMethod!, model.IsInstance, compilation),
                 model,
                 sourceType,
                 destinationType,
@@ -1505,7 +1598,7 @@ internal static partial class MapperModelBuilder
             }
             model = model with
             {
-                AfterMapAcceptsCustomParameters = matchResult == CallbackMatchResult.MatchWithCustomParams,
+                AfterMapCustomArguments = customArguments,
                 AfterMapParameterRefKinds = GetParameterRefKinds(matchedMethod)
             };
         }
@@ -1520,9 +1613,10 @@ internal static partial class MapperModelBuilder
         MatchWithCustomParams
     }
 
-    // The callback taking the source, the destination, and the custom parameters when it takes them, over one without,
-    // as before (BindCallbackCall).
-    internal static (CallbackMatchResult Result, IMethodSymbol? Method) FindMatchingCallbackMethod(
+    // The callback taking the source, the destination, and the custom parameters of the mapper it declares, one taking
+    // more of them over one taking fewer, as one taking them went before one without (BindCallbackCall), and the
+    // custom parameters it takes.
+    internal static (CallbackMatchResult Result, IMethodSymbol? Method, EquatableArray<int> CustomArguments) FindMatchingCallbackMethod(
         List<IMethodSymbol> methods,
         MapperMethodModel model,
         ITypeSymbol sourceType,
@@ -1530,45 +1624,57 @@ internal static partial class MapperModelBuilder
         IReadOnlyList<ITypeSymbol> customTypes,
         Compilation compilation)
     {
-        if ((model.CustomParameters.Count > 0) &&
-            (BindCallbackCall(methods, model, sourceType, destinationType, customTypes, 2 + model.CustomParameters.Count, compilation) is { } withCustomParams))
+        var counts = methods
+            .Where(static m => m.Parameters.Length >= 2)
+            .Select(m => MapCustomArguments(m, 2, model.CustomParameters))
+            .Where(static c => c is not null)
+            .Select(static c => c!.Length)
+            .Distinct()
+            .OrderByDescending(static c => c);
+        foreach (var count in counts)
         {
-            return (CallbackMatchResult.MatchWithCustomParams, withCustomParams);
+            if (BindCallbackCall(methods, model, sourceType, destinationType, customTypes, count, compilation) is { } matched)
+            {
+                return (count > 0 ? CallbackMatchResult.MatchWithCustomParams : CallbackMatchResult.MatchWithoutCustomParams, matched.Method, new EquatableArray<int>(matched.Custom));
+            }
         }
 
-        return BindCallbackCall(methods, model, sourceType, destinationType, customTypes, 2, compilation) is { } withoutCustomParams
-            ? (CallbackMatchResult.MatchWithoutCustomParams, withoutCustomParams)
-            : (CallbackMatchResult.NoMatch, null);
+        return (CallbackMatchResult.NoMatch, null, default);
     }
 
     // The callback a call with that many arguments binds to. The source and the destination are variables: parameters
     // of the mapper, or the instance a return-type mapper builds, which the callback may write. Each goes to a
     // parameter of its type the modifier of which can take it, or, by value, of a base class or an interface it
     // converts to by an implicit reference conversion; a struct, which would be boxed into a copy the callback writes
-    // in vain, goes to its own type only. The custom parameters go to parameters of their own types. Of the candidates
+    // in vain, goes to its own type only. The custom parameters the callback declares go to them as MapCustomArguments
+    // maps them, the candidates taking that many of them (customCount) matched. Of the candidates
     // taking both as their own types, the one taking every argument by value, as before, which the call binds to, as C#
     // binds it among all the methods the name is looked up as (BindCall), or else to another candidate, which is used
     // instead; otherwise the candidate the call binds to. A call binding to none of them, or to one obsolete as an
     // error, matches nothing.
-    private static IMethodSymbol? BindCallbackCall(
+    private static (IMethodSymbol Method, int[] Custom)? BindCallbackCall(
         List<IMethodSymbol> methods,
         MapperMethodModel model,
         ITypeSymbol sourceType,
         ITypeSymbol destinationType,
         IReadOnlyList<ITypeSymbol> customTypes,
-        int count,
+        int customCount,
         Compilation compilation)
     {
         var sourceKind = GetVariableKind(model.SourceRefKind);
         var destinationKind = model.ReturnsDestination ? ArgumentKind.WritableVariable : GetVariableKind(model.DestinationRefKind);
 
         var candidates = new List<(IMethodSymbol Method, bool Exact)>();
+        var customs = new Dictionary<IMethodSymbol, int[]>(SymbolEqualityComparer.Default);
         foreach (var method in methods)
         {
-            if (method.IsGenericMethod || (method.Parameters.Length != count) || !TakesCustomArguments(method, model.CustomParameters, 2, count - 2))
+            if (method.IsGenericMethod || (method.Parameters.Length < 2) ||
+                (MapCustomArguments(method, 2, model.CustomParameters) is not { } custom) || (custom.Length != customCount))
             {
                 continue;
             }
+
+            customs[method] = custom;
 
             var source = MatchCallbackParameter(method.Parameters[0], sourceType, model.SourceTypeName, sourceKind, compilation);
             var destination = MatchCallbackParameter(method.Parameters[1], destinationType, model.DestinationTypeName, destinationKind, compilation);
@@ -1585,9 +1691,10 @@ internal static partial class MapperModelBuilder
                 new(sourceType, GetArgumentModifierKind(method.Parameters[0].RefKind)),
                 new(destinationType, GetArgumentModifierKind(method.Parameters[1].RefKind))
             };
-            for (var i = 2; i < count; i++)
+            var custom = customs[method];
+            for (var i = 0; i < custom.Length; i++)
             {
-                arguments.Add(new CallArgument(customTypes[i - 2], GetArgumentModifierKind(method.Parameters[i].RefKind)));
+                arguments.Add(new CallArgument(customTypes[custom[i]], GetArgumentModifierKind(method.Parameters[2 + i].RefKind)));
             }
 
             return arguments;
@@ -1607,12 +1714,12 @@ internal static partial class MapperModelBuilder
 
             if (BindsTo(chosen!))
             {
-                return chosen;
+                return (chosen!, customs[chosen!]);
             }
 
             var bound = BindCall(methods, ArgumentsFor(chosen!), compilation);
             var other = candidates.FirstOrDefault(x => SymbolEqualityComparer.Default.Equals(x.Method, bound)).Method;
-            return (other is not null) && (other.GetObsoleteKind() != ObsoleteKind.Error) && BindsTo(other) ? other : null;
+            return (other is not null) && (other.GetObsoleteKind() != ObsoleteKind.Error) && BindsTo(other) ? (other, customs[other]) : null;
         }
 
         if (candidates.Any(static x => x.Exact))
@@ -1624,7 +1731,7 @@ internal static partial class MapperModelBuilder
         {
             if (BindsTo(method))
             {
-                return method.GetObsoleteKind() == ObsoleteKind.Error ? null : method;
+                return method.GetObsoleteKind() == ObsoleteKind.Error ? null : (method, customs[method]);
             }
         }
 
@@ -2113,13 +2220,18 @@ internal static partial class MapperModelBuilder
         var mapConverterMethodName = model.MapConverterMethodName;
         var collectionConverterTypeName = model.CollectionConverterTypeName;
         var strictOption = model.Strict;
+        var strictSet = model.StrictExplicitlySet;
         var nameComparisonOption = model.NameComparison;
+        var nameComparisonSet = model.NameComparisonExplicitlySet;
         var cultureOption = model.Culture;
+        var cultureSet = model.CultureExplicitlySet;
         var dateTimeFormatOption = model.DateTimeFormat;
         var numberFormatOption = model.NumberFormat;
+        var useCurrentCulture = model.UseCurrentCulture;
+        var defaultCultureSet = false;
 
         // The attributes of the method are at their index in AttributeLocations (ParseMappingAttributes); those of
-        // the class the diagnostics are about are added after them
+        // the class and the assembly the diagnostics are about are added after them
         var attributeLocations = new List<LocationInfo>(model.AttributeLocations);
         var valueConverterAttributeIndex = -1;
         var cultureAttributeIndex = model.CultureAttributeIndex;
@@ -2191,36 +2303,16 @@ internal static partial class MapperModelBuilder
             }
             else if (attributeName == Names.MapperProfileAttribute)
             {
-                // Each setting of the profile applies unless the mapper method sets it, Culture,
-                // DateTimeFormat and NumberFormat each on its own
-                var profileAttributeIndex = attributeLocations.Count;
-                attributeLocations.Add(GetAttributeLocation(attribute, containingType));
-                foreach (var namedArg in attribute.NamedArguments)
-                {
-                    if ((namedArg.Key == "Strict") && (namedArg.Value.Value is bool strict) && (!model.StrictExplicitlySet))
-                    {
-                        strictOption = strict;
-                    }
-                    else if ((namedArg.Key == "NameComparison") && (namedArg.Value.Value is int nc) && (!model.NameComparisonExplicitlySet))
-                    {
-                        nameComparisonOption = nc;
-                    }
-                    else if ((namedArg.Key == "Culture") && (namedArg.Value.Value is string profileCulture) && (!model.CultureExplicitlySet))
-                    {
-                        cultureOption = profileCulture;
-                        cultureAttributeIndex = profileAttributeIndex;
-                    }
-                    else if ((namedArg.Key == "DateTimeFormat") && (namedArg.Value.Value is string profileDtFmt) && (model.DateTimeFormat is null))
-                    {
-                        dateTimeFormatOption = profileDtFmt;
-                        formatAttributeIndex = formatAttributeIndex < 0 ? profileAttributeIndex : formatAttributeIndex;
-                    }
-                    else if ((namedArg.Key == "NumberFormat") && (namedArg.Value.Value is string profileNumFmt) && (model.NumberFormat is null))
-                    {
-                        numberFormatOption = profileNumFmt;
-                        formatAttributeIndex = formatAttributeIndex < 0 ? profileAttributeIndex : formatAttributeIndex;
-                    }
-                }
+                ApplyProfile(attribute, containingType);
+            }
+        }
+
+        // The profile of the assembly gives what neither the method nor the profile of the class sets
+        foreach (var attribute in containingType.ContainingAssembly.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() == Names.MapperProfileAttribute)
+            {
+                ApplyProfile(attribute, containingType);
             }
         }
 
@@ -2234,10 +2326,53 @@ internal static partial class MapperModelBuilder
             Culture = cultureOption,
             DateTimeFormat = dateTimeFormatOption,
             NumberFormat = numberFormatOption,
+            UseCurrentCulture = useCurrentCulture,
             AttributeLocations = new(attributeLocations),
             ValueConverterAttributeIndex = valueConverterAttributeIndex,
             CultureAttributeIndex = cultureAttributeIndex,
             FormatAttributeIndex = formatAttributeIndex
         };
+
+        // Each setting of a profile applies unless the mapper method or a profile closer to it sets it, Culture,
+        // DateTimeFormat and NumberFormat each on its own
+        void ApplyProfile(AttributeData attribute, INamedTypeSymbol owner)
+        {
+            var profileAttributeIndex = attributeLocations.Count;
+            attributeLocations.Add(GetAttributeLocation(attribute, owner));
+            foreach (var namedArg in attribute.NamedArguments)
+            {
+                if ((namedArg.Key == "Strict") && (namedArg.Value.Value is bool strict) && !strictSet)
+                {
+                    strictOption = strict;
+                    strictSet = true;
+                }
+                else if ((namedArg.Key == "NameComparison") && (namedArg.Value.Value is int nc) && !nameComparisonSet)
+                {
+                    nameComparisonOption = nc;
+                    nameComparisonSet = true;
+                }
+                else if ((namedArg.Key == "DefaultCulture") && (namedArg.Value.Value is int defaultCulture) && !defaultCultureSet)
+                {
+                    useCurrentCulture = defaultCulture == 1;
+                    defaultCultureSet = true;
+                }
+                else if ((namedArg.Key == "Culture") && (namedArg.Value.Value is string profileCulture) && !cultureSet)
+                {
+                    cultureOption = profileCulture;
+                    cultureAttributeIndex = profileAttributeIndex;
+                    cultureSet = true;
+                }
+                else if ((namedArg.Key == "DateTimeFormat") && (namedArg.Value.Value is string profileDtFmt) && (dateTimeFormatOption is null))
+                {
+                    dateTimeFormatOption = profileDtFmt;
+                    formatAttributeIndex = formatAttributeIndex < 0 ? profileAttributeIndex : formatAttributeIndex;
+                }
+                else if ((namedArg.Key == "NumberFormat") && (namedArg.Value.Value is string profileNumFmt) && (numberFormatOption is null))
+                {
+                    numberFormatOption = profileNumFmt;
+                    formatAttributeIndex = formatAttributeIndex < 0 ? profileAttributeIndex : formatAttributeIndex;
+                }
+            }
+        }
     }
 }

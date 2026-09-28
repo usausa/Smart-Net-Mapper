@@ -70,7 +70,7 @@ public class PlaceholderImplementationTests
     [Fact]
     public void DefinitionReportedGetsNone()
     {
-        var source = Source("[Mapper] public partial Dst Map(Src source);\n[Mapper] public static partial Dst MapOther(Src source);");
+        var source = Source("[Mapper] public static Dst Map(Src source) => new();\n[Mapper] public static partial Dst MapOther(Src source);");
 
         Assert.Contains("SMP0001", Errors(source));
         var generated = GeneratorTestHelper.GetGeneratedSource(source);

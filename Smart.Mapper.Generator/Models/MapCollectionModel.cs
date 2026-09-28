@@ -50,6 +50,9 @@ internal sealed record MapCollectionModel(
     // the instance a void mapper fills are passed
     string? Mapper = default,
     EquatableArray<RefKind> MapperParameterRefKinds = default,
+    // The custom parameters of the mapper the element mapper takes after the element (and instance), as the arguments
+    // the generated code appends to its call (", culture")
+    string MapperCustomArguments = "",
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,

@@ -59,7 +59,6 @@ public class DiagnosticLocationTests
     [InlineData("    [Mapper]\n    [MapIgnore(\"Item.V\")] /*here*/", "", "SMP0223")]
     [InlineData("    [Mapper(AutoMap = false)]\n    [MapCondition(nameof(Dst.Y), nameof(Can))] /*here*/", "private static bool Can(Src src) => true;", "SMP0221")]
     [InlineData("    [Mapper(Culture = \"not a culture\")] /*here*/", "", "SMP0404")]
-    [InlineData("    [Mapper]\n    [MapProperty(nameof(Dst.Text), nameof(Src.X), NumberFormat = \"N2\")] /*here*/", "", "SMP0401")]
     public void DiagnosticOfAttributeIsReportedAtAttribute(string attributes, string members, string id)
     {
         AssertReportedAtMarker(Source(attributes, members), id);
@@ -98,7 +97,7 @@ public class DiagnosticLocationTests
     [Theory]
     [InlineData("    [Mapper] /*here*/", "public static partial Rec Map(Src src);", "SMP0301")]
     [InlineData("    [Mapper] /*here*/", "public static partial IDisposable Map(Src src);", "SMP0305")]
-    [InlineData("    [Mapper] /*here*/", "public static partial Dst Map(Src src, int a, int b);", "SMP0003")]
+    [InlineData("    [Mapper] /*here*/", "public static partial Dst Map(Src src, System.Globalization.CultureInfo a, System.Globalization.CultureInfo b);", "SMP0406")]
     public void DiagnosticOfMethodIsReportedAtMethod(string attributes, string signature, string id)
     {
         AssertReportedAtMarker(Source(attributes, signature: signature), id);

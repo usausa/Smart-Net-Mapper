@@ -14,8 +14,9 @@ internal sealed record MapUsingModel(
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,
-    // Method takes the mapper's custom parameters after the source argument
-    bool AcceptsCustomParameters = default,
+    // The custom parameters of the mapper the method takes after the source, as their indexes, in the order of its
+    // parameters
+    EquatableArray<int> CustomArguments = default,
     // RefKinds of the method's parameters, which decide how each argument is passed
     EquatableArray<RefKind> ParameterRefKinds = default,
     // The method returns a nullable reference into a target not annotated as nullable, so its result is taken with !

@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // Culture, DateTimeFormat and NumberFormat are each taken from the mapper method, or else from the profile.
 // The profile used to replace all three of the method's unless the method set Culture, so a format the
 // method set was lost under a profile that set one, and a profile format was dropped once the method set
-// its own culture. SMP0401 follows the same resolution.
+// its own culture. A format without a culture applies with the invariant culture.
 public class CultureFormatPrecedenceTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -58,16 +58,19 @@ public class CultureFormatPrecedenceTests
     }
 
     [Theory]
-    // A format with no culture from either is reported
-    [InlineData("[MapperProfile(NumberFormat = \"N0\")]", "[Mapper]", true)]
-    [InlineData("", "[Mapper(NumberFormat = \"N2\")]", true)]
+    // A format with no culture from either applies with the invariant culture
+    [InlineData("[MapperProfile(NumberFormat = \"N0\")]", "[Mapper]", "ConvertToString(src.Amount, global::System.Globalization.CultureInfo.InvariantCulture, \"N0\")")]
+    [InlineData("", "[Mapper(NumberFormat = \"N2\")]", "ConvertToString(src.Amount, global::System.Globalization.CultureInfo.InvariantCulture, \"N2\")")]
     // A culture from the profile serves the method's format, and the other way round
-    [InlineData("[MapperProfile(Culture = \"ja-JP\")]", "[Mapper(NumberFormat = \"N2\")]", false)]
-    [InlineData("[MapperProfile(NumberFormat = \"N0\")]", "[Mapper(Culture = \"en-US\")]", false)]
-    public void FormatWithoutCultureFollowsResolution(string profile, string mapper, bool reported)
+    [InlineData("[MapperProfile(Culture = \"ja-JP\")]", "[Mapper(NumberFormat = \"N2\")]", "ConvertToString(src.Amount, __culture_ja_JP, \"N2\")")]
+    [InlineData("[MapperProfile(NumberFormat = \"N0\")]", "[Mapper(Culture = \"en-US\")]", "ConvertToString(src.Amount, __culture_en_US, \"N0\")")]
+    // A numeric format leaves a date to the conversion without a culture
+    [InlineData("", "[Mapper(NumberFormat = \"N2\")]", "ConvertToString(src.At)")]
+    public void FormatWithoutCultureAppliesWithInvariantCulture(string profile, string mapper, string call)
     {
-        var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(profile, mapper));
+        var source = Source(profile, mapper);
 
-        Assert.Equal(reported, diagnostics.Any(static d => d.Id == "SMP0401"));
+        AssertCompiles(source);
+        Assert.Contains(call, GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 }

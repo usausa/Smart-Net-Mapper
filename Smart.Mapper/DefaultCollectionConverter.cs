@@ -90,7 +90,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    // Converts a List&lt;T&gt; to an array using the specified mapper function.
+    // Converts a List<T> to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         List<TSource>? source,
@@ -110,7 +110,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to an array using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[] ToArray<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -124,7 +124,7 @@ public static class DefaultCollectionConverter
         return arr;
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to an array using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to an array using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDest[]? ToArray<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -166,7 +166,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    // Converts a List&lt;T&gt; to a List using the specified mapper function.
+    // Converts a List<T> to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         List<TSource>? source,
@@ -188,7 +188,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to a List using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest> ToList<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -204,7 +204,7 @@ public static class DefaultCollectionConverter
         return list;
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to a List using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to a List using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static List<TDest>? ToList<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -243,7 +243,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    // Converts a List&lt;T&gt; to an ImmutableArray using the specified mapper function.
+    // Converts a List<T> to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         List<TSource>? source,
@@ -263,7 +263,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableArray using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -277,7 +277,7 @@ public static class DefaultCollectionConverter
         return builder.MoveToImmutable();
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableArray using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to an ImmutableArray using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableArray<TDest> ToImmutableArray<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -316,7 +316,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts a List&lt;T&gt; to an ImmutableList using the specified mapper function.
+    // Converts a List<T> to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         List<TSource>? source,
@@ -336,7 +336,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableList using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest> ToImmutableList<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -350,7 +350,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableList using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to an ImmutableList using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableList<TDest>? ToImmutableList<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -389,7 +389,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    // Converts a List&lt;T&gt; to a HashSet using the specified mapper function.
+    // Converts a List<T> to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         List<TSource>? source,
@@ -409,7 +409,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to a HashSet using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest> ToHashSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -423,7 +423,7 @@ public static class DefaultCollectionConverter
         return set;
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to a HashSet using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to a HashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static HashSet<TDest>? ToHashSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -462,7 +462,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts a List&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
+    // Converts a List<T> to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         List<TSource>? source,
@@ -482,7 +482,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest> ToImmutableHashSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -496,7 +496,7 @@ public static class DefaultCollectionConverter
         return builder.ToImmutable();
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to an ImmutableHashSet using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to an ImmutableHashSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ImmutableHashSet<TDest>? ToImmutableHashSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,
@@ -535,7 +535,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    // Converts a List&lt;T&gt; to a FrozenSet using the specified mapper function.
+    // Converts a List<T> to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         List<TSource>? source,
@@ -555,7 +555,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    // Converts a ReadOnlySpan&lt;T&gt; to a FrozenSet using the specified mapper function.
+    // Converts a ReadOnlySpan<T> to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest> ToFrozenSet<TSource, TDest>(
         ReadOnlySpan<TSource> source,
@@ -569,7 +569,7 @@ public static class DefaultCollectionConverter
         return set.ToFrozenSet();
     }
 
-    // Converts an IReadOnlyCollection&lt;T&gt; to a FrozenSet using the specified mapper function.
+    // Converts an IReadOnlyCollection<T> to a FrozenSet using the specified mapper function.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FrozenSet<TDest>? ToFrozenSet<TSource, TDest>(
         IReadOnlyCollection<TSource>? source,

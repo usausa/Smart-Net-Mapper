@@ -121,16 +121,12 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static char ConvertToChar(string source, IFormatProvider culture, string? format) => Char.Parse(source);
 
-    // Converts string to DateTime, keeping the kind the text gives, as the round-trip format (O) writes it: UTC for a Z,
-    // local for an offset, and unspecified without either.
+    // Converts string to DateTime, keeping the kind the text gives, as the round-trip format (O) writes it.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
     // Converts string to DateTime using specified culture and optional format. The round-trip format (O, o) keeps the
-    // kind the text gives (UTC for a Z, local for an offset, unspecified without either), as the default conversion
-    // does, where DateTimeStyles.None would turn a Z into local time; the RFC 1123 format (R, r), whose GMT is text of
-    // the format and not a time zone, gives the time as written with an unspecified kind, as ToString writes the time
-    // as it is under GMT, whatever its kind.
+    // kind the text gives, where DateTimeStyles.None would turn a Z into local time.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source, IFormatProvider culture, string? format) =>
         format is null
@@ -466,11 +462,8 @@ public static class DefaultValueConverter
     // Generic fallback method
     // ============================================================
 
-    // Converts a value from source type to destination type (generic fallback).
-    // This method is called only when:
-    // - No specialized method exists (e.g., ConvertToInt32)
-    // - Actual type conversion is required (not same type, not nullable wrapping/unwrapping)
-    // - Nullable handling has already been done by the generated code.
+    // Converts a value from source type to destination type (generic fallback), called only when no specialized method
+    // exists and a conversion is needed, after the generated code has handled the nullable values.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TDestination Convert<TSource, TDestination>(TSource source)
     {

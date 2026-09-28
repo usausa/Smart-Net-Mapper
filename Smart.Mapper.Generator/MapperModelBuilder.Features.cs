@@ -307,10 +307,15 @@ internal static partial class MapperModelBuilder
 
             var targetTypeName = target.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+            if (InstanceMethodOfStaticMapper(model, containingType, mapUsing.Method, mapUsing.AttributeIndex, compilation, syntax) is { } instanceError)
+            {
+                return instanceError;
+            }
+
             // The method takes the source, as its own type or as a base class or an interface it converts to, and
             // returns the type of the target, or a type converting to it implicitly
             var match = MatchValueMethod(
-                LookupStaticMethods(containingType, mapUsing.Method, compilation),
+                LookupMethods(containingType, mapUsing.Method, model.IsInstance, compilation),
                 new ValueCall(sourceType, sourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), GetVariableKind(model.SourceRefKind), customTypes),
                 model.CustomParameters,
                 m => (m.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == targetTypeName) ||
@@ -344,7 +349,7 @@ internal static partial class MapperModelBuilder
                 TargetPathSegments = target.Segments,
                 IsTargetInitOnly = target.IsInitOnly,
                 IsTargetRequired = target.IsRequired,
-                AcceptsCustomParameters = match.Result == ConverterMatchResult.MatchWithCustomParams,
+                CustomArguments = match.CustomArguments,
                 ParameterRefKinds = GetParameterRefKinds(matchedMethod),
                 ForgivesNull = IsNullableReference(matchedMethod.ReturnType) && !target.Type.IsNullableType() && !ReturnsNotNullForValue(matchedMethod, compilation)
             });
@@ -562,6 +567,7 @@ internal static partial class MapperModelBuilder
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
+        var customTypes = GetCustomParameterTypes(mapperMethod, model);
         var destinationProperties = PropertyPathHelper.GetProperties(destinationType, containingType, compilation);
         var constructor = GetEffectiveConstructor(model, destinationType);
 
@@ -730,6 +736,12 @@ internal static partial class MapperModelBuilder
                 canCallMapper = (m, unwraps) => TakesMapperArguments(m, unwraps ? ArgumentKind.Value : element) && (!m.ReturnsVoid || canCreateElement);
             }
 
+            if (!String.IsNullOrEmpty(mapCollection.Mapper) &&
+                (InstanceMethodOfStaticMapper(model, containingType, mapCollection.Mapper!, declared.AttributeIndex, compilation, syntax) is { } instanceError))
+            {
+                return instanceError;
+            }
+
             var elementMatch = FindMapperMethod(
                 containingType,
                 mapCollection.Mapper!,
@@ -737,7 +749,10 @@ internal static partial class MapperModelBuilder
                 targetElementType,
                 compilation,
                 usesConverter ? null : GetElementArgumentKind(sourceShape),
-                canCallMapper);
+                canCallMapper,
+                model.IsInstance,
+                model.CustomParameters,
+                customTypes);
             if (elementMatch is not { } matchedElementMapper)
             {
                 return String.IsNullOrEmpty(mapCollection.Mapper)
@@ -790,7 +805,8 @@ internal static partial class MapperModelBuilder
                 ForgivesMapperResult = ReturnsNullableInto(elementMapper, targetElementType) && !(getsElementValue && ReturnsNotNullForValue(elementMapper, compilation)),
                 UnwrapsSource = unwrapsElement,
                 NullResult = GetNullResult(elementMapper, targetElementType),
-                MapperParameterRefKinds = GetParameterRefKinds(elementMapper)
+                MapperParameterRefKinds = GetParameterRefKinds(elementMapper),
+                MapperCustomArguments = GetCustomArgumentText(elementMapper, matchedElementMapper.CustomArguments, model.CustomParameters)
             });
         }
 
@@ -807,6 +823,7 @@ internal static partial class MapperModelBuilder
         MethodDeclarationSyntax syntax)
     {
         var containingType = mapperMethod.ContainingType;
+        var customTypes = GetCustomParameterTypes(mapperMethod, model);
         var destinationProperties = PropertyPathHelper.GetProperties(destinationType, containingType, compilation);
         var constructor = GetEffectiveConstructor(model, destinationType);
 
@@ -875,6 +892,12 @@ internal static partial class MapperModelBuilder
             // The nested mapper gets the property value, or the value of a nullable struct, and a void one the
             // instance the generated code creates with new T()
             var canCreateTarget = CanCreateInstance(targetUnderlyingType, containingType, compilation);
+            if (!String.IsNullOrEmpty(mapNested.Mapper) &&
+                (InstanceMethodOfStaticMapper(model, containingType, mapNested.Mapper, declared.AttributeIndex, compilation, syntax) is { } instanceError))
+            {
+                return instanceError;
+            }
+
             var nestedMatch = FindMapperMethod(
                 containingType,
                 mapNested.Mapper,
@@ -882,7 +905,10 @@ internal static partial class MapperModelBuilder
                 targetUnderlyingType,
                 compilation,
                 ArgumentKind.Value,
-                (m, _) => TakesMapperArguments(m, ArgumentKind.Value) && (!m.ReturnsVoid || canCreateTarget));
+                (m, _) => TakesMapperArguments(m, ArgumentKind.Value) && (!m.ReturnsVoid || canCreateTarget),
+                model.IsInstance,
+                model.CustomParameters,
+                customTypes);
             if (nestedMatch is not { } matchedNestedMapper)
             {
                 return String.IsNullOrEmpty(mapNested.Mapper)
@@ -918,7 +944,8 @@ internal static partial class MapperModelBuilder
                 ForgivesMapperResult = ReturnsNullableInto(nestedMapper, targetMemberType) && !(getsValue && ReturnsNotNullForValue(nestedMapper, compilation)),
                 UnwrapsSource = matchedNestedMapper.UnwrapsSource,
                 NullResult = GetNullResult(nestedMapper, targetMemberType),
-                MapperParameterRefKinds = GetParameterRefKinds(nestedMapper)
+                MapperParameterRefKinds = GetParameterRefKinds(nestedMapper),
+                MapperCustomArguments = GetCustomArgumentText(nestedMapper, matchedNestedMapper.CustomArguments, model.CustomParameters)
             });
         }
 
@@ -987,15 +1014,15 @@ internal static partial class MapperModelBuilder
         }
 
         return method.IsPartialDefinition &&
-               method.IsStatic &&
                method.GetAttributes().Any(static a => a.AttributeClass?.ToDisplayString() == Names.MapperAttribute) &&
                MayBeNullReference(method.Parameters[0].Type) &&
                method.ReturnType.IsNullableType() &&
                CanApplyNotNullIfNotNull(compilation, method.ContainingType);
     }
 
-    // The mapper of [MapCollection] / [MapNested], and whether the value of a nullable struct source goes to it.
-    internal readonly record struct MapperMatch(IMethodSymbol Method, bool UnwrapsSource);
+    // The mapper of [MapCollection] / [MapNested], whether the value of a nullable struct source goes to it, and the
+    // custom parameters of the mapper it takes after the source (and the instance of a void one).
+    internal readonly record struct MapperMatch(IMethodSymbol Method, bool UnwrapsSource, EquatableArray<int> CustomArguments);
 
     // The mapper of [MapCollection] / [MapNested]: a static method taking the source element and returning
     // the target one, or taking both and filling the target. The source goes to a parameter of its type, or of
@@ -1012,7 +1039,9 @@ internal static partial class MapperModelBuilder
     // chose it. The call the generated code makes binds among all the methods the name is looked up as, as C# binds it
     // (BindCall), which may be another one: one matched of the same shape is used instead, and none otherwise (a
     // more specific one returning another type, a generic one, one with optional parameters, one obsolete as an
-    // error), as the call would bind to it.
+    // error), as the call would bind to it. After the source (and the instance of a void one) it takes the custom
+    // parameters of the mapper it declares (MapCustomArguments), one taking more of them going first, which a mapper
+    // handed to a collection converter as a delegate cannot take.
     internal static MapperMatch? FindMapperMethod(
         INamedTypeSymbol containingType,
         string methodName,
@@ -1020,16 +1049,21 @@ internal static partial class MapperModelBuilder
         ITypeSymbol targetElementType,
         Compilation compilation,
         ArgumentKind? sourceArgument,
-        Func<IMethodSymbol, bool, bool> canCall)
+        Func<IMethodSymbol, bool, bool> canCall,
+        bool instance,
+        EquatableArray<CustomParameterModel> customParams,
+        IReadOnlyList<ITypeSymbol> customTypes)
     {
-        var matches = new List<(IMethodSymbol Method, int Score, bool Unwraps)>();
-        var methods = LookupStaticMethods(containingType, methodName, compilation);
+        var matches = new List<(IMethodSymbol Method, int Score, bool Unwraps, int[] Custom)>();
+        var methods = LookupMethods(containingType, methodName, instance, compilation);
         foreach (var method in methods.Where(IsCallableByName))
         {
             if (MatchesMapperShape(method, sourceElementType, targetElementType, compilation, sourceArgument is not null, out var score, out var unwraps) &&
+                (MapCustomArguments(method, method.ReturnsVoid ? 2 : 1, customParams) is { } custom) &&
+                ((sourceArgument is not null) || (custom.Length == 0)) &&
                 canCall(method, unwraps))
             {
-                matches.Add((method, score, unwraps));
+                matches.Add((method, score, unwraps, custom));
             }
         }
 
@@ -1038,8 +1072,10 @@ internal static partial class MapperModelBuilder
             return null;
         }
 
-        var closestScore = matches.Min(static m => m.Score);
-        var closest = matches.Where(m => m.Score == closestScore).ToList();
+        var mostCustom = matches.Max(static m => m.Custom.Length);
+        var preferred = matches.Where(m => m.Custom.Length == mostCustom).ToList();
+        var closestScore = preferred.Min(static m => m.Score);
+        var closest = preferred.Where(m => m.Score == closestScore).ToList();
         var returnsVoid = closest[0].Method.ReturnsVoid;
         closest.RemoveAll(m => m.Method.ReturnsVoid != returnsVoid);
 
@@ -1061,14 +1097,14 @@ internal static partial class MapperModelBuilder
 
         if (sourceArgument is { } argument)
         {
-            var called = BindCall(methods, GetMapperCallArguments(chosen.Method, chosen.Unwraps, sourceElementType, targetElementType, argument), compilation);
+            var called = BindCall(methods, GetMapperCallArguments(chosen.Method, chosen.Unwraps, sourceElementType, targetElementType, argument, chosen.Custom, customTypes), compilation);
             if (!SymbolEqualityComparer.Default.Equals(called, chosen.Method))
             {
                 var other = matches.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, called) &&
                                                         (m.Method.ReturnsVoid == chosen.Method.ReturnsVoid) && (m.Unwraps == chosen.Unwraps));
                 if ((other.Method is null) ||
                     !SymbolEqualityComparer.Default.Equals(
-                        BindCall(methods, GetMapperCallArguments(other.Method, other.Unwraps, sourceElementType, targetElementType, argument), compilation),
+                        BindCall(methods, GetMapperCallArguments(other.Method, other.Unwraps, sourceElementType, targetElementType, argument, other.Custom, customTypes), compilation),
                         other.Method))
                 {
                     return null;
@@ -1078,13 +1114,36 @@ internal static partial class MapperModelBuilder
             }
         }
 
-        return new MapperMatch(chosen.Method, chosen.Unwraps);
+        return new MapperMatch(chosen.Method, chosen.Unwraps, new EquatableArray<int>(chosen.Custom));
+    }
+
+    // The custom parameters a mapper of [MapCollection] / [MapNested] takes after the source (and the instance of a void
+    // one), as the arguments the generated code appends to its call, each with the modifier of the parameter taking it
+    private static string GetCustomArgumentText(IMethodSymbol mapper, EquatableArray<int> customArguments, EquatableArray<CustomParameterModel> customParams)
+    {
+        var first = mapper.ReturnsVoid ? 2 : 1;
+        return String.Concat(Enumerable.Range(0, customArguments.Count).Select(i =>
+            ", " +
+            GetArgumentModifierKind(mapper.Parameters[first + i].RefKind) switch
+            {
+                RefKind.Ref => "ref ",
+                RefKind.In => "in ",
+                _ => string.Empty
+            } +
+            customParams[customArguments[i]].Name));
     }
 
     // What the call of the mapper of [MapCollection] / [MapNested] passes: the source, or the value a nullable struct
-    // holds, as a value, or as a variable with the modifier of the parameter taking it, and for a void mapper the
-    // instance created for it, with the modifier of its parameter.
-    private static List<CallArgument> GetMapperCallArguments(IMethodSymbol mapper, bool unwraps, ITypeSymbol sourceType, ITypeSymbol createdType, ArgumentKind sourceArgument)
+    // holds, as a value, or as a variable with the modifier of the parameter taking it, for a void mapper the instance
+    // created for it, with the modifier of its parameter, and the custom parameters it takes.
+    private static List<CallArgument> GetMapperCallArguments(
+        IMethodSymbol mapper,
+        bool unwraps,
+        ITypeSymbol sourceType,
+        ITypeSymbol createdType,
+        ArgumentKind sourceArgument,
+        int[] custom,
+        IReadOnlyList<ITypeSymbol> customTypes)
     {
         var arguments = new List<CallArgument>
         {
@@ -1097,13 +1156,21 @@ internal static partial class MapperModelBuilder
             arguments.Add(new CallArgument(createdType, GetArgumentModifierKind(mapper.Parameters[1].RefKind)));
         }
 
+        var first = arguments.Count;
+        for (var i = 0; i < custom.Length; i++)
+        {
+            arguments.Add(new CallArgument(customTypes[custom[i]], GetArgumentModifierKind(mapper.Parameters[first + i].RefKind)));
+        }
+
         return arguments;
     }
 
-    // Whether the call binds to the method rather than to the other: each parameter of the same type, or of one
-    // converting to the other's.
+    // Whether the call binds to the method rather than to the other: each parameter taking the source (and the
+    // instance) of the same type, or of one converting to the other's. The custom parameters after them are of the
+    // types of the mapper's.
     private static bool IsAtLeastAsSpecific(IMethodSymbol method, IMethodSymbol other, Compilation compilation) =>
-        method.Parameters.Zip(other.Parameters, (p, q) => IsSameType(p.Type, q.Type) || compilation.ClassifyCommonConversion(p.Type, q.Type).IsImplicit)
+        method.Parameters.Take(method.ReturnsVoid ? 2 : 1)
+            .Zip(other.Parameters, (p, q) => IsSameType(p.Type, q.Type) || compilation.ClassifyCommonConversion(p.Type, q.Type).IsImplicit)
             .All(static x => x);
 
     // Whether the method has the shape of a mapper for the source and the target, and how close the match is:
@@ -1119,7 +1186,7 @@ internal static partial class MapperModelBuilder
     {
         score = 0;
         unwraps = false;
-        if ((method.Parameters.Length != (method.ReturnsVoid ? 2 : 1)) ||
+        if ((method.Parameters.Length < (method.ReturnsVoid ? 2 : 1)) ||
             !MatchesMapperSource(method.Parameters[0], sourceType, compilation, allowUnwrap, out var sourceScore, out unwraps))
         {
             return false;
@@ -1195,20 +1262,20 @@ internal static partial class MapperModelBuilder
     private static ITypeSymbol? GetNullableValueType(ITypeSymbol type) =>
         type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable ? nullable.TypeArguments[0] : null;
 
-    // A static method of the mapper class the generated code calls by name: a converter, a condition, a
-    // [MapUsing] method, a callback, or the mapper of [MapCollection] / [MapNested]. A generic one is not, as the
-    // call passes no type arguments, and the arguments of the shapes matched never let them be inferred
+    // A method of the mapper class the generated code calls by name, of those the name is looked up as: a converter, a
+    // condition, a [MapUsing] method, a callback, or the mapper of [MapCollection] / [MapNested]. A generic one is not,
+    // as the call passes no type arguments, and the arguments of the shapes matched never let them be inferred
     // (CS0411).
     // One obsolete as an error cannot be called (CS0619), so it does not match; one obsolete as a warning is
     // called, as the attribute names it.
     private static bool IsCallableByName(IMethodSymbol method) =>
-        method.IsStatic && !method.IsGenericMethod && (method.GetObsoleteKind() != ObsoleteKind.Error);
+        !method.IsGenericMethod && (method.GetObsoleteKind() != ObsoleteKind.Error);
 
     // Whether a mapper takes the arguments of the call: the source of the given kind, and for a void
     // mapper the instance the generated code creates for it, a local it may write.
     private static bool TakesMapperArguments(IMethodSymbol method, ArgumentKind source) =>
         CanTakeArgument(method.Parameters[0].RefKind, source) &&
-        method.Parameters.Skip(1).All(static p => CanTakeArgument(p.RefKind, ArgumentKind.WritableVariable));
+        method.Parameters.Skip(1).Take(method.ReturnsVoid ? 1 : 0).All(static p => CanTakeArgument(p.RefKind, ArgumentKind.WritableVariable));
 
     // What the loop over a source collection passes as the element: an element of an array or of a span
     // over an array, List<T> or Memory<T>, which it may write; one of a read-only span (ImmutableArray<T>,

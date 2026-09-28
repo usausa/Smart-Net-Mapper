@@ -39,4 +39,9 @@ internal static class Names
     public const string QualifiedDefaultValueConverter = Global + DefaultValueConverter;
     public const string DefaultCollectionConverter = Namespace + "DefaultCollectionConverter";
     public const string QualifiedDefaultCollectionConverter = Global + DefaultCollectionConverter;
+
+    // The culture a custom parameter gives, and the cultures the generated code passes without a culture name
+    public const string QualifiedCultureInfo = Global + "System.Globalization.CultureInfo";
+    public const string CurrentCulture = QualifiedCultureInfo + ".CurrentCulture";
+    public const string InvariantCulture = QualifiedCultureInfo + ".InvariantCulture";
 }

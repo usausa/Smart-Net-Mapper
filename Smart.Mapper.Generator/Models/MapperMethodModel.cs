@@ -13,7 +13,7 @@ internal sealed record MapperMethodModel(
     string Namespace = default!,
     string ClassName = default!,
     EquatableArray<string> TypeDeclarations = default,
-    // The modifiers of the defining declaration the implementation repeats besides static and partial: its
+    // The modifiers of the defining declaration the implementation repeats besides static (IsInstance) and partial: its
     // accessibility (public, protected internal; CS8799), none for a declaration without one (a void mapper, implicitly
     // private), new (CS8800) and unsafe (CS0764)
     string DeclarationModifiers = "",
@@ -71,6 +71,14 @@ internal sealed record MapperMethodModel(
     bool CultureExplicitlySet = default,
     string? DateTimeFormat = default,
     string? NumberFormat = default,
+    // DefaultCulture of the profiles is Current: the conversions without a culture name use the current culture
+    bool UseCurrentCulture = default,
+    // The custom parameter of type CultureInfo, which gives the culture of the conversions, as the generated code
+    // writes it, and whether it may be null (annotated, or with nullable annotations disabled); null without one
+    string? CultureParameterName = default,
+    bool IsCultureParameterNullable = default,
+    // An instance method, which calls the instance methods of its class as well
+    bool IsInstance = default,
     // The defining declaration has the this modifier on the source parameter. The implementing
     // declaration must repeat it (CS0755), so the emitter carries it over.
     bool IsExtensionMethod = default,
@@ -96,11 +104,12 @@ internal sealed record MapperMethodModel(
     EquatableArray<MapCollectionModel> MapCollectionMappings = default,
     EquatableArray<MapNestedModel> MapNestedMappings = default,
     string? BeforeMapMethod = default,
-    bool BeforeMapAcceptsCustomParameters = default,
-    // RefKinds of the matched callback's parameters, which decide how each argument is passed.
+    // The custom parameters the matched callback takes after the source and the destination, as their indexes in the
+    // order of its parameters, and the RefKinds of its parameters, which decide how each argument is passed.
+    EquatableArray<int> BeforeMapCustomArguments = default,
     EquatableArray<RefKind> BeforeMapParameterRefKinds = default,
     string? AfterMapMethod = default,
-    bool AfterMapAcceptsCustomParameters = default,
+    EquatableArray<int> AfterMapCustomArguments = default,
     EquatableArray<RefKind> AfterMapParameterRefKinds = default,
     bool UseConstructorMapping = default,
     // The constructor a return mapper calls with arguments, as its index in the instance constructors of the

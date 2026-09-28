@@ -62,13 +62,14 @@ internal sealed record PropertyMappingModel(
     bool IsConstructorParameter = default,
     int Order = default,
     int DefinitionOrder = default,
-    // Optional per-mapping settings. The RefKinds of the matched method's parameters decide how each
-    // argument is passed
+    // Optional per-mapping settings. The custom parameters of the mapper the matched method takes after the value, as
+    // their indexes in the order of its parameters, and the RefKinds of its parameters, which decide how each argument
+    // is passed
     string? ConverterMethod = default,
-    bool ConverterAcceptsCustomParameters = default,
+    EquatableArray<int> ConverterCustomArguments = default,
     EquatableArray<RefKind> ConverterParameterRefKinds = default,
     string? ConditionMethod = default,
-    bool ConditionAcceptsCustomParameters = default,
+    EquatableArray<int> ConditionCustomArguments = default,
     EquatableArray<RefKind> ConditionParameterRefKinds = default,
     // The parameter of the converter / the condition taking the source value does not take null (a reference
     // annotated as not null, [DisallowNull], or the struct a nullable struct source holds, which goes to it as its
@@ -85,11 +86,15 @@ internal sealed record PropertyMappingModel(
     // an array holding null
     bool IsNullValueUnsupported = default,
     bool NullValueHasNullElement = default,
+    // The culture name whose field the conversion uses, directly or for a null CultureInfo parameter
     string? EffectiveCulture = default,
     string? EffectiveDateTimeFormat = default,
     string? EffectiveNumberFormat = default,
+    // The culture the conversion goes with, as the generated code writes it: the field of a culture name, the current
+    // or the invariant culture, or the CultureInfo parameter; null for the conversions without a culture
+    string? CultureArgument = default,
     // Conversion-detection results. With a culture, the overload of the specialized method taking the
-    // culture and the format is called, and the culture field goes to it with CultureArgumentModifier
+    // culture and the format is called, and the culture goes to it with CultureArgumentModifier
     string? SpecializedConverterMethod = default,
     string CultureArgumentModifier = "",
     ParseMethodKind ParseMethod = ParseMethodKind.None,
@@ -123,7 +128,7 @@ internal static class PropertyMappingModelExtensions
 
     public static bool HasNullValue(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.NullValue);
 
-    public static bool HasCulture(this PropertyMappingModel m) => !String.IsNullOrEmpty(m.EffectiveCulture);
+    public static bool HasCulture(this PropertyMappingModel m) => m.CultureArgument is not null;
 
     public static bool RequiresNullCheck(this PropertyMappingModel m) =>
         m.SourcePathSegments.Any(s => s.IsNullable);

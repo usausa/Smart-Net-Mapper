@@ -3,11 +3,11 @@ namespace Smart.Mapper.Generator;
 using Microsoft.CodeAnalysis;
 
 // Core Mapper generator diagnostics. IDs follow a phase-based banding aligned with the pipeline:
-//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters / nullable struct source / collection mapped as a whole / ref return)
-//   SMP01xx  attribute validation(duplicate targets, callbacks, converters, conditions)
+//   SMP00xx  method definition   (BuildModel entry: partial / parameter shape / reserved parameter names / parameter modifiers / nullable struct source / collection mapped as a whole / ref return)
+//   SMP01xx  attribute validation(duplicate targets, callbacks, converters, conditions, instance methods of a static mapper)
 //   SMP02xx  explicit features   (MapUsing / MapFrom / MapCollection / MapNested resolution)
 //   SMP03xx  construction        (constructor parameters, init-only / required members)
-//   SMP04xx  conversion / AOT    (culture-format pairing, TypeConverter fallback, reflection usage)
+//   SMP04xx  conversion / AOT    (TypeConverter fallback, reflection usage, culture names, the CultureInfo parameters)
 //   SMP05xx  strict mode         (advisory warnings: unmapped properties, nullable values, unmatched enum members)
 internal static class Diagnostics
 {
@@ -18,7 +18,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor InvalidMethodDefinition { get; } = new(
         id: "SMP0001",
         title: "Invalid mapper method definition",
-        messageFormat: "[Mapper] method must be static partial, in types that are all partial and not file-local. method=[{0}]",
+        messageFormat: "[Mapper] method must be partial, in types that are all partial and not file-local. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -27,14 +27,6 @@ internal static class Diagnostics
         id: "SMP0002",
         title: "Invalid mapper method parameters",
         messageFormat: "[Mapper] method parameter count is invalid. method=[{0}]",
-        category: "Usage",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
-    public static DiagnosticDescriptor DuplicateCustomParameterType { get; } = new(
-        id: "SMP0003",
-        title: "Duplicate custom parameter type",
-        messageFormat: "[Mapper] custom parameters must have unique types. method=[{0}], type=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -127,6 +119,14 @@ internal static class Diagnostics
         id: "SMP0106",
         title: "Invalid property condition signature",
         messageFormat: "Condition signature does not match. method=[{0}], condition=[{1}], target=[{2}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor InstanceMethodOfStaticMapper { get; } = new(
+        id: "SMP0107",
+        title: "Instance method named by a static mapper",
+        messageFormat: "A static mapper cannot call an instance method, make the mapper an instance method or the method static. method=[{0}], callee=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -394,14 +394,6 @@ internal static class Diagnostics
     // SMP04xx — conversion / AOT
     // ==================================================================
 
-    public static DiagnosticDescriptor FormatWithoutCulture { get; } = new(
-        id: "SMP0401",
-        title: "Format specified without Culture",
-        messageFormat: "Format is specified without Culture. method=[{0}], target=[{1}]",
-        category: "Usage",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
     public static DiagnosticDescriptor TypeConverterFallbackNotAllowed { get; } = new(
         id: "SMP0402",
         title: "TypeConverter fallback is not AOT-safe",
@@ -433,6 +425,22 @@ internal static class Diagnostics
         messageFormat: "Culture is not a culture name. method=[{0}], culture=[{1}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor AmbiguousCultureParameter { get; } = new(
+        id: "SMP0406",
+        title: "Ambiguous CultureInfo parameter",
+        messageFormat: "[Mapper] takes several CultureInfo parameters, of which the one named {1} gives the culture of the conversions, and none is named so. method=[{0}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor CultureOverriddenByParameter { get; } = new(
+        id: "SMP0405",
+        title: "Culture of [Mapper] is not used",
+        messageFormat: "Culture of [Mapper] is not used, the CultureInfo parameter gives the culture of the conversions. method=[{0}], culture=[{1}], parameter=[{2}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     // ==================================================================

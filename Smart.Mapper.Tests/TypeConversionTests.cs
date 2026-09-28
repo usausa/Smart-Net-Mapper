@@ -63,8 +63,7 @@ public class ExtendedTypeConversionTests
         Assert.Contains("3.14159", destination.DoubleValue, StringComparison.Ordinal);
         Assert.Contains("99.99", destination.DecimalValue, StringComparison.Ordinal);
         Assert.Equal("True", destination.BoolValue);
-        Assert.Contains("01/15/2024", destination.DateTimeValue, StringComparison.Ordinal);
-        Assert.Contains("10:30:00", destination.DateTimeValue, StringComparison.Ordinal);
+        Assert.Equal("2024-01-15T10:30:00.0000000", destination.DateTimeValue);
         Assert.Equal(guid, destination.GuidString);
     }
 }

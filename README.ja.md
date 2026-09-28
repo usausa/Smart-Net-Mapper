@@ -11,9 +11,9 @@
 - **ゼロオーバーヘッド** - リフレクションを一切使用しない静的コード生成
 - **スペシャライズドメソッド方式** - `ConvertTo{TargetType}` 命名規則による直接呼び出し生成（JIT インライン展開と相性良好）
 - **メソッド単位の宣言** - `[Mapper]` を個別メソッドに付与するため、通常のヘルパー関数と同じ感覚で扱える
-- **カスタムパラメーター透過** - `Map(Src, Dst, TContext ctx)` のような追加引数を、それを宣言した `[MapUsing]`・`Converter`・`[MapCondition]`・`[BeforeMap]`・`[AfterMap]` のメソッドに渡し、`[MapExpression]` の式からも参照できる
+- **カスタムパラメーター透過** - `Map(Src, Dst, TContext ctx)` のような追加引数を、それをすべて同じ順で宣言した `[MapUsing]`・`Converter`・`[MapCondition]`・`[BeforeMap]`・`[AfterMap]` のメソッドに渡し、`[MapExpression]` の式からも参照できる
 - **NativeAOT / トリミング完全対応** - `<IsAotCompatible>true</IsAotCompatible>` 宣言済み・NativeAOT smoke test 通過済み
-- **充実した診断** - フェーズ別採番の 45 種（SMP0001〜SMP0501）をコンパイル時に発行
+- **充実した診断** - フェーズ別採番の 49 種（SMP0001〜SMP0503）をコンパイル時に発行
 
 ## インストール
 
@@ -74,6 +74,8 @@ public static partial Destination Map(Source source)
 }
 ```
 
+マッパーはオブジェクトを別のオブジェクトへ写し、作った destination を値で返します。`ref` や `ref readonly` で返すと宣言したものは診断され（SMP0008）、source や destination がコレクション・配列・タプルのものも診断されます（SMP0007。[コレクションマッピング](#コレクションマッピングmapcollection)を参照）。void マッパーは `static partial void Map(Source source, Destination destination);` のようにアクセシビリティ修飾子なしで宣言でき（暗黙に `private`）、実装も同じ形で宣言します。実装は宣言の修飾子（アクセシビリティ・`new`・`unsafe`）を繰り返します。
+
 ### 拡張メソッドとして定義する
 
 `[Mapper]` メソッドは拡張メソッドとして宣言できます。生成される実装側の宣言にも `this` が付くため、呼び出し側は自然に書けます。
@@ -90,7 +92,7 @@ var destination = source.ToDestination();
 
 ### 入れ子の型の中のマッパー
 
-`[Mapper]` メソッドは入れ子の型の中に宣言できます。生成コードは含む型を外側から順に、種類（`class`・`struct`・`record`・`record struct`）と型パラメーターを合わせて宣言し直すため、どの型も `partial` である必要があります（そうでなければ SMP0001）。
+`[Mapper]` メソッドは入れ子の型の中に宣言できます。生成コードは含む型を外側から順に、種類（`class`・`struct`・`record`・`record struct`）と型パラメーターを合わせて宣言し直すため、どの型も `partial` で、ほかのファイルから宣言できない `file` の型でない必要があります（そうでなければ SMP0001）。
 
 ```csharp
 public static partial class Mappers
@@ -139,7 +141,7 @@ destination の型パラメーターは `new T()` で作るため、`new()` か 
 |------|------|
 | `[Mapper]` | マッピングメソッドの指定 |
 | `[Mapper(AutoMap = false)]` | 自動マッピングの無効化 |
-| `[Mapper(Strict = true)]` | 未マップ destination プロパティを警告（SMP0501） |
+| `[Mapper(Strict = true)]` | 未マップ destination プロパティ（SMP0501）、null を受け付けないターゲットへの null になりうる値（SMP0502）、ターゲットの enum に同じ名前のメンバーがない enum のメンバー（SMP0503）を警告 |
 | `[Mapper(NameComparison = ...)]` | プロパティ名の比較方式。自動マッピングとマッピング属性に書いた名前の双方に適用（既定: `Ordinal`） |
 | `[Mapper(Culture = "...")]` | 型変換時に使用するカルチャ（例: `"ja-JP"`） |
 | `[Mapper(DateTimeFormat = "...")]` | `DateTime` <-> `string` 変換時のフォーマット（`Culture` と共に使用） |
@@ -205,7 +207,7 @@ public static partial void Map(Source source, Destination destination);
 public static partial void Map(Source source, Destination destination);
 ```
 
-`[MapNested]` / `[MapCollection]` も同じ規則です。
+`[MapNested]` / `[MapCollection]` も同じ規則です。これらのソースはソースの型のプロパティで、ドット付きのパスにはできません（SMP0206）。
 
 解決できない名前は無視されず診断されます（ソース側は `SMP0213`、ターゲット側は `SMP0214`）。`[MapIgnore]`・`[MapCondition]` のターゲットも、存在しなければ同じく診断されます。ターゲットは destination のプロパティやフィールド、そのドット付きパス（`[MapCondition]` のみ）、または戻り値のあるマッパーが呼ぶコンストラクタの引数です。
 
@@ -325,7 +327,7 @@ private static string CombineFullName(Source source, FormattingContext context)
     => $"{source.FirstName}{context.Separator}{source.LastName}";
 ```
 
-`[MapProperty]` の `Converter`、`[MapCondition]`、`[BeforeMap]` / `[AfterMap]` のメソッドも、通常の引数の後にカスタムパラメーターを宣言すれば同じように受け取ります。`[MapExpression]` の式からは名前で参照できます。`[MapCollection]` / `[MapNested]` のマッパーメソッドと、`[ValueConverter]` / `[CollectionConverter]` のクラスのメソッドには渡りません。
+`[MapProperty]` の `Converter`、`[MapCondition]`、`[BeforeMap]` / `[AfterMap]` のメソッドも、通常の引数の後にカスタムパラメーターを宣言すれば同じように受け取ります。`[MapExpression]` の式からは名前で参照できます。受け取るメソッドは、カスタムパラメーターをすべて、マッパーが宣言した順に、それぞれの型で宣言します。一部だけを宣言したものや、順番の違うものは一致しません。`[MapCollection]` / `[MapNested]` のマッパーメソッドと、`[ValueConverter]` / `[CollectionConverter]` のクラスのメソッドには渡りません。
 
 これらの属性が指すメソッド（`[MapUsing]` のメソッド、コンバーター、条件、コールバック、`[MapCollection]` / `[MapNested]` のマッパー）は、生成コードが修飾なしの名前で呼ぶ static メソッドです。そのため、C# が呼び出しの名前を探すのと同じように探します。マッパーのクラスとその基底クラス（マッパーのクラスから呼べる `protected` のメソッドを含む）を探し、どちらにも呼び出せるその名前のメンバーがなければ、マッパーのクラスを含むクラスとその基底クラス、さらにその外側と、順に探します。最後に、生成コードのファイルからも見える `global using static` で取り込んだ型を探します（1 つのファイルだけの `using static` は見えません。取り込んだ型からは、その型で宣言したメソッドだけを使い、継承したものや拡張メソッドは使いません）。C# と同じく、マッパーのクラスから使え、呼び出せるその名前のメンバーを持つ最初のクラスだけを探します。そのメソッドが引数を受け取れないときも、外側は探しません。呼び出せないメンバー（デリゲートでないプロパティやフィールド、入れ子の型）は飛ばします。派生クラスのメソッドは、同じシグネチャの基底クラスのメソッドを隠します。インスタンスメソッドは使いません。また型引数なしで呼ぶため、ジェネリックメソッドは使いません。一致しないメソッドとして診断されます。
 
@@ -355,7 +357,7 @@ public static partial class Mappers
 
 オーバーロードは、C# が呼び出しを結び付けるものを使います。値の型を受け取るものが先で、なければ引数の型がもっとも具体的なもの（基底クラスやインターフェイスより、それを継承したクラス。`int` には `object` より `long`）です。選んだメソッドに呼び出しが結び付かないときは、結び付く方を使います（値を受け取れる派生クラスのメソッドがあると、基底クラスのメソッドは候補から外れます。値渡しのものは `in` のものより先です）。あいまいな呼び出し（CS0121）や、一致しないメソッド（明示的な変換で値を受け取るもの、ジェネリックメソッド、省略可能な引数や `params` のあるもの、エラー扱いの `[Obsolete]` のもの）に結び付く、または結び付きうる呼び出しは、一致しないメソッドとして診断されます。結び付くメソッドが別の型を返すときは、戻り値の型で診断されます（SMP0105、SMP0202。条件が `bool` を返さないときは SMP0106）。
 
-`[MapUsing]` のメソッドが返す型は、ターゲットの型か、代入と同じく C# が暗黙に変換できる型です。`long` や `int?` のターゲットに `int`、基底クラスや実装するインターフェイスのターゲットにそのクラスを返せます。`int` のターゲットに `long` のように、明示的な変換が要る型は診断されます（SMP0202）。null 許容の参照を返し、ターゲットが null 許容でないときは、`[MapFrom]` と同じく `!` を付けて受け取ります。
+`[MapUsing]` のメソッドが返す型は、ターゲットの型か、代入と同じく C# が暗黙に変換できる型です。`long` や `int?` のターゲットに `int`、基底クラスや実装するインターフェイスのターゲットにそのクラスを返せます。`int` のターゲットに `long` のように、明示的な変換が要る型は診断されます（SMP0202）。null 許容の参照を返し、ターゲットが null 許容でないときは、`[MapFrom]` と同じく `!` を付けて受け取ります。ただし、最初の引数を指定した `[return: NotNullIfNotNull]` で、マッパーの null 検査を通った source には null でない値を返すと分かるときは、そのまま受け取ります。
 
 ### ソースメソッド / プロパティパス（`[MapFrom]`）
 
@@ -368,7 +370,7 @@ public static partial void Map(Source source, Destination destination);
 
 メソッドは、マッパーのクラスから呼べる引数なしのインスタンスメソッドです（ジェネリックメソッドは除きます）。`source.Method()` の呼び出しと同じように探すため、基底クラスのもの、ソースがインターフェイスならそれが継承するインターフェイスのものも見つかります。派生側のものが先で、`new` で隠したメソッドは派生側が使われます。プロパティパスも、継承したプロパティを同じようにたどります。
 
-メンバーの型は、ターゲットの型か、`[MapUsing]` のメソッドと同じく暗黙に変換できる型です（そうでなければ SMP0205）。null になりうるメンバーを通るプロパティパスは、`[MapProperty]` のソースのパスと同じく、その null 検査の下で読みます。途中が null のときはターゲットをそのまま残し、コンストラクタの引数やオブジェクト初期化子の項目では、null を受け取るターゲットには `null`、それ以外には `default` を渡します。null 許容の参照を null 許容でないターゲットに写すときは、`[MapProperty]` と同じく `!` を付けます。
+メンバーの型は、ターゲットの型か、`[MapUsing]` のメソッドと同じく暗黙に変換できる型です（そうでなければ SMP0205）。null になりうるメンバーを通るプロパティパスは、`[MapProperty]` のソースのパスと同じく、その null 検査の下で読みます（null 許容の構造体は中の構造体を通して読みます。`Location.Lat` なら `source.Location.Value.Lat`）。途中が null のときはターゲットをそのまま残し、コンストラクタの引数やオブジェクト初期化子の項目では、null を受け取るターゲットには `null`、それ以外には `default` を渡します。null 許容の参照を null 許容でないターゲットに写すときは、`[MapProperty]` と同じく `!` を付けます。
 
 ```csharp
 // [MapFrom(nameof(Destination.City), "Customer.Address.City")]、Customer と Address は null 許容
@@ -457,7 +459,27 @@ public static partial Destination Map(Source source);
 
 どのマッピングも代入しない destination のプロパティを警告します（SMP0501）。対象は、setter で（戻り値のあるマッパーではオブジェクト初期化子で設定する `init` アクセサーでも）マッパーが代入できるプロパティのうち、自動マッピングでも属性でも写さず、`[MapIgnore]` で除外もしていないものです。`[MapProperty("Child.Value", ...)]` の `Child` のように、ドット付きのターゲットのパスが中へ写すメンバーは、そのパスで写したものとして扱います。戻り値のあるマッパーでは、コンストラクタでしか設定できないプロパティ（get だけ、またはマッパーのクラスから setter を呼べないもの）も、マッパーが呼べるコンストラクタの引数が受け取るのに、選んだ構築がその引数に値を渡さないときは対象です（[コンストラクタの選び方](#コンストラクタの選び方)）。ソースにあるかどうかは問いません。どのコンストラクタも受け取らないプロパティ（計算で求めるものなど）は対象外で、構築しない void マッパーでは、コンストラクタでしか設定できないプロパティと `init` 専用のプロパティは対象外です。省いた省略可能な引数が設定するはずのプロパティも、コンストラクタが既定値を与えますが対象です。`[MapIgnore]` を付ければ、既定値に任せたまま警告を消せます。`[Obsolete]` のプロパティは対象外です（[廃止されたメンバー](#廃止されたメンバーobsolete)）。
 
-この警告は、destination の構築についてのエラーと同じくマッパーのメソッドの位置で報告するため、メソッドの周りの `#pragma warning disable SMP0501` で抑えられます（診断ごとの報告の位置は[診断メッセージ](#診断メッセージ)）。
+null を受け付けないターゲットに null になりうる値を入れ、ターゲットがそれに `null` か `default` を受け取るマッピングも警告します（SMP0502）。`NullValue`・`NullBehavior.Skip`・`[MapCondition]` でターゲットが受け取るものを指定したマッピングは対象外です。null になりうる値は、宣言からそうと分かるものです。null 許容の型のソースのメンバー、式として値を作るところ（コンストラクタの引数やオブジェクト初期化子の項目。文ならそのときターゲットをそのまま残します）で null 許容の型のメンバーを通して読む値、`[MapFrom]` や `[MapUsing]` のメソッド、変換器、`[MapNested]` / `[MapCollection]` のマッパーが返し、生成コードが `!` を付けて受け取る null 許容の参照（null でない値を渡し、最初の引数を指定した `[return: NotNullIfNotNull]` でその値には null でない値を返すと分かるメソッドは除きます。生成したマッパーはこれを宣言します）、null を受け付けないマッパーを呼ばない、null 許容の型の `[MapNested]` / `[MapCollection]` のソースや要素がこれに当たります。null を受け付けないターゲットは、構造体か、`[AllowNull]` なしで null 非許容と注釈した参照（または `[DisallowNull]` 付きのもの）です。null 許容の注釈なし（null 許容コンテキストが無効）で宣言した参照は、null の検査では null 許容として扱いますが（[Null 処理](#null-処理)）、ここでは対象外です。null かどうかを何も言っていないだけで、注釈なしで書いたモデルではすべてのメンバーが警告になるためです。`Dst Map(Src? source)` のように、null 許容で宣言した source を受け取り、null を受け付けない型を返すマッパーは、source が null のとき `default` を返すため、メソッドの位置でターゲット `(return)` として警告します。
+
+enum を別の enum へ写すマッピングは、メンバーを名前で対応させます。ターゲットの enum に同じ名前のメンバーがないメンバーがソースの enum にあると警告します（SMP0503。そのメンバーを並べます）。その値はターゲットで `default` になり、null 許容の enum では `null` になります。メンバーを組み合わせた `[Flags]` の enum の値は来るまで分からないため、メンバーだけを見ます。マッピングに変換器を指定したものは、変換器が変換を引き受けるため対象外です。
+
+SMP0501 は、destination の構築についてのエラーと同じくマッパーのメソッドの位置で、SMP0502 と SMP0503 はマッピングの属性の位置（自動マッピングならメソッドの位置）で報告します（診断ごとの報告の位置は[診断メッセージ](#診断メッセージ)）。メソッドの位置で報告する警告はメソッドの最初の属性の位置から始まるため、`#pragma warning disable` はメソッドの属性より前に置いたときだけ効き、属性の位置で報告する警告はその属性より前に置いたときだけ効きます。属性とメソッドの間に置いても効きません。メソッドに付けた `[SuppressMessage]` はどちらにも効きます：
+
+```csharp
+#pragma warning disable SMP0501
+[Mapper(Strict = true)]
+public static partial Destination Map(Source source);       // 抑えられる
+#pragma warning restore SMP0501
+
+[Mapper(Strict = true)]
+#pragma warning disable SMP0501
+public static partial Destination MapOther(Source source);  // 抑えられない（警告は [Mapper] の位置から始まる）
+#pragma warning restore SMP0501
+
+[SuppressMessage("Usage", "SMP0501")]
+[Mapper(Strict = true)]
+public static partial Destination MapThird(Source source);  // 抑えられる
+```
 
 ### 廃止されたメンバー（`[Obsolete]`）
 
@@ -515,6 +537,8 @@ if (source.Child is not null)
     destination.ChildName = source.Child.Name;
 }
 ```
+
+`Location.Lat` の `GeoPoint? Location` のように、パスの途中の null 許容の構造体は、同じ検査の下で中の構造体を通して読みます（`source.Location.Value.Lat`）。パスの末端の値はメンバーと同じく変換します。enum は別の enum や文字列との間ではメンバーの名前で、数値との間ではキャストで変換し、メソッドのカルチャと書式も当てはまります。
 
 途中のメンバーが null のときは、`NullValue` を指定したマッピングはその値を入れ、ほかはターゲットをそのまま残します。`NullBehavior.Skip` と、調べる source の値がない `[MapCondition]` 付きのマッピングも残します：
 
@@ -602,7 +626,7 @@ var __d = new Destination()
 
 ## コレクションマッピング（`[MapCollection]`）
 
-要素マッパーメソッドの明示的な指定が必要です。
+要素マッパーメソッドの明示的な指定が必要です（ないときは SMP0210。メッセージで指定がないことを示します）。ソースはソースの型のプロパティで、ドット付きのパスにはできません（SMP0206）。
 
 ```csharp
 internal static partial class ObjectMapper
@@ -632,7 +656,7 @@ internal static partial class ObjectMapper
 }
 ```
 
-ループはソースとターゲットのコレクション型に合わせてインラインで生成されます。ソースコレクションが null の場合はターゲットに `default` を代入します。ターゲットには、ループが作るコレクション（`List<T>` とそのインターフェースには `List<T>`、配列、集合には `HashSet<T>`、`IDictionary<TKey, TValue>` と `IReadOnlyDictionary<TKey, TValue>` には `Dictionary<TKey, TValue>`（要素マッパーは `KeyValuePair<TKey, TValue>` の組を写します）、イミュータブル・フローズンなコレクションにはその型）を代入します。イミュータブル・フローズンなコレクションで作れるのは `ImmutableArray<T>`・`ImmutableList<T>`・`ImmutableHashSet<T>` とそれらのインターフェース、`FrozenSet<T>` で、`ImmutableDictionary<TKey, TValue>` や `FrozenDictionary<TKey, TValue>` などほかのものは、コレクション変換器で作る場合を除き診断されます（SMP0217）。`ObservableCollection<T>` や `class ItemList : List<Item>` のような、マッパーが作れるコレクションクラスは、その型のコンストラクタで作って `ICollection<T>` として詰めます。作れないものは、コレクション変換器で作る場合を除き診断されます（SMP0217）。void の要素マッパー `(SourceChild, DestinationChild)` は `new DestinationChild()` で作ったインスタンスを埋めるため、要素の型は `new()` で作れる必要があります（そうでなければ SMP0210）。作るコレクションはターゲットの要素の null 許容注釈を保ち（`List<DestinationChild?>`）、`DestinationChild? MapChild(SourceChild? source)` のように null を受け取るマッパー（null を返すのは source が null のときだけです）の結果は、null 許容でない要素には `[MapNested]` のターゲットと同じく `!` を付けて受け取ります。要素マッパーは `[MapNested]` のマッパーと同じ規則で型を照合します。null 許容の構造体の要素は、構造体を受け取るマッパーに中の値として渡し、null の要素は `default` になります。null 許容の参照の要素も、引数が null を受け付けないマッパーには値があるときだけ同じように渡し、null の要素は `default` になります（`__src[__i] is { } __value ? MapChild(__value) : default!`）。マッパーをデリゲートとして受け取るコレクション変換器には、すべての要素が渡ります。
+ループはソースとターゲットのコレクション型に合わせてインラインで生成されます。ソースコレクションが null の場合はターゲットに `default` を代入します。ターゲットには、ループが作るコレクション（`List<T>` とそのインターフェースには `List<T>`、配列、集合には `HashSet<T>`、`IDictionary<TKey, TValue>` と `IReadOnlyDictionary<TKey, TValue>` には `Dictionary<TKey, TValue>`（要素マッパーは `KeyValuePair<TKey, TValue>` の組を写します）、イミュータブル・フローズンなコレクションにはその型）を代入します。イミュータブル・フローズンなコレクションで作れるのは `ImmutableArray<T>`・`ImmutableList<T>`・`ImmutableHashSet<T>` とそれらのインターフェース、`FrozenSet<T>` で、`ImmutableDictionary<TKey, TValue>` や `FrozenDictionary<TKey, TValue>` などほかのものは、コレクション変換器で作る場合を除き診断されます（SMP0217）。`ObservableCollection<T>` や `class ItemList : List<Item>` のような、マッパーが作れるコレクションクラスは、その型のコンストラクタで作って `ICollection<T>` として詰めます。作れないものは、コレクション変換器で作る場合を除き診断されます（SMP0217）。void の要素マッパー `(SourceChild, DestinationChild)` は `new DestinationChild()` で作ったインスタンスを埋めるため、要素の型は `new()` で作れる必要があります（そうでなければ SMP0210）。作るコレクションはターゲットの要素の null 許容注釈を保ち（`List<DestinationChild?>`）、`DestinationChild? MapChild(SourceChild? source)` のように null を受け取るマッパー（null を返すのは source が null のときだけです）の結果は、null 許容でない要素には `[MapNested]` のターゲットと同じく `!` を付けて受け取ります。ただし、要素が null でなく、最初の引数を指定した `[return: NotNullIfNotNull]` でその値には null でない値を返すと分かるとき（生成したマッパーはこれを宣言します）は、そのまま受け取ります（`List<SourceChild>` のソースなら `__dst[__i] = MapChild(__src[__i]);`）。要素マッパーは `[MapNested]` のマッパーと同じ規則で型を照合します。null 許容の構造体の要素は、構造体を受け取るマッパーに中の値として渡し、null の要素は `default` になります。null になりうる参照の要素（null 許容のもの、または null 許容の注釈なしで宣言したもの）も、引数が null を受け付けないマッパーには値があるときだけ同じように渡し、null の要素は `default` になります（`__src[__i] is { } __value ? MapChild(__value) : default!`）。マッパーをデリゲートとして受け取るコレクション変換器には、すべての要素が渡ります。
 
 独自のコレクションクラスは、基底の型やインターフェースで実装している `IEnumerable<T>` によって、ソースでもターゲットでもコレクションとして扱います。
 
@@ -653,6 +677,18 @@ public class DestinationChildList : List<DestinationChild> { }
     destination.Children = __coll;
 }
 ```
+
+マッパーが写すのはオブジェクトで、コレクションではありません。source や destination が、フレームワークのコレクション（リスト・集合・辞書とそれらのインターフェース、イミュータブル・フローズン・コンカレント・ObjectModel のもの）、それを継承したクラス（`class ItemList : List<Item>`）、配列、タプルのマッパーは診断されます（SMP0007）。コレクションのメンバー（`Count`・`Capacity`）を写すだけで、要素をひとつも写さないためです。要素は要素の型のマッパーで写すか、コレクションを持つ型を `[MapCollection]` で写してください：
+
+```csharp
+[Mapper]
+public static partial ItemDto ToDto(Item source);
+
+// [Mapper] List<ItemDto> ToDtos(List<Item> source) は診断される
+var dtos = items.Select(ToDto).ToList();
+```
+
+`IEnumerable<T>` を実装するだけの独自の型（件数を持つページなど）は、ほかの型と同じくメンバーで写します。
 
 コレクション変換器（後述の `[CollectionConverter]`）を指定すると、ループの代わりにそのメソッドが呼ばれます（例: `CustomCollectionConverter.ToList<SourceChild, DestinationChild>(source.Children, MapChild)!`）。`[MapCollection]` の `Converter` は呼ぶメソッドを指定します。対象は `[CollectionConverter]` の型で、指定がなければ `DefaultCollectionConverter` です。`DefaultCollectionConverter` は関数マッパー・アクションマッパーどちらにも対応したこれらのメソッド（`ToList`・`ToArray`・`ToHashSet`・`ToImmutableArray` など）を提供します。
 
@@ -718,6 +754,10 @@ public static partial void Map(Source source, Destination destination);
 ```csharp
 destination.Child = source.Child is not null ? MapChild(source.Child!) : default!;
 ```
+
+`DestinationChild MapChild(SourceChild? source)` のように引数が null を受け付けるマッパーには、null の source のメンバーも渡し、ターゲットが受け取るものはマッパーが決めます（`destination.Child = MapChild(source.Child);`）。void のマッパーは、ターゲットのために作ったインスタンスを埋めます。引数が null を受け付けないマッパーは値があるときだけ呼び、source が null のときは上のとおりターゲットに `default` を入れます。null 許容の注釈なしで宣言した source のメンバーも null になりえます（[Null 処理](#null-処理)）。
+
+null 許容の参照を返すマッパーの結果は、null 許容でないターゲットには `!` を付けて入れます。ただし、マッパーに null でない値を渡し、最初の引数を指定した `[return: NotNullIfNotNull]` でその値には null でない値を返すと分かるとき（生成したマッパーはこれを宣言します）はそのまま入れます。null 許容でない source と `DestinationChild? MapChild(SourceChild? source)` なら `destination.Child = MapChild(source.Child);` です。void のマッパーが埋めるインスタンスは、ターゲットの型引数の null 許容注釈を保って作ります（`new Box<string?>()`）。
 
 マッパーは、source のメンバーをその型のまま、または暗黙の参照変換で変換できる型（基底クラスやインターフェース。値渡しのとき）として受け取り、ターゲットの型、同じように変換できる型（実装するインターフェースの型のターゲットに対するクラスなど）、または null 許容の構造体のターゲットに対するその構造体を返します。null 許容の構造体のメンバーは、構造体を受け取るマッパーに、null を調べた後で中の値として渡し、null のときは参照型が null のときと同じく `default` を入れます（`source.Point is not null ? MapPoint(source.Point.Value) : default!`）。void のマッパーは、ターゲットのために作ったインスタンスを、その型のまま、または値渡しなら変換できる型として受け取ります。このように変換できないマッパーは一致しません（SMP0211）。オーバーロードは、C# が呼び出しを結び付けるものを使います。一致しないメソッド（別の型を返す、より具体的なもの、ジェネリックメソッド、省略可能な引数のあるもの、エラー扱いの `[Obsolete]` のもの）に結び付く呼び出しは診断されます（SMP0211。`[MapCollection]` の要素のマッパーは SMP0210）。
 
@@ -868,21 +908,25 @@ public static partial Dst Map(Src src);
 | `T` | `T?` | そのままコピー |
 | `T` | `T` | そのままコピー |
 
-**source 側**の nullable 中間パスには、`[MapProperty]` でも `[MapFrom]` でも `if (... is not null)` ガードが付きます。途中が null のときは、`NullValue` を指定したマッピングはその値を入れ、ほかはターゲットをそのまま残します。
+**source 側**の nullable 中間パスには、`[MapProperty]` でも `[MapFrom]` でも `if (... is not null)` ガードが付き、null 許容の構造体は中の構造体を通して読みます（`source.Location.Value.Lat`）。途中が null のときは、`NullValue` を指定したマッピングはその値を入れ、ほかはターゲットをそのまま残します。
 **destination 側**の nullable 中間パスは、マッパーから代入でき、作れれば `??= new` で自動インスタンス化され、そうでなければ持っているインスタンスを埋めます。
 
-元の引数（void マッパーでは宛先の引数も）を `Map(Src? source)` のように null 許容で宣言すると、写す前に検査します。null のときは何も写さず、戻り値のあるマッパーは `default` を返し、void マッパーは宛先に触れずに戻ります。
+null 許容の注釈なし（`#nullable disable` や、注釈なしでビルドしたライブラリ）で宣言した参照型は null かどうかを何も言っていないため、その値は null になりえます。そのような型の元の引数、source のメンバー、source のコレクションの要素は、null 許容のものと同じく扱います。読み進める前や、引数が null を受け付けない変換器・条件・`[MapNested]` のマッパー・要素のマッパーに渡す前に null を調べ、`NullValue` と `NullBehavior.Skip` も当てはまります。Strict モードでは、これらを null になりうる値として警告しません（SMP0502）。
+
+元の引数（void マッパーでは宛先の引数も）を `Map(Src? source)` のように null 許容で宣言すると、写す前に検査します。null 許容の注釈なしで宣言した元の引数と void マッパーの宛先の引数も同じです。カスタムパラメーターはそのまま渡します。null のときは何も写さず、戻り値のあるマッパーは `default` を返し、void マッパーは宛先に触れずに戻ります。`Dst? Map(Src? source)` や `Point? Map(Src? source)` のように、元の引数が null になりうる、null 許容の型を返すマッパーは、元の引数が null のときだけ null を返すため、実装に `[return: NotNullIfNotNull("source")]`（引数の名前で）を付けます。null でない引数を渡した呼び出し側は、null 許容の警告なしで結果を使えます。宣言の側に同じ属性を付けてもかまいません。マッパーのクラスから使える `NotNullIfNotNullAttribute` がコンパイルにないとき（その写しのない .NET Standard 2.0 や .NET Framework）は付けません。
 
 `Point? Map(Src source)` のように null 許容の構造体を戻り値の型にすると、その中の構造体として作って埋めます。`Map(Point? source)` のように元の引数を null 許容の構造体にすると、その中の構造体のメンバーを持たないため診断されます（SMP0006）。構造体そのものを受け取り、null は呼び出す前に調べてください。
+
+生成コードが作るインスタンスは、宣言どおり型引数の null 許容注釈を保ちます。`Box<string?>` と宣言した destination は `new Box<string?>()` で作り、ドット付きのターゲットの途中のメンバー、オブジェクト初期化子で作る `required` のメンバー、`[MapNested]` / `[MapCollection]` の void のマッパーが埋めるインスタンスも同じです。
 
 ---
 
 ## 型変換
 
 同型・暗黙的変換可能な代入はコンバーター不要で直接生成されます。数値の拡大変換、値からその null 許容型への変換、暗黙の参照変換（変性によるものを含む。`IReadOnlyList<Circle>` から `IReadOnlyList<Shape>`、`Circle[]` から `Shape[]` など）がこれに当たります。両側が同じ enum ならそのまま写すため、フラグの組み合わせのようにメンバーのない値も保ちます。
-変換が必要な場合は、以下のように `DefaultValueConverter` のその型のスペシャライズドメソッドを呼びます。ほかの型は、その型の変換演算子、`Parse`（文字列から `IParsable<T>` を実装する型へ）、`ToString(format, provider)`（文字列へ）で変換します。数値をより狭い数値型へ写すときは C# のキャストと同じくキャストし（`(int)source.LongValue`）、enum はメンバーの switch か、数値との間のキャストで変換します。どれでも変換できないものは、`[ValueConverter]` のクラスが引き受けない限り診断されます（SMP0402、後述）。
+変換が必要な場合は、以下のように `DefaultValueConverter` のその型のスペシャライズドメソッドを呼びます。ほかの型は、その型の変換演算子、`Parse`（文字列から `IParsable<T>` を実装する型へ）、`ToString(format, provider)`（文字列へ）で変換します。数値をより狭い数値型へ写すときは C# のキャストと同じくキャストし（`(int)source.LongValue`）、enum はメンバーの switch か、数値との間のキャストで変換します。どれでも変換できないものは、`[ValueConverter]` のクラスが引き受けない限り診断されます（SMP0402、後述）。参照型のユーザー定義の変換は null 許容に持ち上げられないため、null になりうる値は値があるときだけ演算子を通します（`implicit operator string(Email email)` のある `Email?` なら `source.Email is not null ? (string)source.Email : null`）。
 
-別の enum へ写すときは、メンバーを名前で対応させます。フラグの組み合わせのように、ターゲットに同じ名前のメンバーがない値は `default` になり、null 許容の enum のターゲットでは `null` になります。文字列から enum へ写すときも同じく名前で対応させ、同じ名前のメンバーがない文字列は `Enum.Parse` に渡します（解析できなければ例外になります）。null 許容の enum のターゲットには `Enum.TryParse` で解析し、解析できなければ `null` にします（数字の文字列はその値になります）。
+別の enum へ写すときは、メンバーを名前で対応させます。フラグの組み合わせのように、ターゲットに同じ名前のメンバーがない値は `default` になり、null 許容の enum のターゲットでは `null` になります。文字列から enum へ写すときも同じく名前で対応させ、同じ名前のメンバーがない文字列は `Enum.Parse` に渡します（解析できなければ例外になります）。null 許容の enum のターゲットには `Enum.TryParse` で解析し、解析できなければ `null` にします（数字の文字列はその値になります）。Strict モードでは、ターゲットの enum に同じ名前のメンバーがないソースの enum のメンバーを警告します（SMP0503）。
 
 ### スペシャライズドメソッドパターン
 
@@ -902,6 +946,25 @@ destination.StringValue = source.NullableValue is not null
     ? DefaultValueConverter.ConvertToString(source.NullableValue.GetValueOrDefault())
     : default!;
 ```
+
+### 既定の書式
+
+`Culture` も書式も指定しないとき、値は次のように文字列との間で変換します（`DefaultValueConverter`、インバリアントカルチャ）：
+
+| 型 | `string` へ | `string` から |
+|----|-------------|---------------|
+| 数値（`int`・`long`・`double`・`decimal`・`Half`・`Int128`・`BigInteger` など） | `ToString(CultureInfo.InvariantCulture)` | `Parse(text, CultureInfo.InvariantCulture)` |
+| `bool` | `True` / `False` | `bool.Parse` |
+| `char` | その文字 | `char.Parse` |
+| `Guid` | `D`（`00000000-0000-0000-0000-000000000000`） | `Guid.Parse` |
+| `DateTime` | ラウンドトリップ書式の `O`（`2024-01-02T03:04:05.6780000Z`。ローカル時刻ならオフセット付き、種類が未指定なら付けない） | `DateTimeStyles.RoundtripKind` 付きの `DateTime.Parse`。文字列の示す種類を保つ（`Z` なら UTC、オフセットがあればローカル、どちらもなければ未指定） |
+| `DateTimeOffset` | `O`（`2024-01-02T03:04:05.0000000+09:00`） | `DateTimeOffset.Parse` |
+| `DateOnly` | `O`（`2024-01-02`） | `DateOnly.Parse` |
+| `TimeOnly` | `O`（`03:04:05.0000000`） | `TimeOnly.Parse` |
+| `TimeSpan` | `c`（`1.02:03:04.5000000`） | `TimeSpan.Parse` |
+| enum | メンバー名（メンバーのない値は `ToString()` の結果） | メンバー名で対応（なければ `Enum.Parse`、null 許容のターゲットなら `Enum.TryParse`） |
+
+`Culture` を指定するとそのカルチャの書式（`ToString(culture)`・`Parse(text, culture)`）になり、`DateTimeFormat` / `NumberFormat` で書式を指定できます（[Culture / Format](#culture--format) を参照）。
 
 ### カスタム型変換器（`[ValueConverter]`）
 
@@ -944,7 +1007,7 @@ public static partial void Map(Source source, Destination destination);
 | クラスの `[ValueConverter]` | クラス内の全マッパーメソッド |
 | `DefaultValueConverter` | フォールバック |
 
-`[MapProperty]` の `Converter` は、`[MapUsing]` のメソッドがソースを受け取るのと同じようにソースのメンバーを受け取ります。暗黙に変換できる型、null 許容の構造体なら中の構造体としても受け取れます（静的メソッドによる値計算を参照）。返す型は、ターゲットの型か、`[MapUsing]` のメソッドと同じく暗黙に変換できる型です（そうでなければ SMP0105）。null 許容の参照を返し、ターゲットが null 許容でないときは `!` を付けて受け取ります。
+`[MapProperty]` の `Converter` は、`[MapUsing]` のメソッドがソースを受け取るのと同じようにソースのメンバーを受け取ります。暗黙に変換できる型、null 許容の構造体なら中の構造体としても受け取れます（静的メソッドによる値計算を参照）。返す型は、ターゲットの型か、`[MapUsing]` のメソッドと同じく暗黙に変換できる型です（そうでなければ SMP0105）。null 許容の参照を返し、ターゲットが null 許容でないときは `!` を付けて受け取ります。null でない値を渡し、最初の引数を指定した `[return: NotNullIfNotNull]` でその値には null でない値を返すと分かるときは、そのまま受け取ります。
 
 ### カスタムコレクション変換器（`[CollectionConverter]`）
 
@@ -1013,16 +1076,20 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 
 ## 診断メッセージ
 
-原因が属性の診断は、その属性の位置で報告します。互いに食い違う 2 つの属性（SMP0101）では 2 つ目の属性、クラスの `[MapperProfile]` や `[ValueConverter]` が与えた値が原因なら、その属性の位置です。メソッドそのもの、自動マッピング、destination の構築（SMP0301・SMP0303・SMP0304・SMP0305）、Strict モード（SMP0501）についての診断は、マッパーのメソッドの位置で報告します。
+原因が属性の診断は、その属性の位置で報告します。互いに食い違う 2 つの属性（SMP0101）では 2 つ目の属性、クラスの `[MapperProfile]` や `[ValueConverter]` が与えた値が原因なら、その属性の位置です。メソッドそのもの、自動マッピング、destination の構築（SMP0301・SMP0303・SMP0304・SMP0305）、Strict モードの未マップのプロパティ（SMP0501）についての診断はマッパーのメソッドの位置で、Strict モードのほかの警告（SMP0502・SMP0503）はマッピングの属性の位置（自動マッピングならメソッドの位置）で報告します。メソッドの位置で報告する警告はメソッドの最初の属性の位置から始まるため、`#pragma warning disable` は属性より前に置いたときだけ効きます（[Strict モード](#strict-モードstrict--true)）。
+
+エラーを報告したマッパーには、実装がない代わりに `NotImplementedException` を投げる実装を生成し、エラーに実装がないこと（CS8795）が並ばないようにします。ビルドはエラーで止まるため、この実装が動くことはありません。`static partial` でないメソッドや、`partial` でない型・`file` の型の中のメソッド（SMP0001）は、生成コードが実装できないため生成しません。アクセシビリティ修飾子なしで宣言したメソッドには、宣言と同じく修飾子なしで生成します。
 
 | コード | 説明 | 重大度 |
 |--------|------|--------|
-| SMP0001 | マッパーメソッドは `static partial` で、含む型もすべて `partial` である必要がある | エラー |
-| SMP0002 | マッパーメソッドのパラメーター数が無効 | エラー |
+| SMP0001 | マッパーメソッドは `static partial` で、含む型もすべて `partial` で `file` の型でない必要がある | エラー |
+| SMP0002 | マッパーメソッドに引数がない、または `void` なのに source の後に宛先の引数がない | エラー |
 | SMP0003 | カスタムパラメーターの型が重複している | エラー |
 | SMP0004 | マッパーメソッドのパラメーター名が `__` で始まっている（生成コードの予約名） | エラー |
 | SMP0005 | 生成コードが扱えない修飾子がパラメーターに付いている（`out`、void マッパーの struct の宛先の修飾子なし・`in`・`ref readonly`。struct の宛先は `ref` で受け取る） | エラー |
 | SMP0006 | 元の引数が null 許容の値型で、中の構造体のメンバーを持たない | エラー |
+| SMP0007 | source や destination がコレクション・配列・タプルで、マッパーは丸ごとは写さない（要素の型のマッパーで要素を写すか、コレクションを持つ型を `[MapCollection]` で写す） | エラー |
+| SMP0008 | マッパーメソッドが参照（`ref` / `ref readonly`）で返し、作った destination を返せない | エラー |
 | SMP0101 | 同一目的プロパティへのマッピングが重複している、メンバーとその中（`Child` と `Child.Value`）を両方マッピングしている、または同じターゲットに `[MapIgnore]` とマッピング属性を指定している | エラー |
 | SMP0102 | `BeforeMap` メソッドのシグネチャが一致しない | エラー |
 | SMP0103 | `AfterMap` メソッドのシグネチャが一致しない | エラー |
@@ -1034,12 +1101,12 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0203 | `[MapFrom]` ターゲットプロパティが目的型に存在しない | エラー |
 | SMP0204 | `MapFrom` メンバーは、マッパーから呼べるソース型の引数なしメソッドまたはプロパティパス（継承したものを含む）である必要がある | エラー |
 | SMP0205 | `MapFrom` メンバーの型が目的プロパティ型に暗黙に変換できない | エラー |
-| SMP0206 | `[MapCollection]` / `[MapNested]` のソースプロパティが見つからない | エラー |
+| SMP0206 | `[MapCollection]` / `[MapNested]` のソースプロパティが見つからない（ソースはソースの型のプロパティで、ドット付きのパスにはできない） | エラー |
 | SMP0207 | `[MapCollection]` / `[MapNested]` のターゲットプロパティが見つからない | エラー |
 | SMP0208 | `[MapCollection]` のソースプロパティがコレクション型ではない | エラー |
 | SMP0209 | `[MapCollection]` のターゲットプロパティがコレクション型ではない | エラー |
-| SMP0210 | `MapCollection` 要素マッパーメソッドが見つからないまたはシグネチャが一致しない | エラー |
-| SMP0211 | `MapNested` マッパーメソッドが見つからないまたはシグネチャが一致しない | エラー |
+| SMP0210 | `MapCollection` 要素マッパーメソッドが見つからないまたはシグネチャが一致しない、または `Mapper` を指定していない | エラー |
+| SMP0211 | `MapNested` マッパーメソッドが見つからないまたはシグネチャが一致しない、または `Mapper` を指定していない | エラー |
 | SMP0212 | `[MapCollection]` / `[MapNested]` の対象に代入できない（マッパーから呼べるセッターも `init` アクセサーもない、または void マッパーで init 専用。`InPlace` は持っているインスタンスを詰め直す） | エラー |
 | SMP0213 | `[MapProperty]` のソースプロパティが見つからない | エラー |
 | SMP0214 | マッピングのターゲットが見つからない、または代入できない（マッパーから呼べるセッターがない、`readonly` フィールド、生成コードが通れないドット付きパス）。`[MapIgnore]` / `[MapCondition]` のターゲットも含む | エラー |
@@ -1062,6 +1129,8 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0403 | AOT 警告: `MapExpression` にリフレクションパターンが含まれる可能性がある | 警告 |
 | SMP0404 | `Culture` がカルチャ名ではない | エラー |
 | SMP0501 | Strict モード: マッパーから代入できる目的プロパティや、マッパーが呼べるコンストラクタでしか設定できない目的プロパティがマップされていない（マッパーのメソッドの位置で報告） | 警告 |
+| SMP0502 | Strict モード: `NullValue`・`NullBehavior.Skip`・`[MapCondition]` なしで、null になりうる値を null を受け付けないターゲットに入れ、ターゲットが `null` か `default` を受け取る（属性の位置、自動マッピングならマッパーのメソッドの位置で報告）。null 許容で宣言した source から null を受け付けない型を返すマッパーも警告する（マッパーのメソッドの位置で、ターゲット `(return)` として報告） | 警告 |
+| SMP0503 | Strict モード: 名前で対応させて写すターゲットの enum に、ソースの enum のメンバーと同じ名前のメンバーがない（属性の位置、自動マッピングならマッパーのメソッドの位置で報告） | 警告 |
 
 それぞれの原因と対処は [Diagnostics.md](Diagnostics.md)（英語）を参照してください。
 
@@ -1218,7 +1287,7 @@ dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r 
 
 - **`FrozenSet` の直接構築** — 生成コードは `HashSet<T>` を構築してから `ToFrozenSet` を呼ぶ（BCL の設計上の二段構築）。BCL に frozen コレクションのビルダー API が追加されれば、中間セットを排除できる。
 - **ジェネリックフォールバック `Convert<TSource, TDestination>` の `Half` / `Int128` / `UInt128` / `BigInteger` ソース対応** — ジェネリックコンバーターへのオプトイン経由では boxing フォールバックに到達する。既定の specialized メソッド経路はカバー済みのため、需要が生じた場合に分岐を追加する。
-- **ジェネレーターのインクリメンタリティ調整** — 出力は `Collect()` 経由で実行ごとに再生成され、プロパティ走査も機能パスごとに繰り返される。現状の実測コストは無視できる水準のため、非常に大きなモデルが現れた場合に再検討する（クラス単位の出力分割・プロパティリストのキャッシュ）。
+- **ジェネレーターのインクリメンタリティ** — モデルはマッパーメソッドごとに作ってキャッシュし、ソースはクラスごとに生成してキャッシュするため、編集はマッパーが変わったクラスだけを生成し直す。プロパティの一覧、型の検索、変換器の検索はコンパイルの中で共有する。モデルのクラスごとへの振り分けは、編集のたびにすべてのモデルを通る（`Collect()`）。現状のコストは小さく、非常に大きなプロジェクトで必要になれば、さらに細かい分割を検討する。
 
 ---
 

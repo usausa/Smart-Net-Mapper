@@ -1,6 +1,9 @@
 namespace Smart.Mapper.Generator.Helpers;
 
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 using Microsoft.CodeAnalysis;
 
@@ -83,7 +86,44 @@ internal static class PropertyPathHelper
     // which the generated code reads: ones with a getter the mapper class can call on an instance of the type,
     // their own or inherited (a protected one only on a type deriving from the mapper class, CS1540), and not
     // obsolete as an error (CS0619). A type parameter has those of its constraint types.
-    public static IReadOnlyList<IPropertySymbol> GetProperties(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation, bool readable = false)
+    //
+    // They are kept per compilation, type, mapper class and readable, as the stages of a mapper and the mappers of a
+    // class ask for the same ones many times. The type is compared with its nullable annotations, which the types of
+    // its members carry (List<string?>). The table lets go of them with the compilation, the dictionary takes lookups
+    // made at the same time, and the list returned cannot be changed, as every caller shares it.
+    public static IReadOnlyList<IPropertySymbol> GetProperties(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation, bool readable = false) =>
+        PropertiesCache.GetValue(compilation, static _ => new ConcurrentDictionary<PropertiesKey, IReadOnlyList<IPropertySymbol>>())
+            .GetOrAdd(new PropertiesKey(type, within, readable), key => CollectProperties(key.Type, key.Within, compilation, key.Readable));
+
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<PropertiesKey, IReadOnlyList<IPropertySymbol>>> PropertiesCache = new();
+
+    private readonly struct PropertiesKey : IEquatable<PropertiesKey>
+    {
+        public PropertiesKey(ITypeSymbol type, INamedTypeSymbol within, bool readable)
+        {
+            Type = type;
+            Within = within;
+            Readable = readable;
+        }
+
+        public ITypeSymbol Type { get; }
+
+        public INamedTypeSymbol Within { get; }
+
+        public bool Readable { get; }
+
+        public bool Equals(PropertiesKey other) =>
+            SymbolEqualityComparer.IncludeNullability.Equals(Type, other.Type) &&
+            SymbolEqualityComparer.Default.Equals(Within, other.Within) &&
+            (Readable == other.Readable);
+
+        public override bool Equals(object? obj) => obj is PropertiesKey other && Equals(other);
+
+        public override int GetHashCode() =>
+            (((SymbolEqualityComparer.IncludeNullability.GetHashCode(Type) * 31) + SymbolEqualityComparer.Default.GetHashCode(Within)) * 2) + (Readable ? 1 : 0);
+    }
+
+    private static ImmutableArray<IPropertySymbol> CollectProperties(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation, bool readable)
     {
         var properties = new List<IPropertySymbol>();
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -113,7 +153,7 @@ internal static class PropertyPathHelper
                 (p.GetReadObsoleteKind() == ObsoleteKind.Error));
         }
 
-        return properties;
+        return properties.ToImmutableArray();
     }
 
     private static void AddProperties(
@@ -210,27 +250,45 @@ internal static class PropertyPathHelper
 
     // Walks a dot-separated path of a source and returns it rewritten with the declared property names, or
     // null when a segment cannot be resolved. The path is emitted into the generated source, so it has to
-    // carry the real casing even when the attribute spelled a segment differently.
+    // carry the real casing even when the attribute spelled a segment differently. A member of the struct a
+    // nullable struct holds is read through its Value (Location.Lat as Location.Value.Lat), which the generated
+    // code reads under the null check of the nullable one, as it reads through a nullable reference.
     public static string? ResolveCanonicalPath(ITypeSymbol type, string path, StringComparison comparison, INamedTypeSymbol within, Compilation compilation)
     {
         var parts = path.Split('.');
-        var resolved = new string[parts.Length];
+        var resolved = new List<string>(parts.Length);
         var currentType = type;
 
-        for (var i = 0; i < parts.Length; i++)
+        foreach (var part in parts)
         {
-            var prop = ResolveProperty(currentType, parts[i], comparison, within, compilation, readable: true);
+            var prop = ResolveProperty(currentType, part, comparison, within, compilation, readable: true);
+            if ((prop is null) && (ResolveThroughValue(currentType, part, comparison, within, compilation) is { } member))
+            {
+                resolved.Add(NullableValueName);
+                prop = member;
+            }
+
             if (prop is null)
             {
                 return null;
             }
 
-            resolved[i] = prop.Name;
+            resolved.Add(prop.Name);
             currentType = prop.Type;
         }
 
         return String.Join(".", resolved);
     }
+
+    // The name of the property of a nullable struct holding its value
+    public const string NullableValueName = "Value";
+
+    // The property of the struct a nullable struct holds that a segment names, which is not a member of the nullable
+    // struct itself (HasValue, Value), or null.
+    public static IPropertySymbol? ResolveThroughValue(ITypeSymbol type, string name, StringComparison comparison, INamedTypeSymbol within, Compilation compilation) =>
+        type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable
+            ? ResolveProperty(nullable.TypeArguments[0], name, comparison, within, compilation, readable: true)
+            : null;
 
     // Returns the ITypeSymbol at the end of a dot-separated path of a source
     // starting from type, or null when the path cannot be resolved.

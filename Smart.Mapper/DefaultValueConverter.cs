@@ -121,9 +121,10 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static char ConvertToChar(string source, IFormatProvider culture, string? format) => Char.Parse(source);
 
-    // Converts string to DateTime.
+    // Converts string to DateTime, keeping the kind the text gives, as the round-trip format (O) writes it: UTC for a Z,
+    // local for an offset, and unspecified without either.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture);
+    public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
     // Converts string to DateTime using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -257,9 +258,10 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ConvertToString(bool source, IFormatProvider culture, string? format) => source.ToString();
 
-    // Converts DateTime to string.
+    // Converts DateTime to string in the round-trip format (O), as DateOnly, TimeOnly and DateTimeOffset are, which
+    // keeps the fractions of a second and the kind (a Z for UTC, the offset for local).
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ConvertToString(DateTime source) => source.ToString(CultureInfo.InvariantCulture);
+    public static string ConvertToString(DateTime source) => source.ToString("O", CultureInfo.InvariantCulture);
 
     // Converts DateTime to string using specified culture and optional format.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -676,7 +678,7 @@ public static class DefaultValueConverter
             if (typeof(TDestination) == typeof(double)) return (TDestination)(object)Double.Parse(value, CultureInfo.InvariantCulture);
             if (typeof(TDestination) == typeof(decimal)) return (TDestination)(object)Decimal.Parse(value, CultureInfo.InvariantCulture);
             if (typeof(TDestination) == typeof(bool)) return (TDestination)(object)Boolean.Parse(value);
-            if (typeof(TDestination) == typeof(DateTime)) return (TDestination)(object)DateTime.Parse(value, CultureInfo.InvariantCulture);
+            if (typeof(TDestination) == typeof(DateTime)) return (TDestination)(object)DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
             if (typeof(TDestination) == typeof(Guid)) return (TDestination)(object)Guid.Parse(value);
         }
 
@@ -691,7 +693,7 @@ public static class DefaultValueConverter
         if ((typeof(TSource) == typeof(DateTime)) && (typeof(TDestination) == typeof(string)))
         {
             var value = (DateTime)(object)source!;
-            return (TDestination)(object)value.ToString(CultureInfo.InvariantCulture);
+            return (TDestination)(object)value.ToString("O", CultureInfo.InvariantCulture);
         }
 
         // Guid -> string

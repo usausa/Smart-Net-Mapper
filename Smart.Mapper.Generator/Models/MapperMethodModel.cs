@@ -13,7 +13,10 @@ internal sealed record MapperMethodModel(
     string Namespace = default!,
     string ClassName = default!,
     EquatableArray<string> TypeDeclarations = default,
-    Accessibility MethodAccessibility = default,
+    // The modifiers of the defining declaration the implementation repeats besides static and partial: its
+    // accessibility (public, protected internal; CS8799), none for a declaration without one (a void mapper, implicitly
+    // private), new (CS8800) and unsafe (CS0764)
+    string DeclarationModifiers = "",
     string MethodName = default!,
     // The type parameters of a generic mapper method (<T>) and their constraints ( where T : class), which
     // the implementing declaration repeats (CS0759 without the type parameters, CS0761 with other constraints)
@@ -30,9 +33,9 @@ internal sealed record MapperMethodModel(
     // The source type as declared, nullable annotations included, which the implementation repeats
     // (CS8611 otherwise). SourceTypeName leaves them out and is what types are compared by.
     string SourceDeclaredTypeName = default!,
-    // Declared as a nullable reference type. The generated code reads the source, so when it is null
-    // nothing is mapped; past that check the local functions of [MapExpression] take it as
-    // SourceNonNullableTypeName.
+    // Declared as a nullable reference type, or with nullable annotations disabled (oblivious), which may be
+    // null as well. The generated code reads the source, so when it is null nothing is mapped; past that
+    // check the local functions of [MapExpression] take it as SourceNonNullableTypeName.
     bool IsSourceParameterNullable = default,
     string SourceNonNullableTypeName = default!,
     string DestinationTypeName = default!,
@@ -41,15 +44,24 @@ internal sealed record MapperMethodModel(
     string DestinationParameterModifiers = "",
     RefKind DestinationRefKind = default,
     // The return type or the destination parameter type as declared. DestinationTypeName leaves the
-    // annotations out, as the instance is created under it.
+    // annotations out, which types are compared by.
     string DestinationDeclaredTypeName = default!,
-    // The same null check for the destination parameter of a void mapper, which the generated code writes.
+    // The same null check for the destination parameter of a void mapper, declared nullable or with nullable
+    // annotations disabled, which the generated code writes. Custom parameters are passed on as they come.
     bool IsDestinationParameterNullable = default,
     string DestinationNonNullableTypeName = default!,
+    // The type a return mapper creates the destination as: with the nullable annotations of its type arguments
+    // (Box<string?>), so that it is the type the declaration returns (CS8619 otherwise), and without its own, which
+    // new cannot take.
+    string DestinationCreatedTypeName = default!,
     // What a return-type mapper returns for a null source: default, or default! for a reference type
     // that is not nullable, so that the generated code does not warn.
     string DefaultReturnValue = "default",
     bool ReturnsDestination = default,
+    // The name of the source parameter (as declared, without the @ of a keyword) the return value is not null for
+    // when it is not, which the implementation declares with [return: NotNullIfNotNull]: a return-type mapper whose
+    // source may be null returning a nullable type, which gives null for a null source only. Null without.
+    string? ReturnNotNullIfNotNull = default,
     bool AutoMap = true,
     bool Strict = default,
     bool StrictExplicitlySet = default,
@@ -122,4 +134,11 @@ internal sealed record MapperMethodModel(
     int FormatAttributeIndex = -1,
     int ValueConverterAttributeIndex = -1,
     // The index of the [MapIgnore] of each of IgnoreTargets
-    EquatableArray<int> IgnoreAttributeIndices = default);
+    EquatableArray<int> IgnoreAttributeIndices = default,
+    // A mapper reported with an error, which has no model but the declaration: the generated code implements it with
+    // a body throwing, so that the implementation missing is not reported along with the error (CS8795). The return
+    // type and the parameter list are as the defining declaration writes them, modifiers and nullable annotations
+    // included, and the names and the type parameters of the model above name the rest.
+    bool IsPlaceholder = default,
+    string PlaceholderReturnType = "",
+    string PlaceholderParameters = "");

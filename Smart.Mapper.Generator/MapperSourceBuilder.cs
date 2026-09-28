@@ -98,7 +98,14 @@ internal static class MapperSourceBuilder
                 builder.NewLine();
             }
 
-            BuildMethod(builder, method);
+            if (method.IsPlaceholder)
+            {
+                BuildPlaceholder(builder, method);
+            }
+            else
+            {
+                BuildMethod(builder, method);
+            }
         }
 
         for (var i = 0; i < typeDeclarations.Count; i++)
@@ -177,6 +184,35 @@ internal static class MapperSourceBuilder
     private static string GetCallArgumentModifier(EquatableArray<RefKind> parameterRefKinds, int index) =>
         index < parameterRefKinds.Count ? GetArgumentModifier(parameterRefKinds[index]) : string.Empty;
 
+    // The modifiers of the defining declaration besides static and partial, which the implementation repeats
+    private static void AppendDeclarationModifiers(SourceBuilder builder, MapperMethodModel method)
+    {
+        if (method.DeclarationModifiers.Length > 0)
+        {
+            builder.Append(method.DeclarationModifiers).Append(" ");
+        }
+    }
+
+    // The implementation of a mapper reported with an error, so that the implementation missing is not reported along
+    // with the error (CS8795): the declaration repeated, with a body throwing, which never runs, as the build fails on
+    // the error.
+    private static void BuildPlaceholder(SourceBuilder builder, MapperMethodModel method)
+    {
+        builder.Indent();
+        AppendDeclarationModifiers(builder, method);
+        builder.Append("static partial ")
+               .Append(method.PlaceholderReturnType).Append(" ")
+               .Append(IdentifierHelper.Escape(method.MethodName)).Append(method.TypeParameterList)
+               .Append("(").Append(method.PlaceholderParameters).Append(")").Append(method.ConstraintClauses).NewLine();
+        builder.BeginScope();
+        builder.Indent()
+               .Append("throw new global::System.NotImplementedException(")
+               .Append(ConstantExpressionHelper.FormatString($"{method.MethodName} is not generated, as Smart.Mapper reported an error for it."))
+               .Append(");")
+               .NewLine();
+        builder.EndScope();
+    }
+
     internal static void BuildMethod(SourceBuilder builder, MapperMethodModel method)
     {
         // Mappers that emit collection loops have large bodies; forcing them into callers bloats
@@ -190,7 +226,20 @@ internal static class MapperSourceBuilder
                    .NewLine();
         }
 
-        builder.Indent().Append(method.MethodAccessibility.ToText()).Append(" static partial ");
+        // A caller passing a source that is not null gets a result that is not null. The attribute may be on the
+        // defining declaration as well, which it allows.
+        if (method.ReturnNotNullIfNotNull is { } parameterName)
+        {
+            builder.Indent()
+                   .Append("[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNull(")
+                   .Append(ConstantExpressionHelper.FormatString(parameterName))
+                   .Append(")]")
+                   .NewLine();
+        }
+
+        builder.Indent();
+        AppendDeclarationModifiers(builder, method);
+        builder.Append("static partial ");
         builder.Append(method.ReturnsDestination ? method.DestinationDeclaredTypeName : "void").Append(" ");
         builder.Append(IdentifierHelper.Escape(method.MethodName)).Append(method.TypeParameterList).Append("(");
         AppendParameters(builder, method, forImplementation: true);
@@ -257,7 +306,7 @@ internal static class MapperSourceBuilder
                 var ctorParameters = method.ConstructorParameters;
                 var arguments = EmitConstructorArgumentLocals(builder, method);
                 initializerEntries.AddRange(EmitInitializerLocals(builder, method));
-                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("(");
+                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationCreatedTypeName).Append("(");
                 for (var i = 0; i < ctorParameters.Count; i++)
                 {
                     if (i > 0)
@@ -289,7 +338,7 @@ internal static class MapperSourceBuilder
             }
             else
             {
-                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationTypeName).Append("();").NewLine();
+                builder.Indent().Append("var ").Append(destVarName).Append(" = new ").Append(method.DestinationCreatedTypeName).Append("();").NewLine();
             }
         }
 
@@ -369,7 +418,10 @@ internal static class MapperSourceBuilder
 
         // The intermediate members the target paths of the mappings go through, created under their null check, of
         // those whose assignment is not under a check of its own, which creates them when it assigns; the members
-        // created up front, the ones created here included
+        // created up front, the ones created here included. A member created up front is not created again: nothing
+        // before the check can have replaced it, as BeforeMap runs before it is created, and a member a dotted path
+        // goes into is not mapped as a whole (its automatic mapping is left out, and an attribute mapping it is
+        // reported, SMP0101).
         HashSet<string> AppendGroupInstantiations(IEnumerable<PropertyMappingModel> mappings)
         {
             var groupNestedPaths = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -377,7 +429,7 @@ internal static class MapperSourceBuilder
             {
                 foreach (var segment in mapping.TargetPathSegments.TakeWhile(static s => s.Access == TargetSegmentAccess.Create))
                 {
-                    if (!createdInInitializer.Contains(segment.Path) && !groupNestedPaths.ContainsKey(segment.Path))
+                    if (!createdUpFront.Contains(segment.Path) && !groupNestedPaths.ContainsKey(segment.Path))
                     {
                         groupNestedPaths[segment.Path] = segment.TypeName;
                     }
@@ -616,19 +668,21 @@ internal static class MapperSourceBuilder
 
     // [MapNested]: the mapper called with the source member, a void one filling an instance created for it,
     // and the result assigned to the target (a member of the destination, or the local of a constructor
-    // argument). A null source member gives default, and a nullable struct one the mapper takes the value of
-    // goes to it as that value.
+    // argument). A null source member gives default, unless the mapper takes null, which gets it as well and
+    // decides what the target gets for it; a nullable struct one the mapper takes the value of goes to it as
+    // that value.
     private static void EmitNestedMapping(SourceBuilder builder, MapNestedModel mapNested, MapperMethodModel method, string targetAccess)
     {
         var sourceAccess = $"{method.SourceParameterName}.{IdentifierHelper.EscapePath(mapNested.SourceName)}";
         var mapper = IdentifierHelper.Escape(mapNested.Mapper);
-        var sourceArgument = mapNested.UnwrapsSource ? sourceAccess + ".Value" : mapNested.IsSourceNullable ? sourceAccess + "!" : sourceAccess;
+        var checksNull = mapNested.IsSourceNullable && !mapNested.MapperTakesNull;
+        var sourceArgument = mapNested.UnwrapsSource ? sourceAccess + ".Value" : checksNull ? sourceAccess + "!" : sourceAccess;
 
         if (mapNested.MapperReturnsValue)
         {
             builder.Indent();
             builder.Append(targetAccess).Append(" = ");
-            if (mapNested.IsSourceNullable)
+            if (checksNull)
             {
                 builder.Append(sourceAccess).Append(" is not null ? ");
             }
@@ -637,7 +691,7 @@ internal static class MapperSourceBuilder
             {
                 builder.Append("!");
             }
-            if (mapNested.IsSourceNullable)
+            if (checksNull)
             {
                 builder.Append(" : ").Append(mapNested.NullResult);
             }
@@ -649,7 +703,7 @@ internal static class MapperSourceBuilder
         // mapper takes it
         var nestedVarName = "__nested_" + mapNested.TargetName.Replace(".", "_");
         var instanceModifier = GetCallArgumentModifier(mapNested.MapperParameterRefKinds, 1);
-        if (mapNested.IsSourceNullable)
+        if (checksNull)
         {
             builder.Indent().Append("if (").Append(sourceAccess).Append(" is not null)").NewLine();
             builder.BeginScope();
@@ -2157,8 +2211,10 @@ internal static class MapperSourceBuilder
             var targetTypeForCast = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
             builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceExpr);
         }
-        else if (mapping.HasUserDefinedExplicit())
+        else if ((mapping.UserDefinedConversion == UserDefinedConversionKind.Implicit) || mapping.HasUserDefinedExplicit())
         {
+            // A user-defined conversion of a reference type is not lifted, so the operator is called on the value the
+            // null check has passed, inside the check, and not on the whole conditional, which would pass it null
             var targetTypeForCast = !String.IsNullOrEmpty(mapping.TargetUnderlyingType) ? mapping.TargetUnderlyingType : mapping.TargetType;
             builder.Append("(").Append(targetTypeForCast).Append(")").Append(sourceExpr);
         }

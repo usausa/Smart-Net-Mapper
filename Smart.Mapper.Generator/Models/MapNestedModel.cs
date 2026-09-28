@@ -6,7 +6,9 @@ using SourceGenerateHelper;
 
 // Represents a MapNested mapping (nested object property mapped using a mapper method).
 internal sealed record MapNestedModel(
-    // Source and target members
+    // Source and target members. TargetType is written as the instance a void mapper fills is created: with the
+    // nullable annotations of its type arguments (Box<string?>), which the target has to get for its type (CS8619
+    // otherwise), and without its own, which new cannot take
     string SourceName = default!,
     string SourceType = default!,
     string TargetName = default!,
@@ -30,7 +32,11 @@ internal sealed record MapNestedModel(
     // What a null source gives: default!, or null for a nullable struct target the result of the mapper, the
     // struct, goes into, as the type of the conditional is that of the result
     string NullResult = "default!",
+    // The source may be null: a nullable one, or a reference declared with nullable annotations disabled
     bool IsSourceNullable = default,
+    // The parameter of the mapper takes null, so a null source goes to it as well, which decides what the target
+    // gets for it, as the converter of a property and the mapper of the elements of a collection do
+    bool MapperTakesNull = default,
     // The value goes to the argument of the constructor a return mapper calls, as the parameter assigns the
     // member
     bool IsConstructorArgument = default,

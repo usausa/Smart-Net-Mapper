@@ -16,7 +16,8 @@ internal enum TargetSegmentAccess
 }
 
 // Represents a segment in a nested property path.
-// Path is the dotted path up to and including this segment, TypeName the type it evaluates to.
+// Path is the dotted path up to and including this segment, TypeName the type it evaluates to, for a target path as
+// new creates it (with the nullable annotations of its type arguments, without its own).
 // IsNullable applies to a source path, Access to a target path.
 internal sealed record NestedPathSegment(
     string Path,

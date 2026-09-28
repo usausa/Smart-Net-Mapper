@@ -7,8 +7,9 @@ namespace Smart.Mapper;
 // type or, by value, as a type it converts to implicitly (of overloads, the one the call binds to, an ambiguous call
 // being reported, SMP0201), and returning the type of the target or one converting to it implicitly, as the assignment
 // does (int to long or int?), SMP0202 otherwise; a nullable reference it returns into a target not annotated as
-// nullable is taken with !. A dotted target (Child.Value) writes into that member, which the automatic mapping then
-// leaves out, and cannot go into a member the constructor assigns (SMP0222).
+// nullable is taken with !, unless [return: NotNullIfNotNull] of its first parameter says the result is not null for the
+// source, which it gets past the null check of the mapper. A dotted target (Child.Value) writes into that member, which
+// the automatic mapping then leaves out, and cannot go into a member the constructor assigns (SMP0222).
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class MapUsingAttribute : Attribute
 {

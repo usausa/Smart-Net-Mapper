@@ -158,9 +158,10 @@ public class NullableSignatureTests
         AssertCompiles(source);
     }
 
-    // Declared with nullable disabled, the types carry no annotation and the output stays as it was.
+    // Declared with nullable disabled, the types carry no annotation, which the signature repeats; the source, which
+    // may be null all the same, is checked as a nullable one is, and a custom parameter is passed as it is.
     [Fact]
-    public void NullableDisabledDeclarationKeepsOutput()
+    public void NullableDisabledDeclarationKeepsSignature()
     {
         var source = Source(
             "public static partial Dst Map(Src src, Ctx ctx);",
@@ -172,6 +173,7 @@ public class NullableSignatureTests
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("public static partial global::Test.Dst Map(global::Test.Src src, global::Test.Ctx ctx)", generated, StringComparison.Ordinal);
         Assert.Contains("static int __expression0(global::Test.Src src, global::Test.Ctx ctx) =>", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("is null", generated, StringComparison.Ordinal);
+        Assert.Contains("if (src is null)", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("ctx is null", generated, StringComparison.Ordinal);
     }
 }

@@ -37,8 +37,9 @@ internal enum CollectionTargetShape
 internal sealed record MapCollectionModel(
     // Identity. TargetType is written with the nullable annotations of its type arguments (List<Item?>), which
     // the collection the generated code creates for the target repeats, and without its own, which new cannot
-    // take. The element types are written without them for new T(), and with them as type arguments and array
-    // elements (ElementTypeArgument), so that the collections created take what the target does (CS8619)
+    // take, and TargetElementType the same, for the element a void mapper fills. The element types are written
+    // with them as type arguments and array elements (ElementTypeArgument), so that the collections and the
+    // elements created take what the target does (CS8619)
     string SourceName = default!,
     string SourceType = default!,
     string SourceElementType = default!,

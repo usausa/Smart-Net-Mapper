@@ -1366,6 +1366,37 @@ internal static partial class TestMappers
     [MapProperty(nameof(ObliviousDestination.Note), NullBehavior = NullBehavior.Skip)]
     public static partial void MapOblivious(ObliviousSource source, ObliviousDestination destination);
 
+    // References declared with nullable annotations disabled taken as nullable: a converter, a mapper of [MapNested] and
+    // an element mapper not taking null are called for a value only, and a path is read under its null check
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(ObliviousGraphDestination.Name), Converter = nameof(ToUpperName))]
+    [MapNested(nameof(ObliviousGraphDestination.Child), Mapper = nameof(MapObliviousItem))]
+    [MapCollection(nameof(ObliviousGraphDestination.Items), Mapper = nameof(MapObliviousItem))]
+    [MapProperty(nameof(ObliviousGraphDestination.ParentName), "Parent.Name")]
+    public static partial void MapObliviousGraph(ObliviousGraphSource source, ObliviousGraphDestination destination);
+
+    [Mapper]
+    public static partial ObliviousItemDestination MapObliviousItem(ObliviousItem source);
+
+    private static string ToUpperName(string value) => value.ToUpperInvariant();
+
+    // A source parameter declared with nullable annotations disabled is checked before anything is mapped
+#nullable disable
+    [Mapper]
+    public static partial ObliviousDestination MapObliviousOrNull(ObliviousSource source);
+#nullable restore
+
+    // A null source of [MapNested] goes to a mapper taking null, which decides what the target gets, a void one filling
+    // the instance created for it
+    [Mapper(AutoMap = false)]
+    [MapNested(nameof(NestedNullDestination.Child), Mapper = nameof(MapChildOrDefault))]
+    [MapNested(nameof(NestedNullDestination.Other), Mapper = nameof(FillChildOrDefault))]
+    public static partial NestedNullDestination MapNestedNull(NestedNullSource source);
+
+    private static NestedNullChildDestination MapChildOrDefault(NestedNullChildSource? source) => new() { Value = source?.Value ?? -1 };
+
+    private static void FillChildOrDefault(NestedNullChildSource? source, NestedNullChildDestination target) => target.Value = source?.Value ?? -1;
+
     // [MapFrom] through members that may be null, and values of [MapUsing] / [MapFrom] a type converts to implicitly
     [Mapper(AutoMap = false)]
     [MapFrom(nameof(NullablePathDestination.Zip), "Mid.Leaf.Zip")]
@@ -1515,4 +1546,44 @@ public static partial class LookupOuter
 
         private static string FormatWide(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L";
     }
+}
+
+// Enums at the end of dotted paths, reference types converting implicitly, a destination parameter declared with nullable
+// annotations disabled, DateTime and text by default, and dotted source paths through a nullable struct
+internal static partial class TestMappers
+{
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(PathEnumDestination.Text), "Inner.Status")]
+    [MapProperty(nameof(PathEnumDestination.Status), "Inner.Status")]
+    [MapProperty(nameof(PathEnumDestination.FromText), "Inner.Text")]
+    [MapProperty(nameof(PathEnumDestination.Number), "Inner.Status")]
+    [MapProperty(nameof(PathEnumDestination.FromNumber), "Inner.Code")]
+    [MapProperty("Outer.Text", nameof(PathEnumSource.Status))]
+    public static partial PathEnumDestination MapPathEnum(PathEnumSource source);
+
+    [Mapper]
+    [MapProperty(nameof(EmailDestination.Backup), NullValue = "none")]
+    public static partial EmailDestination MapEmail(EmailSource source);
+
+    [Mapper]
+    public static partial LegacyEmailDestination MapLegacyEmail(LegacyEmailSource source);
+
+#nullable disable
+    [Mapper]
+    public static partial void MapObliviousInto(ObliviousSource source, ObliviousDestination destination);
+#nullable restore
+
+    [Mapper]
+    public static partial DateTimeTextDestination MapDateTimeText(DateTimeTextSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(GeoDestination.Lat), "Location.Lat")]
+    [MapProperty(nameof(GeoDestination.Label), "Location.Label", NullValue = "none")]
+    [MapFrom(nameof(GeoDestination.FromLat), "Location.Lat")]
+    public static partial GeoDestination MapGeo(GeoSource source);
+
+    [Mapper]
+    [MapProperty(nameof(GeoRecord.Lat), "Location.Lat")]
+    [MapProperty(nameof(GeoRecord.Label), "Location.Label", NullValue = "none")]
+    public static partial GeoRecord MapGeoRecord(GeoSource source);
 }

@@ -9,7 +9,8 @@ using Microsoft.CodeAnalysis;
 // check, right before it assigns, where it was created up front, so that a target left as it is kept a null
 // intermediate member, as an update giving no value expects. An assignment under the null check of its source path
 // creates it inside that check, as before, and in both branches with NullValue; one without a check going through
-// the same member creates it up front as before, and a return-type mapper creates it the same way.
+// the same member creates it up front as before, which the others do not create again, and a return-type mapper
+// creates it the same way.
 public class GuardedTargetCreationTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -114,6 +115,25 @@ public class GuardedTargetCreationTests
     public void AssignmentWithoutCheckCreatesUpFront(string attributes, string expected)
     {
         var (generated, problems) = Build(Source(attributes));
+        var body = Body(generated);
+
+        Assert.Empty(problems);
+        Assert.Contains(expected, body, StringComparison.Ordinal);
+        Assert.Single(body.Split('\n'), static l => l.Contains("??=", StringComparison.Ordinal));
+    }
+
+    // A member created up front is not created again under the null check of a source path going through the same
+    // member, in a void mapper and in a return-type mapper alike: nothing between the two can have replaced it
+    [Theory]
+    [InlineData(
+        "public static partial void Map(Src src, Dst dst);",
+        "dst.Address ??= new global::Test.Address();\ndst.Address.Street = src.Street;\nif (src.Other is not null)\n{\ndst.Address.City = src.Other.City;\n}")]
+    [InlineData(
+        "public static partial Dst Map(Src src);",
+        "__d.Address ??= new global::Test.Address();\n__d.Address.Street = src.Street;\nif (src.Other is not null)\n{\n__d.Address.City = src.Other.City;\n}")]
+    public void MemberCreatedUpFrontIsNotCreatedAgainUnderSourcePathCheck(string mapper, string expected)
+    {
+        var (generated, problems) = Build(Source("[MapProperty(\"Address.Street\", nameof(Src.Street))] [MapProperty(\"Address.City\", \"Other.City\")]", mapper));
         var body = Body(generated);
 
         Assert.Empty(problems);

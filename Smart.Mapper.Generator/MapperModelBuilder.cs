@@ -36,11 +36,32 @@ internal static class MapperModelBuilder
         }
 
         // The generated code declares the containing types again, outermost first, so each of them has to be
-        // partial, or that declaration would not compile (CS0260)
+        // partial, or that declaration would not compile (CS0260), and none of them file-local, as the declaration is
+        // in another file (CS0759)
         var typeChain = GetContainingTypes(symbol.ContainingType);
-        if (!symbol.IsStatic || !symbol.IsPartialDefinition || !typeChain.All(IsPartialType))
+        if (!symbol.IsStatic || !symbol.IsPartialDefinition || !typeChain.All(IsPartialType) || typeChain.Any(static t => t.IsFileLocal))
         {
             return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.InvalidMethodDefinition, syntax.Identifier.GetLocation(), symbol.Name));
+        }
+
+        // A mapper reported with an error gets an implementation throwing in place of none, so that the implementation
+        // missing is not reported along with the error (CS8795). The one the checks above report could not have one.
+        var result = BuildMethodModel(context, symbol, syntax, typeChain);
+        return !result.HasValue && result.HasErrors
+            ? new Result<MapperMethodModel>(CreatePlaceholder(symbol, syntax, typeChain), result.Diagnostics)
+            : result;
+    }
+
+    private static Result<MapperMethodModel> BuildMethodModel(
+        GeneratorAttributeSyntaxContext context,
+        IMethodSymbol symbol,
+        MethodDeclarationSyntax syntax,
+        List<INamedTypeSymbol> typeChain)
+    {
+        // The mapper creates or fills the destination, which a reference it returned would have to point to
+        if (symbol.ReturnsByRef || symbol.ReturnsByRefReadonly)
+        {
+            return Results.Error<MapperMethodModel>(new DiagnosticInfo(Diagnostics.RefReturnMapper, syntax.ReturnType.GetLocation(), symbol.Name));
         }
 
         if (symbol.Parameters.Length < 1)
@@ -49,9 +70,7 @@ internal static class MapperModelBuilder
         }
 
         var containingType = symbol.ContainingType;
-        var ns = String.IsNullOrEmpty(containingType.ContainingNamespace.Name)
-            ? string.Empty
-            : containingType.ContainingNamespace.ToDisplayString(NamespaceNameFormat);
+        var ns = GetNamespaceName(containingType);
 
         var sourceParam = symbol.Parameters[0];
 
@@ -134,6 +153,20 @@ internal static class MapperModelBuilder
                 sourceParam.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }
 
+        // A collection, an array or a tuple is not mapped as a whole: its members (Count, Capacity, Item1) are not what
+        // it holds, and an array or a tuple cannot be created as the destination is
+        if (IsWholeCollection(sourceParam.Type) || IsWholeCollection(destinationType))
+        {
+            var isSource = IsWholeCollection(sourceParam.Type);
+            var type = isSource ? sourceParam.Type : destinationType;
+            return Results.Error<MapperMethodModel>(new DiagnosticInfo(
+                Diagnostics.CollectionMapper,
+                isSource ? syntax.ParameterList.Parameters[0].GetLocation() :
+                returnsDestination ? syntax.ReturnType.GetLocation() : syntax.ParameterList.Parameters[1].GetLocation(),
+                symbol.Name,
+                type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }
+
         var customParameters = new List<CustomParameterModel>();
         for (var i = customParamStartIndex; i < symbol.Parameters.Length; i++)
         {
@@ -160,13 +193,15 @@ internal static class MapperModelBuilder
         }
 
         // The destination as the method declares it: the return type, a nullable struct as it is, or the type of the
-        // destination parameter
+        // destination parameter. The destination is created under its name without its ?, which differs from the name
+        // new takes for a type parameter declared T? only (GetCreatedTypeName).
         var declaredDestinationType = returnsDestination ? symbol.ReturnType : destinationType;
+        var destinationNonNullableTypeName = GetNonNullableTypeName(destinationType);
         var model = new MapperMethodModel(
             Namespace: ns,
-            ClassName: String.Join(".", typeChain.Select(GetTypeName)),
-            TypeDeclarations: new EquatableArray<string>(typeChain.Select(static t => t.GetDeclarationKeyword() + " " + GetTypeDeclarationName(t)).ToArray()),
-            MethodAccessibility: symbol.DeclaredAccessibility,
+            ClassName: GetClassName(typeChain),
+            TypeDeclarations: GetTypeDeclarations(typeChain),
+            DeclarationModifiers: GetDeclarationModifiers(symbol, syntax),
             MethodName: symbol.Name,
             TypeParameterList: GetTypeParameterList(symbol),
             ConstraintClauses: GetConstraintClauses(symbol),
@@ -175,7 +210,7 @@ internal static class MapperModelBuilder
             SourceParameterModifiers: GetParameterModifiers(syntax, 0),
             SourceRefKind: sourceParam.RefKind,
             SourceDeclaredTypeName: sourceParam.Type.ToDisplayString(NullableQualifiedFormat),
-            IsSourceParameterNullable: IsNullableReference(sourceParam.Type),
+            IsSourceParameterNullable: MayBeNullReference(sourceParam.Type),
             SourceNonNullableTypeName: GetNonNullableTypeName(sourceParam.Type),
             IsExtensionMethod: symbol.IsExtensionMethod,
             DestinationTypeName: destinationTypeName,
@@ -183,10 +218,15 @@ internal static class MapperModelBuilder
             DestinationParameterModifiers: returnsDestination ? string.Empty : GetParameterModifiers(syntax, 1),
             DestinationRefKind: returnsDestination ? RefKind.None : symbol.Parameters[1].RefKind,
             DestinationDeclaredTypeName: declaredDestinationType.ToDisplayString(NullableQualifiedFormat),
-            IsDestinationParameterNullable: !returnsDestination && IsNullableReference(destinationType),
-            DestinationNonNullableTypeName: GetNonNullableTypeName(destinationType),
+            IsDestinationParameterNullable: !returnsDestination && MayBeNullReference(destinationType),
+            DestinationNonNullableTypeName: destinationNonNullableTypeName,
+            DestinationCreatedTypeName: destinationType is ITypeParameterSymbol ? GetCreatedTypeName(destinationType) : destinationNonNullableTypeName,
             DefaultReturnValue: declaredDestinationType.IsValueType || IsNullableReference(declaredDestinationType) ? "default" : "default!",
             ReturnsDestination: returnsDestination,
+            ReturnNotNullIfNotNull: returnsDestination && MayBeNullReference(sourceParam.Type) && symbol.ReturnType.IsNullableType() &&
+                                    CanApplyNotNullIfNotNull(context.SemanticModel.Compilation, containingType)
+                ? sourceParam.Name
+                : null,
             CustomParameters: new EquatableArray<CustomParameterModel>(customParameters));
 
         model = ParseMappingAttributes(symbol, model);
@@ -375,6 +415,21 @@ internal static class MapperModelBuilder
             return Results.Error<MapperMethodModel>(constantValueError);
         }
 
+        // Strict mode reports the targets getting null or default without the mapping saying so, as the model is
+        // complete by now
+        if (model.Strict)
+        {
+            List<DiagnosticInfo> strictWarnings =
+            [
+                .. CollectNullableValueWarnings(model, symbol, sourceType, destinationType, containingType, compilation, syntax),
+                .. CollectUnmatchedEnumMemberWarnings(model, syntax)
+            ];
+            if (strictWarnings.Count > 0)
+            {
+                model = model with { Warnings = new([.. model.Warnings, .. strictWarnings]) };
+            }
+        }
+
         return Results.Success(model);
     }
 
@@ -388,6 +443,119 @@ internal static class MapperModelBuilder
         }
 
         return types;
+    }
+
+    private static string GetNamespaceName(INamedTypeSymbol type) =>
+        String.IsNullOrEmpty(type.ContainingNamespace.Name) ? string.Empty : type.ContainingNamespace.ToDisplayString(NamespaceNameFormat);
+
+    private static string GetClassName(List<INamedTypeSymbol> typeChain) =>
+        String.Join(".", typeChain.Select(GetTypeName));
+
+    private static EquatableArray<string> GetTypeDeclarations(List<INamedTypeSymbol> typeChain) =>
+        new(typeChain.Select(static t => t.GetDeclarationKeyword() + " " + GetTypeDeclarationName(t)).ToArray());
+
+    // Whether the generated code can put [return: NotNullIfNotNull] on the mapper: the attribute is there to name, one
+    // declaration of it the mapper class can access (of .NET Core 3.0 or later, or a copy of it), as a name declared
+    // twice finds none.
+    private static bool CanApplyNotNullIfNotNull(Compilation compilation, INamedTypeSymbol within) =>
+        (compilation.GetTypeByMetadataName("System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute") is { } attribute) &&
+        compilation.IsSymbolAccessibleWithin(attribute, within);
+
+    // The implementation of a mapper reported with an error: its declaration repeated as the generated code repeats
+    // it (the containing types, the modifiers, nullable annotations and type parameters with their constraints of the
+    // defining declaration), with a body throwing. The build fails on the error, so the body never runs.
+    private static MapperMethodModel CreatePlaceholder(IMethodSymbol symbol, MethodDeclarationSyntax syntax, List<INamedTypeSymbol> typeChain)
+    {
+        var parameters = symbol.Parameters.Select((parameter, i) =>
+        {
+            var modifiers = GetParameterModifiers(syntax, i);
+            return ((i == 0) && symbol.IsExtensionMethod ? "this " : string.Empty) +
+                   (modifiers.Length > 0 ? modifiers + " " : string.Empty) +
+                   parameter.Type.ToDisplayString(NullableQualifiedFormat) + " " + IdentifierHelper.Escape(parameter.Name);
+        });
+        var returnType = symbol.ReturnsVoid
+            ? "void"
+            : (symbol.ReturnsByRefReadonly ? "ref readonly " : symbol.ReturnsByRef ? "ref " : string.Empty) + symbol.ReturnType.ToDisplayString(NullableQualifiedFormat);
+        return new MapperMethodModel(
+            Namespace: GetNamespaceName(symbol.ContainingType),
+            ClassName: GetClassName(typeChain),
+            TypeDeclarations: GetTypeDeclarations(typeChain),
+            DeclarationModifiers: GetDeclarationModifiers(symbol, syntax),
+            MethodName: symbol.Name,
+            TypeParameterList: GetTypeParameterList(symbol),
+            ConstraintClauses: GetConstraintClauses(symbol),
+            IsPlaceholder: true,
+            PlaceholderReturnType: returnType,
+            PlaceholderParameters: String.Join(", ", parameters));
+    }
+
+    // The modifiers of the defining declaration the implementation has to repeat: its accessibility modifiers (CS8799),
+    // none for a declaration without one, which is implicitly private and one writing private would not match, new
+    // (CS8800) and unsafe (CS0764).
+    private static string GetDeclarationModifiers(IMethodSymbol symbol, MethodDeclarationSyntax syntax)
+    {
+        var hasAccessibility = false;
+        var hides = false;
+        var isUnsafe = false;
+        foreach (var modifier in syntax.Modifiers)
+        {
+            var kind = modifier.Kind();
+            hasAccessibility |= SyntaxFacts.IsAccessibilityModifier(kind);
+            hides |= kind == SyntaxKind.NewKeyword;
+            isUnsafe |= kind == SyntaxKind.UnsafeKeyword;
+        }
+
+        var modifiers = hasAccessibility ? symbol.DeclaredAccessibility.ToText() : string.Empty;
+        if (hides)
+        {
+            modifiers = modifiers.Length == 0 ? "new" : modifiers + " new";
+        }
+
+        if (isUnsafe)
+        {
+            modifiers = modifiers.Length == 0 ? "unsafe" : modifiers + " unsafe";
+        }
+
+        return modifiers;
+    }
+
+    // Whether the type is a collection that a mapper would map by its members (Count, Capacity) and not by its elements:
+    // one of the framework (System.Collections and the namespaces under it, lists, sets and dictionaries, their
+    // interfaces, the immutable, frozen and concurrent ones), a class deriving from one (class ItemList : List<Item>),
+    // which is as much a collection, an array or a tuple. A type of its own only implementing IEnumerable<T> (a page of
+    // items with its count) is mapped by its members.
+    private static bool IsWholeCollection(ITypeSymbol type)
+    {
+        if ((type is IArrayTypeSymbol) || type.IsTupleType ||
+            (type is INamedTypeSymbol { Name: "Tuple" or "ValueTuple", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } }))
+        {
+            return true;
+        }
+
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (IsInCollectionsNamespace(current.ContainingNamespace) &&
+                ((current.SpecialType == SpecialType.System_Collections_IEnumerable) ||
+                 current.AllInterfaces.Any(static i => i.SpecialType == SpecialType.System_Collections_IEnumerable)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+
+        static bool IsInCollectionsNamespace(INamespaceSymbol? ns)
+        {
+            for (; ns is { IsGlobalNamespace: false }; ns = ns.ContainingNamespace)
+            {
+                if ((ns.Name == "Collections") && ns.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 
     // Whether every declaration of the type is partial, so that the generated code can add one.
@@ -477,6 +645,16 @@ internal static class MapperModelBuilder
     // and do not count, so the output for them stays as it was.
     private static bool IsNullableReference(ITypeSymbol type) =>
         type.IsReferenceType && (type.NullableAnnotation == NullableAnnotation.Annotated);
+
+    // A reference type declared with ?, or with nullable annotations disabled (oblivious), which says nothing about
+    // null: a value of it may be null. The values the generated code reads (the source, its members and the elements
+    // of its collections) are taken so, and checked for null the way a nullable one is.
+    private static bool MayBeNullReference(ITypeSymbol type) =>
+        type.IsReferenceType && (type.NullableAnnotation != NullableAnnotation.NotAnnotated);
+
+    // A value of the type may be null: a nullable struct, or a reference type that may be null (MayBeNullReference).
+    private static bool MayBeNull(ITypeSymbol type) =>
+        type.IsNullableType() || MayBeNullReference(type);
 
     // The declared type without the ? of a nullable reference type, keeping the annotations inside it.
     private static string GetNonNullableTypeName(ITypeSymbol type) =>
@@ -1222,14 +1400,22 @@ internal static class MapperModelBuilder
                     mapping.TargetPath);
             }
 
+            // The converter gets a value that is not null when the source is not of a nullable type, or when the
+            // generated code calls it for a value only: with NullValue, for a parameter not taking null, and with
+            // NullBehavior.Skip where the assignment is a statement (not a constructor argument or an initializer entry)
             var unwraps = match.Match is ValueMatch.Unwrap or ValueMatch.UnwrapConvert;
+            var rejectsNull = unwraps || RejectsNull(matchedMethod, valueType, compilation);
+            var getsValue = !mapping.IsSourceNullable || rejectsNull || mapping.HasNullValue() ||
+                            ((mapping.NullBehavior == NullBehaviorType.Skip) && !mapping.IsConstructorParameter &&
+                             !(model.UseConstructorMapping && (mapping.IsTargetInitOnly || mapping.IsTargetRequired)));
             resolved.Add(mapping with
             {
                 ConverterAcceptsCustomParameters = match.Result == ConverterMatchResult.MatchWithCustomParams,
                 ConverterParameterRefKinds = GetParameterRefKinds(matchedMethod),
                 ConverterUnwrapsSource = unwraps,
-                ConverterRejectsNull = unwraps || RejectsNull(matchedMethod, valueType, compilation),
-                ConverterForgivesNull = IsNullableReference(matchedMethod.ReturnType) && (targetType is not null) && !targetType.IsNullableType()
+                ConverterRejectsNull = rejectsNull,
+                ConverterForgivesNull = IsNullableReference(matchedMethod.ReturnType) && (targetType is not null) && !targetType.IsNullableType() &&
+                                        !(getsValue && ReturnsNotNullForValue(matchedMethod, compilation))
             });
         }
 
@@ -2350,6 +2536,7 @@ internal static class MapperModelBuilder
                     match.Mismatched!.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
             }
 
+            // The method gets the source, which is not null past the null check of the mapper
             var matchedMethod = match.Method!;
             resolved.Add(mapUsing with
             {
@@ -2359,7 +2546,7 @@ internal static class MapperModelBuilder
                 IsTargetRequired = target.IsRequired,
                 AcceptsCustomParameters = match.Result == ConverterMatchResult.MatchWithCustomParams,
                 ParameterRefKinds = GetParameterRefKinds(matchedMethod),
-                ForgivesNull = IsNullableReference(matchedMethod.ReturnType) && !target.Type.IsNullableType(),
+                ForgivesNull = IsNullableReference(matchedMethod.ReturnType) && !target.Type.IsNullableType() && !ReturnsNotNullForValue(matchedMethod, compilation),
                 MethodReturnType = matchedMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             });
         }
@@ -2496,7 +2683,7 @@ internal static class MapperModelBuilder
                 break;
             }
 
-            if (property.Type.IsNullableType())
+            if (MayBeNull(property.Type))
             {
                 paths.Add(String.Join(".", parts, 0, i + 1));
             }
@@ -2539,24 +2726,34 @@ internal static class MapperModelBuilder
     }
 
     // A property path of the source with the names of the properties it resolves to under the comparison,
-    // segment by segment; the rest from a segment that is not a property (such as Length) is left as written.
+    // segment by segment; the rest from a segment that is not a property (such as Length) is left as written. A
+    // member of the struct a nullable struct holds is read through its Value, as ResolveCanonicalPath takes it.
     private static string CanonicalizeSourcePath(ITypeSymbol sourceType, string path, StringComparison comparison, INamedTypeSymbol within, Compilation compilation)
     {
         var parts = path.Split('.');
+        var resolved = new List<string>(parts.Length);
         var type = sourceType;
-        for (var i = 0; i < parts.Length; i++)
+        var i = 0;
+        for (; i < parts.Length; i++)
         {
             var property = PropertyPathHelper.ResolveProperty(type, parts[i], comparison, within, compilation, readable: true);
+            if ((property is null) && (PropertyPathHelper.ResolveThroughValue(type, parts[i], comparison, within, compilation) is { } member))
+            {
+                resolved.Add(PropertyPathHelper.NullableValueName);
+                property = member;
+            }
+
             if (property is null)
             {
                 break;
             }
 
-            parts[i] = property.Name;
+            resolved.Add(property.Name);
             type = property.Type;
         }
 
-        return String.Join(".", parts);
+        resolved.AddRange(parts.Skip(i));
+        return String.Join(".", resolved);
     }
 
     internal static DiagnosticInfo? ValidateAndBuildMapCollectionMappings(
@@ -2746,23 +2943,34 @@ internal static class MapperModelBuilder
                 canCallMapper);
             if (elementMatch is not { } matchedElementMapper)
             {
-                return new DiagnosticInfo(
-                    Diagnostics.InvalidMapCollectionMapperMethod,
-                    LocationOf(model, declared.AttributeIndex, syntax),
-                    mapperMethod.Name,
-                    mapCollection.Mapper!,
-                    mapCollection.TargetName);
+                return String.IsNullOrEmpty(mapCollection.Mapper)
+                    ? new DiagnosticInfo(
+                        Diagnostics.MapCollectionMapperNotSpecified,
+                        LocationOf(model, declared.AttributeIndex, syntax),
+                        mapperMethod.Name,
+                        mapCollection.TargetName)
+                    : new DiagnosticInfo(
+                        Diagnostics.InvalidMapCollectionMapperMethod,
+                        LocationOf(model, declared.AttributeIndex, syntax),
+                        mapperMethod.Name,
+                        mapCollection.Mapper!,
+                        mapCollection.TargetName);
             }
 
             var elementMapper = matchedElementMapper.Method;
 
-            // A nullable reference element goes to a mapper whose parameter does not take null only when it has a
-            // value, as the value of a nullable struct one does, and a null one gives default, as a null source of
-            // [MapNested] does. The loop can pass it so to a parameter taking a value; a collection converter takes the
-            // mapper as a delegate.
-            var unwrapsReference = !usesConverter && IsNullableReference(sourceElementType) &&
+            // A reference element that may be null (nullable, or declared with nullable annotations disabled) goes to a
+            // mapper whose parameter does not take null only when it has a value, as the value of a nullable struct one
+            // does, and a null one gives default, as a null source of [MapNested] does. The loop can pass it so to a
+            // parameter taking a value; a collection converter takes the mapper as a delegate.
+            var unwrapsReference = !usesConverter && MayBeNullReference(sourceElementType) &&
                                    (elementMapper.Parameters[0].RefKind is RefKind.None or RefKind.In) &&
                                    !TakesNull(elementMapper.Parameters[0], elementMapper.Parameters[0].Type);
+
+            // The mapper gets an element that is not null: one of a type that is not nullable, or one it is called
+            // for only when it has a value
+            var unwrapsElement = matchedElementMapper.UnwrapsSource || unwrapsReference;
+            var getsElementValue = unwrapsElement || !MayBeNull(sourceElementType);
             resolvedCollections.Add(mapCollection with
             {
                 IsInitializerEntry = inInitializer,
@@ -2770,9 +2978,9 @@ internal static class MapperModelBuilder
                 SourceElementType = sourceElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 SourceElementTypeArgument = sourceElementType.ToDisplayString(NullableQualifiedFormat),
                 TargetType = GetCreatedTypeName(targetMemberType),
-                TargetElementType = targetElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TargetElementType = GetCreatedTypeName(targetElementType),
                 TargetElementTypeArgument = targetElementType.ToDisplayString(NullableQualifiedFormat),
-                IsSourceNullable = sourceProp.Type.IsNullableType(),
+                IsSourceNullable = MayBeNull(sourceProp.Type),
                 TargetIsArray = targetMemberType is IArrayTypeSymbol,
                 TargetCollectionMethod = targetCollectionMethod,
                 SourceShape = sourceShape,
@@ -2785,8 +2993,8 @@ internal static class MapperModelBuilder
                     ? GetCreatedTypeName(createdType)
                     : null,
                 MapperReturnsValue = !elementMapper.ReturnsVoid,
-                ForgivesMapperResult = ReturnsNullableInto(elementMapper, targetElementType),
-                UnwrapsSource = matchedElementMapper.UnwrapsSource || unwrapsReference,
+                ForgivesMapperResult = ReturnsNullableInto(elementMapper, targetElementType) && !(getsElementValue && ReturnsNotNullForValue(elementMapper, compilation)),
+                UnwrapsSource = unwrapsElement,
                 NullResult = GetNullResult(elementMapper, targetElementType),
                 MapperParameterRefKinds = GetParameterRefKinds(elementMapper)
             });
@@ -2883,27 +3091,38 @@ internal static class MapperModelBuilder
                 (m, _) => TakesMapperArguments(m, ArgumentKind.Value) && (!m.ReturnsVoid || canCreateTarget));
             if (nestedMatch is not { } matchedNestedMapper)
             {
-                return new DiagnosticInfo(
-                    Diagnostics.InvalidMapNestedMapperMethod,
-                    LocationOf(model, declared.AttributeIndex, syntax),
-                    mapperMethod.Name,
-                    mapNested.Mapper,
-                    mapNested.TargetName);
+                return String.IsNullOrEmpty(mapNested.Mapper)
+                    ? new DiagnosticInfo(
+                        Diagnostics.MapNestedMapperNotSpecified,
+                        LocationOf(model, declared.AttributeIndex, syntax),
+                        mapperMethod.Name,
+                        mapNested.TargetName)
+                    : new DiagnosticInfo(
+                        Diagnostics.InvalidMapNestedMapperMethod,
+                        LocationOf(model, declared.AttributeIndex, syntax),
+                        mapperMethod.Name,
+                        mapNested.Mapper,
+                        mapNested.TargetName);
             }
 
+            // The mapper gets a value that is not null unless it takes null and the source may be null: the source is
+            // not of a nullable type, or it is called for a value only
             var nestedMapper = matchedNestedMapper.Method;
+            var mapperTakesNull = !matchedNestedMapper.UnwrapsSource && TakesNull(nestedMapper.Parameters[0], nestedMapper.Parameters[0].Type);
+            var getsValue = !MayBeNull(sourceProp.Type) || !mapperTakesNull;
 
             resolvedNested.Add(mapNested with
             {
                 IsInitializerEntry = inInitializer,
                 SourceType = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                TargetType = targetMemberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TargetType = GetCreatedTypeName(targetMemberType),
                 ArgumentLocalType = ReturnsNullable(nestedMapper) && (targetMemberType.NullableAnnotation == NullableAnnotation.Annotated)
                     ? targetMemberType.ToDisplayString(NullableQualifiedFormat)
                     : targetMemberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                IsSourceNullable = sourceProp.Type.IsNullableType(),
+                IsSourceNullable = MayBeNull(sourceProp.Type),
+                MapperTakesNull = mapperTakesNull,
                 MapperReturnsValue = !nestedMapper.ReturnsVoid,
-                ForgivesMapperResult = ReturnsNullableInto(nestedMapper, targetMemberType),
+                ForgivesMapperResult = ReturnsNullableInto(nestedMapper, targetMemberType) && !(getsValue && ReturnsNotNullForValue(nestedMapper, compilation)),
                 UnwrapsSource = matchedNestedMapper.UnwrapsSource,
                 NullResult = GetNullResult(nestedMapper, targetMemberType),
                 MapperParameterRefKinds = GetParameterRefKinds(nestedMapper)
@@ -2928,11 +3147,13 @@ internal static class MapperModelBuilder
         model.ReturnsDestination && (destProp is not null) && (requiredAtConstruction || !hasAssignableSetter) &&
         CanAssignFromMapper(destProp, destinationType, within, compilation);
 
-    // The name of a collection type the generated code creates, or declares the local of a constructor argument
-    // as: with the nullable annotations of its type arguments (List<Item?>), which the target has to get for its
-    // type (CS8619 otherwise), and without its own, which new cannot take.
+    // The name of a type the generated code creates, or declares the local of a constructor argument as: with the
+    // nullable annotations of its type arguments (List<Item?>), which the target has to get for its type (CS8619
+    // otherwise), and without its own, which new cannot take (CS8628), a type parameter's (T?) included. A nullable
+    // struct is a type of its own.
     private static string GetCreatedTypeName(ITypeSymbol type) =>
-        (type.IsReferenceType ? type.WithNullableAnnotation(NullableAnnotation.NotAnnotated) : type).ToDisplayString(NullableQualifiedFormat);
+        ((type.NullableAnnotation == NullableAnnotation.Annotated) && !type.IsValueType ? type.WithNullableAnnotation(NullableAnnotation.NotAnnotated) : type)
+        .ToDisplayString(NullableQualifiedFormat);
 
     // Whether a mapper returns a nullable reference into a target not annotated as one. The generated code takes
     // its result with !, as it takes a null source member as default!, so that the assignment does not warn
@@ -2950,6 +3171,35 @@ internal static class MapperModelBuilder
 
     private static bool ReturnsNullable(IMethodSymbol mapper) =>
         !mapper.ReturnsVoid && mapper.ReturnType.IsReferenceType && (mapper.ReturnType.NullableAnnotation == NullableAnnotation.Annotated);
+
+    // Whether a method returning a nullable reference returns one that is not null for a first argument that is not
+    // null: [return: NotNullIfNotNull] names its first parameter, or it is a [Mapper] the generated code puts the
+    // attribute on (ReturnNotNullIfNotNull), which the compilation the generator reads does not have yet. The compiler
+    // takes the result of such a call so, so the generated code takes it without ! and Strict mode does not report it.
+    private static bool ReturnsNotNullForValue(IMethodSymbol method, Compilation compilation)
+    {
+        if (method.ReturnsVoid || (method.Parameters.Length == 0))
+        {
+            return false;
+        }
+
+        var parameterName = method.Parameters[0].Name;
+        if (method.GetReturnTypeAttributes().Any(a =>
+                (a.AttributeClass?.ToDisplayString() == "System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute") &&
+                (a.ConstructorArguments.Length == 1) &&
+                (a.ConstructorArguments[0].Value is string name) &&
+                (name == parameterName)))
+        {
+            return true;
+        }
+
+        return method.IsPartialDefinition &&
+               method.IsStatic &&
+               method.GetAttributes().Any(static a => a.AttributeClass?.ToDisplayString() == Names.MapperAttribute) &&
+               MayBeNullReference(method.Parameters[0].Type) &&
+               method.ReturnType.IsNullableType() &&
+               CanApplyNotNullIfNotNull(compilation, method.ContainingType);
+    }
 
     // The mapper of [MapCollection] / [MapNested], and whether the value of a nullable struct source goes to it.
     internal readonly record struct MapperMatch(IMethodSymbol Method, bool UnwrapsSource);
@@ -3667,7 +3917,7 @@ internal static class MapperModelBuilder
             initializable &= IsAssignableInInitializer(member, receiverType, within, compilation) && CanCreateInstance(type, within, compilation);
             segments[i] = new NestedPathSegment(
                 path,
-                type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                GetCreatedTypeName(type),
                 false,
                 access ?? TargetSegmentAccess.Existing);
             receiverType = type;
@@ -4140,6 +4390,184 @@ internal static class MapperModelBuilder
         return warnings;
     }
 
+    // Strict mode: the mappings giving a value that may be null to a target that does not take null, which gets null or
+    // default for it without the mapping saying what it is to get (SMP0502). A value may be null as declared: a source
+    // member of a nullable type, and one read through a member of one where the value is made as an expression (a
+    // constructor argument, an object initializer entry), a statement leaving the target as it is then; a nullable
+    // reference the method of [MapFrom] or [MapUsing], a converter or the mapper of [MapNested] / [MapCollection]
+    // returns, which the generated code takes with !; and a source of [MapNested] / [MapCollection] or an element of a
+    // nullable type a mapper not taking null is not called for. A mapping with NullValue, NullBehavior.Skip or a
+    // [MapCondition] says what the target gets. A reference declared with nullable annotations disabled says nothing
+    // about null, so it is not taken as one here, as a model written without them would warn everywhere. Reported at
+    // the attribute of the mapping, or at the method for the automatic mapping. A return mapper whose source is
+    // declared nullable returns default for a null source, which a return type not taking null gets as well (the
+    // target (return), reported at the method).
+    private static List<DiagnosticInfo> CollectNullableValueWarnings(
+        MapperMethodModel model,
+        IMethodSymbol mapperMethod,
+        ITypeSymbol sourceType,
+        ITypeSymbol destinationType,
+        INamedTypeSymbol within,
+        Compilation compilation,
+        MethodDeclarationSyntax syntax)
+    {
+        var warnings = new List<DiagnosticInfo>();
+
+        void Report(int attributeIndex, string target) =>
+            warnings.Add(new DiagnosticInfo(Diagnostics.NullableValueToNonNullableTarget, LocationOf(model, attributeIndex, syntax), model.MethodName, target));
+
+        if (model.ReturnsDestination && IsNullableReference(sourceType) && RejectsNullReturn(mapperMethod))
+        {
+            Report(-1, "(return)");
+        }
+
+        // The target does not take null: a struct, or a reference annotated as not null without [AllowNull], or one with
+        // [DisallowNull]
+        bool Rejects(string target, bool isConstructorArgument) =>
+            ResolveFeatureTarget(model, destinationType, target, isConstructorArgument, within, compilation) is { } resolved &&
+            RejectsNullValue(resolved.Member, resolved.Type);
+
+        // Whether a source member path is of a nullable type as declared, at its end and before it
+        (bool Value, bool Intermediate) GetDeclaredNullability(string path)
+        {
+            var parts = path.Split('.');
+            var type = sourceType;
+            var intermediate = false;
+            for (var i = 0; i < parts.Length; i++)
+            {
+                if (PropertyPathHelper.ResolveProperty(type, parts[i], StringComparison.Ordinal, within, compilation, readable: true) is not { } property)
+                {
+                    break;
+                }
+
+                if (i == parts.Length - 1)
+                {
+                    return (property.Type.IsNullableType(), intermediate);
+                }
+
+                intermediate |= property.Type.IsNullableType();
+                type = property.Type;
+            }
+
+            return (false, intermediate);
+        }
+
+        bool IsInitializerEntry(bool isTargetInitOnly, bool isTargetRequired) =>
+            model.UseConstructorMapping && (isTargetInitOnly || isTargetRequired);
+
+        foreach (var mapping in model.PropertyMappings)
+        {
+            if (mapping.HasNullValue() || (mapping.NullBehavior == NullBehaviorType.Skip) || mapping.HasCondition() ||
+                !Rejects(mapping.TargetPath, mapping.IsConstructorParameter))
+            {
+                continue;
+            }
+
+            var (value, intermediate) = GetDeclaredNullability(mapping.SourcePath);
+            var isExpression = mapping.IsConstructorParameter || IsInitializerEntry(mapping.IsTargetInitOnly, mapping.IsTargetRequired);
+            var mayBeNull = mapping.HasConverter()
+                ? mapping.ConverterForgivesNull || (value && mapping.ConverterRejectsNull && isExpression)
+                : value;
+            if (mayBeNull || (intermediate && isExpression))
+            {
+                Report(mapping.AttributeIndex, mapping.TargetPath);
+            }
+        }
+
+        foreach (var mapUsing in model.MapUsingMappings)
+        {
+            if (mapUsing.ForgivesNull && Rejects(mapUsing.TargetName, mapUsing.IsConstructorArgument))
+            {
+                Report(mapUsing.AttributeIndex, mapUsing.TargetName);
+            }
+        }
+
+        foreach (var mapFrom in model.MapFromMappings)
+        {
+            var isExpression = mapFrom.IsConstructorArgument || IsInitializerEntry(mapFrom.IsTargetInitOnly, mapFrom.IsTargetRequired);
+            if ((mapFrom.ForgivesNull || (!mapFrom.IsMethodCall && isExpression && GetDeclaredNullability(mapFrom.Member).Intermediate)) &&
+                Rejects(mapFrom.TargetName, mapFrom.IsConstructorArgument))
+            {
+                Report(mapFrom.AttributeIndex, mapFrom.TargetName);
+            }
+        }
+
+        foreach (var mapNested in model.MapNestedMappings)
+        {
+            if ((mapNested.ForgivesMapperResult || (!mapNested.MapperTakesNull && GetDeclaredNullability(mapNested.SourceName).Value)) &&
+                Rejects(mapNested.TargetName, mapNested.IsConstructorArgument))
+            {
+                Report(mapNested.AttributeIndex, mapNested.TargetName);
+            }
+        }
+
+        foreach (var mapCollection in model.MapCollectionMappings)
+        {
+            if (ResolveFeatureTarget(model, destinationType, mapCollection.TargetName, mapCollection.IsConstructorArgument, within, compilation) is not { } target ||
+                (PropertyPathHelper.ResolveProperty(sourceType, mapCollection.SourceName, StringComparison.Ordinal, within, compilation, readable: true) is not { } sourceProperty))
+            {
+                continue;
+            }
+
+            // The collection, which InPlace leaves as it is for a null source, and its elements
+            var nullCollection = !mapCollection.InPlace && sourceProperty.Type.IsNullableType() && RejectsNullValue(target.Member, target.Type);
+            var targetElementType = target.Type.GetEnumerableElementType();
+            var elementRejectsNull = (targetElementType is not null) && (targetElementType.IsValueType
+                ? !targetElementType.IsNullableType()
+                : targetElementType.IsReferenceType && (targetElementType.NullableAnnotation == NullableAnnotation.NotAnnotated));
+            var nullElement = elementRejectsNull &&
+                              (mapCollection.ForgivesMapperResult ||
+                               (mapCollection.UnwrapsSource && (sourceProperty.Type.GetCollectionOrMemoryElementType()?.IsNullableType() == true)));
+            if (nullCollection || nullElement)
+            {
+                Report(mapCollection.AttributeIndex, mapCollection.TargetName);
+            }
+        }
+
+        return warnings;
+    }
+
+    // The return value of a method does not take null: a struct, or a reference annotated as not null without
+    // [return: MaybeNull]. A type parameter, which may be either, does not count.
+    private static bool RejectsNullReturn(IMethodSymbol method) =>
+        method.ReturnType.IsValueType
+            ? !method.ReturnType.IsNullableType()
+            : method.ReturnType.IsReferenceType &&
+              (method.ReturnType.NullableAnnotation == NullableAnnotation.NotAnnotated) &&
+              !method.GetReturnTypeAttributes().Any(static a => a.AttributeClass?.ToDisplayString() == "System.Diagnostics.CodeAnalysis.MaybeNullAttribute");
+
+    // A member or a parameter that does not take null: a struct, or a reference annotated as not null without
+    // [AllowNull], or one with [DisallowNull]. A type parameter, which may be either, does not count.
+    private static bool RejectsNullValue(ISymbol member, ITypeSymbol type) =>
+        type.IsValueType ? !type.IsNullableType() : type.IsReferenceType && !TakesNull(member, type);
+
+    // Strict mode: the members of a source enum a mapping to another enum by name finds no member of the same name for
+    // in the target enum, whose values give the target default, or null for a nullable one (SMP0503). The values of a
+    // [Flags] enum combining members are not known before they come, so only the members are looked at. A converter
+    // given to the mapping takes over the conversion. Reported at the attribute of the mapping, or at the method for
+    // the automatic mapping.
+    private static List<DiagnosticInfo> CollectUnmatchedEnumMemberWarnings(MapperMethodModel model, MethodDeclarationSyntax syntax)
+    {
+        var warnings = new List<DiagnosticInfo>();
+        foreach (var mapping in model.PropertyMappings.Where(static m => (m.EnumMappingKind == EnumMappingKind.EnumToEnum) && !m.HasConverter()))
+        {
+            var unmatched = mapping.SourceEnumMembers
+                .Where(member => !mapping.DestEnumMembers.Contains(member, StringComparer.Ordinal))
+                .ToList();
+            if (unmatched.Count > 0)
+            {
+                warnings.Add(new DiagnosticInfo(
+                    Diagnostics.UnmatchedEnumMember,
+                    LocationOf(model, mapping.AttributeIndex, syntax),
+                    model.MethodName,
+                    mapping.TargetPath,
+                    String.Join(", ", unmatched)));
+            }
+        }
+
+        return warnings;
+    }
+
     internal static DiagnosticInfo? ValidateCultureAndFormat(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         // A culture names the field the generated code gets it into, so it has to be a culture name
@@ -4467,7 +4895,7 @@ internal static class MapperModelBuilder
                     (GetMemberType(member) is { } type) &&
                     CanCreateInstance(type, within, compilation))
                 {
-                    creations.Add(new NestedPathSegment(name, type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), false));
+                    creations.Add(new NestedPathSegment(name, GetCreatedTypeName(type), false));
                     continue;
                 }
             }
@@ -5452,7 +5880,7 @@ internal static class MapperModelBuilder
     {
         var sourceTypeName = sourcePropertyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var destTypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var isSourceNullable = sourcePropertyType.IsNullableType();
+        var isSourceNullable = MayBeNull(sourcePropertyType);
         var isTargetNullable = targetType.IsNullableType();
 
         var sourceUnderlyingType = sourcePropertyType.GetUnderlyingType();
@@ -5486,14 +5914,6 @@ internal static class MapperModelBuilder
             propEffectiveCulture = model.Culture;
             propEffectiveDateTimeFormat = model.DateTimeFormat;
             propEffectiveNumberFormat = model.NumberFormat;
-        }
-
-        // A reference declared without nullable annotations (nullable disabled) may hold null as well, so the null
-        // handling an attribute asks for, NullValue or NullBehavior.Skip, applies to it
-        if (!isSourceNullable && sourcePropertyType.IsReferenceType && (sourcePropertyType.NullableAnnotation == NullableAnnotation.None) &&
-            ((nullValue is not null) || nullValueUnsupported || (nullBehavior == NullBehaviorType.Skip)))
-        {
-            isSourceNullable = true;
         }
 
         // A value the target takes by an implicit reference conversion, through variance as well
@@ -5567,8 +5987,17 @@ internal static class MapperModelBuilder
         {
             if (declared.TargetPath.Contains('.') || declared.SourcePath.Contains('.'))
             {
+                // The culture and the formats of the method or the profile apply to a path as they do to a member
                 var parameter = declared.TargetPath.Contains('.') ? null : FindParameter(declared.TargetPath);
-                var mapping = ResolveNestedMapping(declared, sourceType, destinationType, within, compilation, parameter?.Type);
+                var withDefaults = (model.Culture is null) && (model.DateTimeFormat is null) && (model.NumberFormat is null)
+                    ? declared
+                    : declared with
+                    {
+                        EffectiveCulture = declared.EffectiveCulture ?? model.Culture,
+                        EffectiveDateTimeFormat = declared.EffectiveDateTimeFormat ?? model.DateTimeFormat,
+                        EffectiveNumberFormat = declared.EffectiveNumberFormat ?? model.NumberFormat
+                    };
+                var mapping = ResolveNestedMapping(withDefaults, sourceType, destinationType, within, compilation, parameter?.Type);
 
                 // A dotted source path still lands on a plain destination member, which may be
                 // init-only or required. Without these flags the emitters treat it as an ordinary
@@ -5902,7 +6331,7 @@ internal static class MapperModelBuilder
                 var prop = PropertyPathHelper.GetProperties(currentType, within, compilation, readable: true).FirstOrDefault(p => p.Name == part);
                 if (prop is not null)
                 {
-                    var isNullable = prop.Type.IsNullableType();
+                    var isNullable = MayBeNull(prop.Type);
                     sourceSegments.Add(new NestedPathSegment(
                         String.Join(".", pathBuilder),
                         prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -5918,7 +6347,7 @@ internal static class MapperModelBuilder
             if (finalSourceProp is not null)
             {
                 sourceTypeName = finalSourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                isSourceNullable = finalSourceProp.Type.IsNullableType();
+                isSourceNullable = MayBeNull(finalSourceProp.Type);
                 var sourceUnderlyingType = finalSourceProp.Type.GetUnderlyingType();
                 sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
@@ -5929,7 +6358,7 @@ internal static class MapperModelBuilder
             if (sourceProp is not null)
             {
                 sourceTypeName = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                isSourceNullable = sourceProp.Type.IsNullableType();
+                isSourceNullable = MayBeNull(sourceProp.Type);
                 var sourceUnderlyingType = sourceProp.Type.GetUnderlyingType();
                 sourceUnderlyingTypeName = sourceUnderlyingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
@@ -5974,14 +6403,16 @@ internal static class MapperModelBuilder
             }
         }
 
+        ITypeSymbol? srcUnderlying = null;
+        ITypeSymbol? dstUnderlying = null;
         if (!String.IsNullOrEmpty(sourceUnderlyingTypeName) && !String.IsNullOrEmpty(targetUnderlyingTypeName))
         {
             var srcParts = mapping.SourcePath.Split('.');
             var dstParts = mapping.TargetPath.Split('.');
             var srcFinalProp = PropertyPathHelper.ResolvePropertySymbol(sourceType, srcParts, within, compilation, readable: true);
             var dstFinalProp = PropertyPathHelper.ResolvePropertySymbol(destinationType, dstParts, within, compilation);
-            var srcUnderlying = srcFinalProp?.Type.GetUnderlyingType();
-            var dstUnderlying = (targetTypeOverride ?? dstFinalProp?.Type)?.GetUnderlyingType();
+            srcUnderlying = srcFinalProp?.Type.GetUnderlyingType();
+            dstUnderlying = (targetTypeOverride ?? dstFinalProp?.Type)?.GetUnderlyingType();
             var assignable = (srcUnderlying is not null) && (dstUnderlying is not null) &&
                              (srcUnderlying.IsAssignableTo(dstUnderlying) || IsImplicitReferenceConversion(srcUnderlying, dstUnderlying, compilation));
             requiresConversion = (!assignable) &&
@@ -5992,7 +6423,7 @@ internal static class MapperModelBuilder
             requiresConversion = TypeNameHelper.RequiresTypeConversion(sourceTypeName, targetTypeName);
         }
 
-        return mapping with
+        var resolved = mapping with
         {
             SourcePathSegments = sourcePathSegments,
             SourceType = sourceTypeName,
@@ -6005,6 +6436,12 @@ internal static class MapperModelBuilder
             IsTargetInitOnly = isTargetInitOnly,
             RequiresConversion = requiresConversion
         };
+
+        // An enum at either end converts as it does for a member the path does not go through (by member name, by
+        // number, from and to text), which the conversion analysis takes from the mapping as it does for those
+        return (srcUnderlying is not null) && (dstUnderlying is not null)
+            ? DetectEnumMappingKind(resolved, srcUnderlying, dstUnderlying)
+            : resolved;
     }
 
     // Conversion analysis for the property mappings. Each step depends on what the previous ones
@@ -6024,22 +6461,24 @@ internal static class MapperModelBuilder
     {
         var within = mapperMethod.ContainingType;
         var hasMapConverter = mapConverterTypeName is not null;
-        var converterType = FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
 
-        INamedTypeSymbol? parsableSymbol = null;
-        INamedTypeSymbol? spanParsableSymbol = null;
-        if (!hasMapConverter)
+        // The converter class is looked up for a mapping that needs a conversion only
+        ITypeSymbol? converterType = null;
+        var converterTypeFound = false;
+        ITypeSymbol? GetConverterType()
         {
-            foreach (var reference in mapperMethod.ContainingModule.ReferencedAssemblySymbols)
+            if (!converterTypeFound)
             {
-                parsableSymbol ??= reference.GetTypeByMetadataName("System.IParsable`1");
-                spanParsableSymbol ??= reference.GetTypeByMetadataName("System.ISpanParsable`1");
-                if ((parsableSymbol is not null) && (spanParsableSymbol is not null))
-                {
-                    break;
-                }
+                converterType = FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
+                converterTypeFound = true;
             }
+
+            return converterType;
         }
+
+        // The first referenced assembly defining each, looked up once per compilation
+        var parsableSymbol = hasMapConverter ? null : mapperMethod.FindReferencedType("System.IParsable`1");
+        var spanParsableSymbol = hasMapConverter ? null : mapperMethod.FindReferencedType("System.ISpanParsable`1");
 
         // The declared types of the members, from their symbols: the source property, and the target
         // property or the constructor parameter a constructor-only target stands for, the parameter for a
@@ -6074,10 +6513,10 @@ internal static class MapperModelBuilder
             var effectiveTarget = mapping.TargetUnderlyingType is { Length: > 0 } t ? t : mapping.TargetType;
 
             // Specialized converter method
-            if ((converterType is not null) && requiresConversion && !isEnumMapping)
+            if (requiresConversion && !isEnumMapping && (GetConverterType() is { } valueConverterType))
             {
                 var specializedMethodName = $"{mapConverterMethodName}To{TypeNameHelper.GetSimpleTypeName(effectiveTarget)}";
-                if (FindSpecializedMethod(converterType, specializedMethodName, effectiveSource, effectiveTarget) is not null)
+                if (FindSpecializedMethod(valueConverterType, specializedMethodName, effectiveSource, effectiveTarget) is not null)
                 {
                     specializedConverterMethod = specializedMethodName;
                     parseMethod = ParseMethodKind.None;
@@ -6252,12 +6691,8 @@ internal static class MapperModelBuilder
     // signature mismatch instead of leaving the call to fail in the generated code.
     internal static DiagnosticInfo? ValidateValueConverterMethods(IMethodSymbol mapperMethod, Compilation compilation, ref MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
-        var converterType = FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
-        if (converterType is null)
-        {
-            return null;
-        }
-
+        // The converter class is looked up once a mapping calls a method of it, which most mappers do not
+        ITypeSymbol? converterType = null;
         var cultureInfoType = compilation.GetTypeByMetadataName("System.Globalization.CultureInfo");
         var stringType = compilation.GetSpecialType(SpecialType.System_String);
         PropertyMappingModel[]? resolved = null;
@@ -6265,10 +6700,18 @@ internal static class MapperModelBuilder
         {
             var mapping = model.PropertyMappings[i];
 
-            // A converter given to [MapProperty] takes over the conversion
-            if (mapping.HasConverter())
+            // A converter given to [MapProperty] takes over the conversion, and a mapping calling no method of the
+            // converter class has nothing to check
+            if (mapping.HasConverter() ||
+                (!mapping.HasSpecializedConverter() && ((model.MapConverterTypeName is null) || !UsesGenericConversion(mapping))))
             {
                 continue;
+            }
+
+            converterType ??= FindConverterType(mapperMethod, Names.ValueConverterAttribute, Names.DefaultValueConverter);
+            if (converterType is null)
+            {
+                return null;
             }
 
             var effectiveSource = mapping.SourceUnderlyingType is { Length: > 0 } s ? s : mapping.SourceType;

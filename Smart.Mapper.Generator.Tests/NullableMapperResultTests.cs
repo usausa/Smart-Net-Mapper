@@ -6,9 +6,10 @@ using Microsoft.CodeAnalysis;
 
 // The mapper of [MapNested] / [MapCollection] returning a nullable reference, as one declared to take null does
 // (Map(Src? source)), is taken with ! into a target or elements not annotated as nullable, as a null source member
-// is taken as default!. The collections the generated code creates keep the nullable annotations of the elements of
-// the target (List<Item?>), and the local of a constructor argument takes a nullable result. The generated code
-// used to warn in each of these (CS8601, CS8604, CS8619, CS8620, CS8621, CS8600).
+// is taken as default!, unless it gets a value that is not null and returns one for it ([return: NotNullIfNotNull],
+// which a generated mapper declares, see NotNullIfNotNullTests). The collections the generated code creates keep the
+// nullable annotations of the elements of the target (List<Item?>), and the local of a constructor argument takes a
+// nullable result. The generated code used to warn in each of these (CS8601, CS8604, CS8619, CS8620, CS8621, CS8600).
 public class NullableMapperResultTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -51,9 +52,10 @@ public class NullableMapperResultTests
         }
         """;
 
+    // A source that is not null gets a result that is not null from the generated mapper, which declares it so
     [Theory]
-    [InlineData("public class Src { public SrcChild C { get; set; } = new(); } public class Dst { public DstChild C { get; set; } = new(); }", "__d.C = MapChild(src.C)!;")]
-    [InlineData("public class Src { public SrcChild? C { get; set; } } public class Dst { public DstChild C { get; set; } = new(); }", "__d.C = src.C is not null ? MapChild(src.C!)! : default!;")]
+    [InlineData("public class Src { public SrcChild C { get; set; } = new(); } public class Dst { public DstChild C { get; set; } = new(); }", "__d.C = MapChild(src.C);")]
+    [InlineData("public class Src { public SrcChild? C { get; set; } } public class Dst { public DstChild C { get; set; } = new(); }", "__d.C = MapChild(src.C)!;")]
     [InlineData("public class Src { public SrcChild C { get; set; } = new(); } public class Dst { public DstChild? C { get; set; } }", "__d.C = MapChild(src.C);")]
     public void NestedNullableResultIsForgivenForNonNullableTarget(string types, string expected)
     {
@@ -102,7 +104,7 @@ public class NullableMapperResultTests
     public void EnumerableSourceKeepsElementAnnotations()
     {
         var (generated, problems) = Build(Source(
-            "public class Src { public IEnumerable<SrcChild?> C { get; set; } = []; public IReadOnlyCollection<SrcChild> D { get; set; } = []; } " +
+            "public class Src { public IEnumerable<SrcChild?> C { get; set; } = []; public IReadOnlyCollection<SrcChild?> D { get; set; } = []; } " +
             "public class Dst { public DstChild?[] C { get; set; } = []; public List<DstChild> D { get; set; } = []; }",
             "[MapCollection(\"C\", Mapper = nameof(MapChild))] [MapCollection(\"D\", Mapper = nameof(MapChild))]"));
 

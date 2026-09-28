@@ -6,7 +6,8 @@ namespace Smart.Mapper;
 public sealed class MapperProfileAttribute : Attribute
 {
     // Enables strict mode for all mapper methods in the class. When true, destination properties
-    // that are not mapped cause a compile-time warning (SMP0501).
+    // that are not mapped cause a compile-time warning (SMP0501), as do values that may be null going to targets that
+    // do not take null (SMP0502) and enum members without a member of the same name in the target enum (SMP0503).
     public bool Strict { get; set; }
 
     // Name comparison used to match member names, both in automatic mapping and for the names of the

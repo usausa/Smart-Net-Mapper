@@ -1,5 +1,8 @@
 namespace Smart.Mapper.Generator.Helpers;
 
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+
 using Microsoft.CodeAnalysis;
 
 using SourceGenerateHelper;
@@ -146,9 +149,28 @@ internal static class MapperSymbolExtensions
     // Type resolution
     // -------------------------------------------------------
 
+    // The types found by name, per compilation, which the assembly of the mapper method stands for: every mapper looks
+    // up the same few (the default converter classes, IParsable<T>) through the referenced assemblies one by one. The
+    // table lets go of them with the compilation, and the dictionary takes lookups made at the same time, as the models
+    // of several methods may be built in parallel.
+    private static readonly ConditionalWeakTable<IAssemblySymbol, ConcurrentDictionary<string, ITypeSymbol?>> TypesByName = new();
+
+    private static readonly ConditionalWeakTable<IAssemblySymbol, ConcurrentDictionary<string, INamedTypeSymbol?>> ReferencedTypesByName = new();
+
     // Resolves a type symbol from a fully-qualified name by searching
     // the method's containing assembly and all referenced assemblies.
-    public static ITypeSymbol? FindTypeByFullyQualifiedName(this IMethodSymbol mapperMethod, string fullyQualifiedName)
+    public static ITypeSymbol? FindTypeByFullyQualifiedName(this IMethodSymbol mapperMethod, string fullyQualifiedName) =>
+        TypesByName.GetValue(mapperMethod.ContainingAssembly, static _ => new ConcurrentDictionary<string, ITypeSymbol?>(StringComparer.Ordinal))
+            .GetOrAdd(fullyQualifiedName, name => LookupTypeByFullyQualifiedName(mapperMethod, name));
+
+    // The type of the metadata name in the first referenced assembly defining it, in the order of the references.
+    public static INamedTypeSymbol? FindReferencedType(this IMethodSymbol mapperMethod, string metadataName) =>
+        ReferencedTypesByName.GetValue(mapperMethod.ContainingAssembly, static _ => new ConcurrentDictionary<string, INamedTypeSymbol?>(StringComparer.Ordinal))
+            .GetOrAdd(metadataName, name => mapperMethod.ContainingModule.ReferencedAssemblySymbols
+                .Select(reference => reference.GetTypeByMetadataName(name))
+                .FirstOrDefault(static type => type is not null));
+
+    private static ITypeSymbol? LookupTypeByFullyQualifiedName(IMethodSymbol mapperMethod, string fullyQualifiedName)
     {
         var typeName = fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal)
             ? fullyQualifiedName.Substring("global::".Length)

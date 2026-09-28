@@ -193,4 +193,53 @@ public class NullHandlingTests
         Assert.Equal("name", whenValue.Name);
         Assert.Equal("note", whenValue.Note);
     }
+
+    // A null reference declared with nullable annotations disabled does not get to a converter, a mapper of [MapNested]
+    // or an element mapper not taking null, nor is it read through: the converter leaves the target as it is, the
+    // nested target and a null element get null, a null collection gives null, and the path is read under its check
+    [Fact]
+    public void MapObliviousGraphChecksNull()
+    {
+        var whenNull = new ObliviousGraphDestination();
+        TestMappers.MapObliviousGraph(new ObliviousGraphSource { Items = [new ObliviousItem { Value = 1 }, null!] }, whenNull);
+        Assert.Equal("init", whenNull.Name);
+        Assert.Null(whenNull.Child);
+        int?[] expectedItems = [1, null];
+        Assert.Equal(expectedItems, whenNull.Items!.Select(static x => x?.Value));
+        Assert.Equal("init", whenNull.ParentName);
+
+        var whenNullItems = new ObliviousGraphDestination { Items = [] };
+        TestMappers.MapObliviousGraph(new ObliviousGraphSource(), whenNullItems);
+        Assert.Null(whenNullItems.Items);
+
+        var whenValue = new ObliviousGraphDestination();
+        TestMappers.MapObliviousGraph(
+            new ObliviousGraphSource { Name = "name", Child = new ObliviousItem { Value = 2 }, Items = [], Parent = new ObliviousGraphSource { Name = "parent" } },
+            whenValue);
+        Assert.Equal("NAME", whenValue.Name);
+        Assert.Equal(2, whenValue.Child!.Value);
+        Assert.Empty(whenValue.Items!);
+        Assert.Equal("parent", whenValue.ParentName);
+    }
+
+    // A null source parameter declared with nullable annotations disabled maps nothing and gives null
+    [Fact]
+    public void MapObliviousOrNullReturnsNullForNull()
+    {
+        Assert.Null(TestMappers.MapObliviousOrNull(null));
+        Assert.Equal("name", TestMappers.MapObliviousOrNull(new ObliviousSource { Name = "name" }).Name);
+    }
+
+    // A null source of [MapNested] goes to a mapper taking null, which decides what the target gets
+    [Fact]
+    public void MapNestedNullCallsMapperTakingNull()
+    {
+        var whenNull = TestMappers.MapNestedNull(new NestedNullSource());
+        Assert.Equal(-1, whenNull.Child.Value);
+        Assert.Equal(-1, whenNull.Other.Value);
+
+        var whenValue = TestMappers.MapNestedNull(new NestedNullSource { Child = new NestedNullChildSource { Value = 3 }, Other = new NestedNullChildSource { Value = 4 } });
+        Assert.Equal(3, whenValue.Child.Value);
+        Assert.Equal(4, whenValue.Other.Value);
+    }
 }

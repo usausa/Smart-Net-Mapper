@@ -11,9 +11,9 @@ It automatically generates property-copying code at compile time for `static par
 - **Zero overhead** - no reflection at runtime; all code is generated statically at compile time
 - **Specialized-method dispatch** - `ConvertTo{TargetType}` naming convention enables direct-call generation, friendly to JIT inlining
 - **Per-method declaration** - `[Mapper]` is placed on individual methods, so mapper methods feel like ordinary helper functions
-- **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are passed on to the `[MapUsing]`, `Converter`, `[MapCondition]`, `[BeforeMap]` and `[AfterMap]` methods that declare them, and can be used in `[MapExpression]`
+- **Custom parameter passthrough** - additional arguments such as `Map(Src, Dst, TContext ctx)` are passed on to the `[MapUsing]`, `Converter`, `[MapCondition]`, `[BeforeMap]` and `[AfterMap]` methods that declare them all, in the same order, and can be used in `[MapExpression]`
 - **NativeAOT / trimming fully supported** - `<IsAotCompatible>true</IsAotCompatible>` declared; NativeAOT smoke test passes
-- **Rich diagnostics** - 45 compile-time diagnostics in phase-based bands (SMP0001–SMP0501)
+- **Rich diagnostics** - 49 compile-time diagnostics in phase-based bands (SMP0001–SMP0503)
 
 ## Installation
 
@@ -74,6 +74,8 @@ public static partial Destination Map(Source source)
 }
 ```
 
+A mapper maps an object to another and returns the destination it creates by value: one declared to return by `ref` or `ref readonly` is reported (SMP0008), and so is one whose source or destination is a collection, an array or a tuple (SMP0007, see [Collection Mapping](#collection-mapping-mapcollection)). A void mapper may be declared without an accessibility modifier, as in `static partial void Map(Source source, Destination destination);` (implicitly `private`), and its implementation is declared the same way, as the implementation repeats the modifiers of the declaration (its accessibility, `new` and `unsafe`).
+
 ### Extension method mappers
 
 A `[Mapper]` method can be declared as an extension method. The generated implementation keeps the `this` modifier, so the mapper reads naturally at the call site.
@@ -90,7 +92,7 @@ var destination = source.ToDestination();
 
 ### Mappers in nested types
 
-A `[Mapper]` method may be declared in a nested type. The generated code declares the containing types again, outermost first, with their kinds (`class`, `struct`, `record`, `record struct`) and type parameters, so each of them has to be `partial` (SMP0001 otherwise).
+A `[Mapper]` method may be declared in a nested type. The generated code declares the containing types again, outermost first, with their kinds (`class`, `struct`, `record`, `record struct`) and type parameters, so each of them has to be `partial`, and none of them file-local (`file`), which another file cannot declare (SMP0001 otherwise).
 
 ```csharp
 public static partial class Mappers
@@ -139,7 +141,7 @@ A destination type parameter is created with `new T()`, so it needs the `new()` 
 |-----------|-------------|
 | `[Mapper]` | Marks a method as a mapping method |
 | `[Mapper(AutoMap = false)]` | Disables automatic same-name property mapping |
-| `[Mapper(Strict = true)]` | Emits SMP0501 warning for unmapped destination properties |
+| `[Mapper(Strict = true)]` | Warns of unmapped destination properties (SMP0501), values that may be null going to targets that do not take null (SMP0502), and enum members without a member of the same name in the target enum (SMP0503) |
 | `[Mapper(NameComparison = ...)]` | Property name comparison mode, applied to auto-mapping and to the names written in mapping attributes (default: `Ordinal`) |
 | `[Mapper(Culture = "...")]` | Culture used for type conversion (e.g., `"ja-JP"`) |
 | `[Mapper(DateTimeFormat = "...")]` | Format string for `DateTime` <-> `string` conversion (use with `Culture`) |
@@ -205,7 +207,7 @@ The source name may be omitted, in which case it defaults to the target name. Th
 public static partial void Map(Source source, Destination destination);
 ```
 
-`[MapNested]` and `[MapCollection]` follow the same rule.
+`[MapNested]` and `[MapCollection]` follow the same rule; their source is a property of the source type, not a dotted path (SMP0206).
 
 A name that cannot be resolved is reported (`SMP0213` for the source, `SMP0214` for the target) rather than silently dropped. So is the target of `[MapIgnore]` and `[MapCondition]` that does not exist: a property or field of the destination, a dotted path of them (for `[MapCondition]`), or a parameter of the constructor a return-type mapper calls.
 
@@ -325,7 +327,7 @@ private static string CombineFullName(Source source, FormattingContext context)
     => $"{source.FirstName}{context.Separator}{source.LastName}";
 ```
 
-The `Converter` of `[MapProperty]`, `[MapCondition]` and `[BeforeMap]` / `[AfterMap]` methods receive them the same way when they declare them after their usual parameters, and a `[MapExpression]` can refer to them by name. The mapper methods of `[MapCollection]` / `[MapNested]` and the methods of `[ValueConverter]` / `[CollectionConverter]` classes do not receive them.
+The `Converter` of `[MapProperty]`, `[MapCondition]` and `[BeforeMap]` / `[AfterMap]` methods receive them the same way when they declare them after their usual parameters, and a `[MapExpression]` can refer to them by name. A method taking them declares all of them, in the order the mapper declares them, each as its type: one declaring only some of them, or in another order, does not match. The mapper methods of `[MapCollection]` / `[MapNested]` and the methods of `[ValueConverter]` / `[CollectionConverter]` classes do not receive them.
 
 The methods these attributes name (`[MapUsing]` methods, converters, conditions, callbacks and the mappers of `[MapCollection]` / `[MapNested]`) are static methods the generated code calls by their simple name, so they are looked up as C# looks the name of a call up: in the mapper class and its base classes (a `protected` method included, as the mapper class can call it), or, when none of them has a member of the name the call can invoke, in the class containing the mapper class and its base classes, and so on outward, and last in the types the `global using static` directives import, which the generated file sees as well (a `using static` directive of one file only is not seen, and a type imported gives the methods it declares, not those it inherits nor its extension methods). As in C#, the first class having a member of the name the call can invoke, which the mapper class can access, is the only one looked in, even when its methods do not take the arguments; a member the call cannot invoke, such as a property or a field that is not a delegate, or a nested type, is passed over. A method of a derived class hides one of a base class of the same signature. Instance methods are not taken. The methods are called without type arguments, so a generic one is not taken: it is reported as a method that does not match.
 
@@ -355,7 +357,7 @@ The method of `[MapUsing]`, the `Converter` of `[MapProperty]` and the method of
 
 Of the overloads, the call binds to the one C# binds it to: one taking the type of the value first, and otherwise the one whose parameter is the most specific (a class over its base class or interface, `long` over `object` for an `int`). The call has to bind to the method chosen: one taking the type of the value it does not bind to gives way to the one it binds to (a method of a derived class taking the value leaves out those of its base classes, and one taking by value goes before one taking by `in`). A call that is ambiguous (CS0121), or that binds, or may bind, to a method not matched (one taking the value by an explicit conversion, a generic one, one with optional parameters or `params`, or one obsolete as an error) is reported as a method that does not match, and one binding to a method that returns another type by its return type (SMP0105, SMP0202, and SMP0106 for a condition not returning `bool`).
 
-The method of `[MapUsing]` returns the type of the target, or a type C# converts to it implicitly, as the assignment does: an `int` for a `long` or an `int?` target, a class for a base class or an interface it implements. One only an explicit conversion takes, such as a `long` for an `int` target, is reported (SMP0202). A nullable reference it returns into a target not annotated as nullable is taken with `!`, as `[MapFrom]` takes it.
+The method of `[MapUsing]` returns the type of the target, or a type C# converts to it implicitly, as the assignment does: an `int` for a `long` or an `int?` target, a class for a base class or an interface it implements. One only an explicit conversion takes, such as a `long` for an `int` target, is reported (SMP0202). A nullable reference it returns into a target not annotated as nullable is taken with `!`, as `[MapFrom]` takes it, unless `[return: NotNullIfNotNull]` of its first parameter says it returns one that is not null for the source, which it gets past the null check of the mapper.
 
 ### Source method / property-path (`[MapFrom]`)
 
@@ -368,7 +370,7 @@ public static partial void Map(Source source, Destination destination);
 
 The method is a parameterless instance method the mapper class can call, not a generic one, found the way the call `source.Method()` binds: one of a base class, or of an interface the source interface extends, is found as well, the most derived one first, so that a method hiding another (`new`) wins. A property path goes through the inherited properties the same way.
 
-The member gives the type of the target, or a type converting to it implicitly, as the method of `[MapUsing]` does (SMP0205 otherwise). A property path through members that may be null is read under their null check, as the source path of `[MapProperty]` is: the target is left as it is when one of them is null, and a constructor argument or an object initializer entry gets `null` for a target that takes it, or `default`. A nullable reference going to a target not annotated as nullable is taken with `!`, as `[MapProperty]` takes it.
+The member gives the type of the target, or a type converting to it implicitly, as the method of `[MapUsing]` does (SMP0205 otherwise). A property path through members that may be null is read under their null check, as the source path of `[MapProperty]` is, a nullable struct through the struct it holds (`Location.Lat` as `source.Location.Value.Lat`): the target is left as it is when one of them is null, and a constructor argument or an object initializer entry gets `null` for a target that takes it, or `default`. A nullable reference going to a target not annotated as nullable is taken with `!`, as `[MapProperty]` takes it.
 
 ```csharp
 // [MapFrom(nameof(Destination.City), "Customer.Address.City")], Customer and Address nullable
@@ -457,7 +459,27 @@ public static partial Destination Map(Source source);
 
 A destination property no mapping assigns is reported (SMP0501, a warning): one the mapper can assign through a setter, or through an `init` accessor for a return-type mapper, which sets it in the object initializer, that neither the automatic mapping nor an attribute maps, and `[MapIgnore]` does not leave out. A member a dotted target path writes into, such as `Child` for `[MapProperty("Child.Value", ...)]`, is mapped through the path. For a return-type mapper, so is a property only a constructor can set (get-only, or with a setter the mapper class cannot call) that a parameter of a constructor the mapper can call takes, when the construction chosen passes it no argument (see [Choosing the constructor](#choosing-the-constructor)), whether the source has it or not. A property no constructor takes, such as a computed one, is not reported, nor, for a void mapper, which never constructs, is one only a constructor sets or an `init`-only one. One an optional parameter left out would set is reported as well, the constructor giving it the default value; a `[MapIgnore]` naming it leaves it to that value without the warning. An `[Obsolete]` property is not reported (see [Obsolete members](#obsolete-members-obsolete)).
 
-The warning is reported at the mapper method, as the errors about the construction of its destination are, so a `#pragma warning disable SMP0501` around the method suppresses it (see [Diagnostics](#diagnostics) for where each diagnostic is reported).
+A mapping giving a value that may be null to a target that does not take null, which gets `null` or `default` for it, is reported as well (SMP0502, a warning), unless the mapping says what the target gets with `NullValue`, `NullBehavior.Skip` or a `[MapCondition]`. The value may be null when it is declared so: a source member of a nullable type, and one read through a member of a nullable type where the value is made as an expression (a constructor argument or an object initializer entry; a statement leaves the target as it is then); a nullable reference the method of `[MapFrom]` or `[MapUsing]`, a converter, or the mapper of `[MapNested]` / `[MapCollection]` returns, which the generated code takes with `!` (not when the method gets a value that is not null and `[return: NotNullIfNotNull]` of its first parameter says it returns one for it, as a generated mapper declares); and a source of `[MapNested]` / `[MapCollection]` or an element of a nullable type that a mapper not taking null is not called for. A target that does not take null is a struct, or a reference annotated as not null without `[AllowNull]`, or one with `[DisallowNull]`. A reference declared with nullable annotations disabled, which the null checks take as nullable (see [Null Handling](#null-handling)), is not taken as one here: it says nothing about null, and a model written without the annotations would get the warning for every such member. A return-type mapper whose source is declared nullable returning a type that does not take null, as in `Dst Map(Src? source)`, returns `default` for a null source, which is reported at the method, as the target `(return)`.
+
+A mapping of an enum to another enum, which matches the members by name, is reported when the source enum has members no member of the target enum has the name of, whose values give the target `default`, or `null` for a nullable enum (SMP0503, a warning, listing the members). The values of a `[Flags]` enum combining members are not known before they come, so only the members are looked at, and a converter given to the mapping takes over the conversion.
+
+SMP0501 is reported at the mapper method, as the errors about the construction of its destination are, and SMP0502 and SMP0503 at the attribute of the mapping, or at the method for the automatic mapping (see [Diagnostics](#diagnostics) for where each diagnostic is reported). A warning reported at the method starts at its first attribute, so a `#pragma warning disable` suppresses it only when it comes before the attributes of the method, and one reported at an attribute only when it comes before that attribute; one between the attributes and the method does not. `[SuppressMessage]` on the method suppresses both:
+
+```csharp
+#pragma warning disable SMP0501
+[Mapper(Strict = true)]
+public static partial Destination Map(Source source);       // suppressed
+#pragma warning restore SMP0501
+
+[Mapper(Strict = true)]
+#pragma warning disable SMP0501
+public static partial Destination MapOther(Source source);  // not suppressed: the warning starts at [Mapper]
+#pragma warning restore SMP0501
+
+[SuppressMessage("Usage", "SMP0501")]
+[Mapper(Strict = true)]
+public static partial Destination MapThird(Source source);  // suppressed
+```
 
 ### Obsolete members (`[Obsolete]`)
 
@@ -515,6 +537,8 @@ if (source.Child is not null)
     destination.ChildName = source.Child.Name;
 }
 ```
+
+A nullable struct along the path, such as `GeoPoint? Location` for `Location.Lat`, is read through the struct it holds under the same check (`source.Location.Value.Lat`). The value at the end of a path converts as a member does: an enum by member name to another enum and to and from text, and to and from a number, with the culture and the formats of the method.
 
 When an intermediate member is null, a mapping with `NullValue` takes it, and the others leave their targets as they are, as do `NullBehavior.Skip` and a mapping a `[MapCondition]` guards, which has no source value to test:
 
@@ -602,7 +626,7 @@ A dotted path into a member, of `[MapProperty]`, `[MapConstant]`, `[MapExpressio
 
 ## Collection Mapping (`[MapCollection]`)
 
-An explicit mapper method must be specified.
+An explicit mapper method must be specified (SMP0210 without it, the message saying so). The source is a property of the source type, not a dotted path (SMP0206).
 
 ```csharp
 internal static partial class ObjectMapper
@@ -632,7 +656,7 @@ Generated code (for a `List<SourceChild>` source and a `List<DestinationChild>` 
 }
 ```
 
-The loop is generated inline, shaped by the source and target collection types. A null source collection sets the target to `default`. The target gets the collection the loop builds: a `List<T>` for `List<T>` and its interfaces, an array, a `HashSet<T>` for sets, a `Dictionary<TKey, TValue>` for `IDictionary<TKey, TValue>` and `IReadOnlyDictionary<TKey, TValue>` (the element mapper maps the `KeyValuePair<TKey, TValue>` pairs), or the immutable or frozen collection of its type (`ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableHashSet<T>` and their interfaces, and `FrozenSet<T>`; the other immutable and frozen collections, such as `ImmutableDictionary<TKey, TValue>` or `FrozenDictionary<TKey, TValue>`, are reported (SMP0217) unless a collection converter builds them). A collection class the mapper can create, such as `ObservableCollection<T>` or `class ItemList : List<Item>`, is built with its own constructor and filled through `ICollection<T>`; one it cannot create is reported (SMP0217) unless a collection converter builds it. A void element mapper `(SourceChild, DestinationChild)` fills a `new DestinationChild()`, so the element type has to be creatable with `new()` (SMP0210 otherwise). The collection created keeps the nullable annotations of the elements of the target (`List<DestinationChild?>`), and the result of a mapper declared to take null, as in `DestinationChild? MapChild(SourceChild? source)`, which returns null only for a null source, is taken with `!` for elements not annotated as nullable, as it is for the target of `[MapNested]`. The element mapper matches by the types the way the mapper of `[MapNested]` does: a nullable struct element goes to a mapper taking the struct as the value it holds, and a null one gives `default`. A nullable reference element goes to a mapper whose parameter does not take null the same way, when it has a value, and a null one gives `default` (`__src[__i] is { } __value ? MapChild(__value) : default!`); a collection converter, which takes the mapper as a delegate, gets every element.
+The loop is generated inline, shaped by the source and target collection types. A null source collection sets the target to `default`. The target gets the collection the loop builds: a `List<T>` for `List<T>` and its interfaces, an array, a `HashSet<T>` for sets, a `Dictionary<TKey, TValue>` for `IDictionary<TKey, TValue>` and `IReadOnlyDictionary<TKey, TValue>` (the element mapper maps the `KeyValuePair<TKey, TValue>` pairs), or the immutable or frozen collection of its type (`ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableHashSet<T>` and their interfaces, and `FrozenSet<T>`; the other immutable and frozen collections, such as `ImmutableDictionary<TKey, TValue>` or `FrozenDictionary<TKey, TValue>`, are reported (SMP0217) unless a collection converter builds them). A collection class the mapper can create, such as `ObservableCollection<T>` or `class ItemList : List<Item>`, is built with its own constructor and filled through `ICollection<T>`; one it cannot create is reported (SMP0217) unless a collection converter builds it. A void element mapper `(SourceChild, DestinationChild)` fills a `new DestinationChild()`, so the element type has to be creatable with `new()` (SMP0210 otherwise). The collection created keeps the nullable annotations of the elements of the target (`List<DestinationChild?>`), and the result of a mapper declared to take null, as in `DestinationChild? MapChild(SourceChild? source)`, which returns null only for a null source, is taken with `!` for elements not annotated as nullable, as it is for the target of `[MapNested]`; an element that is not null, for which `[return: NotNullIfNotNull]` of the first parameter says the result is not null, as a generated mapper declares, gives a result taken as it is (`__dst[__i] = MapChild(__src[__i]);` for a `List<SourceChild>` source). The element mapper matches by the types the way the mapper of `[MapNested]` does: a nullable struct element goes to a mapper taking the struct as the value it holds, and a null one gives `default`. A reference element that may be null, a nullable one or one declared with nullable annotations disabled, goes to a mapper whose parameter does not take null the same way, when it has a value, and a null one gives `default` (`__src[__i] is { } __value ? MapChild(__value) : default!`); a collection converter, which takes the mapper as a delegate, gets every element.
 
 A collection class of its own is a collection by the `IEnumerable<T>` it implements through its base type or interfaces, on the source as well as on the target:
 
@@ -653,6 +677,18 @@ public class DestinationChildList : List<DestinationChild> { }
     destination.Children = __coll;
 }
 ```
+
+A mapper maps an object, not a collection: one whose source or destination is a collection of the framework (a list, a set, a dictionary or one of their interfaces, and the immutable, frozen, concurrent and object model ones), a class deriving from one (`class ItemList : List<Item>`), an array or a tuple is reported (SMP0007), as it would map the members of the collection (`Count`, `Capacity`) and none of its elements. Map the elements with a mapper of the element type, or map a type holding the collection with `[MapCollection]`:
+
+```csharp
+[Mapper]
+public static partial ItemDto ToDto(Item source);
+
+// Not [Mapper] List<ItemDto> ToDtos(List<Item> source), which is reported
+var dtos = items.Select(ToDto).ToList();
+```
+
+A type of its own that only implements `IEnumerable<T>`, such as a page of items with its total count, is mapped by its members as any other type.
 
 With a collection converter (`[CollectionConverter]`, see below), its method is called instead, as in `CustomCollectionConverter.ToList<SourceChild, DestinationChild>(source.Children, MapChild)!`. `Converter` on `[MapCollection]` names the method to call, on the `[CollectionConverter]` type or, without one, on `DefaultCollectionConverter`, which provides such methods (`ToList`, `ToArray`, `ToHashSet`, `ToImmutableArray`, ...) for both function-mapper and action-mapper variants.
 
@@ -718,6 +754,10 @@ Generated code:
 ```csharp
 destination.Child = source.Child is not null ? MapChild(source.Child!) : default!;
 ```
+
+A null source member goes to a mapper whose parameter takes null as well, as in `DestinationChild MapChild(SourceChild? source)`, which decides what the target gets for it (`destination.Child = MapChild(source.Child);`), and a void one fills the instance created for the target; a mapper whose parameter does not take null is called for a value only, the target getting `default` for a null source, as above. A source member declared with nullable annotations disabled may be null as well (see [Null Handling](#null-handling)).
+
+The result of a mapper returning a nullable reference goes with `!` to a target not annotated as nullable, unless the mapper gets a value that is not null and `[return: NotNullIfNotNull]` of its first parameter says it returns one for it, as a generated mapper declares: `destination.Child = MapChild(source.Child);` for a source that is not nullable and `DestinationChild? MapChild(SourceChild? source)`. The instance a void mapper fills is created with the nullable annotations of the type arguments of the target (`new Box<string?>()`).
 
 The mapper takes the source member as its type, or as one the member converts to by an implicit reference conversion (a base class or an interface, taken by value), and returns the target's type, one converting to it the same way (such as a class for a target of an interface it implements), or the struct of a nullable struct target. A nullable struct member goes to a mapper taking the struct as the value it holds, after the null check, and a null one gives `default`, as a null reference does: `source.Point is not null ? MapPoint(source.Point.Value) : default!`. A void mapper takes the instance created for the target as its type, or, by value, as one it converts to. A mapper the source or the target does not convert to this way does not match (SMP0211). Of the overloads, the one the call binds to is used, as C# binds it: a call binding to a method that does not match (a more specific one returning another type, a generic one, one with optional parameters, or one obsolete as an error) is reported (SMP0211, and SMP0210 for the element mapper of `[MapCollection]`).
 
@@ -868,21 +908,25 @@ public static partial Dst Map(Src src);
 | `T` | `T?` | Copied as-is |
 | `T` | `T` | Copied as-is |
 
-Nullable intermediate paths on the **source side**, of `[MapProperty]` and `[MapFrom]` alike, are guarded with `if (... is not null)`; when one is null, a mapping with `NullValue` takes it, and the others leave their targets as they are.
+Nullable intermediate paths on the **source side**, of `[MapProperty]` and `[MapFrom]` alike, are guarded with `if (... is not null)`, a nullable struct read through the struct it holds (`source.Location.Value.Lat`); when one is null, a mapping with `NullValue` takes it, and the others leave their targets as they are.
 Nullable intermediate paths on the **destination side** are auto-instantiated with `??= new` when the mapper can assign and create them; otherwise the instance they hold is filled.
 
-A source parameter (or the destination parameter of a void mapper) declared nullable, as in `Map(Src? source)`, is checked before anything is mapped. When it is null nothing is mapped: a return-type mapper returns `default`, and a void mapper returns without touching the destination.
+A reference type declared with nullable annotations disabled (`#nullable disable`, or a library built without them) says nothing about null, so a value of it may be null: the source parameter, the source members and the elements of the source collections of such a type are handled as nullable ones. They are checked before they are read through or passed to a converter, a condition, the mapper of `[MapNested]` or an element mapper whose parameter does not take null, and `NullValue` and `NullBehavior.Skip` apply to them. Strict mode does not report them as values that may be null (SMP0502).
+
+A source parameter (or the destination parameter of a void mapper) declared nullable, as in `Map(Src? source)`, is checked before anything is mapped, and so are a source parameter and the destination parameter of a void mapper declared with nullable annotations disabled; the custom parameters are passed on as they are. When one is null nothing is mapped: a return-type mapper returns `default`, and a void mapper returns without touching the destination. A return-type mapper whose source may be null returning a nullable type, as in `Dst? Map(Src? source)` or `Point? Map(Src? source)`, returns null for a null source only, so its implementation declares `[return: NotNullIfNotNull("source")]`, by the name of the parameter, and a caller passing a source that is not null uses the result without a nullable warning. The declaration may have the attribute as well. It is left out when the compilation has no `NotNullIfNotNullAttribute` the mapper class can use (.NET Standard 2.0 or .NET Framework without a copy of it).
 
 A return type declared as a nullable struct, as in `Point? Map(Src source)`, is created and filled as the struct it holds. A source parameter declared as one, as in `Map(Point? source)`, is reported (SMP0006), as it has none of the members of the struct it holds: take the struct, and check null before the call.
+
+The instances the generated code creates keep the nullable annotations of their type arguments, as the declarations say: a destination declared as `Box<string?>` is created as `new Box<string?>()`, and so are the intermediate members of a dotted target, the `required` members created in the object initializer, and the instances a void mapper of `[MapNested]` / `[MapCollection]` fills.
 
 ---
 
 ## Type Conversion
 
 Same-type and implicitly convertible assignments are generated without a converter: a numeric widening, a value to its nullable type, and an implicit reference conversion, through variance as well (`IReadOnlyList<Circle>` to `IReadOnlyList<Shape>`, `Circle[]` to `Shape[]`). The same enum on both sides is copied as it is, which keeps a value no member has, such as a combination of flags.
-When a conversion is needed, the specialized method of `DefaultValueConverter` for the types is called, as below. Other types are converted by their own conversion operator, `Parse` (from a string, to a type implementing `IParsable<T>`) or `ToString(format, provider)` (to a string); a number goes to a narrower numeric type by a cast, as C# casts it (`(int)source.LongValue`), and an enum by a switch over its members, or by a cast to or from a number. A conversion none of these makes is reported (SMP0402), unless a `[ValueConverter]` class takes it (see below).
+When a conversion is needed, the specialized method of `DefaultValueConverter` for the types is called, as below. Other types are converted by their own conversion operator, `Parse` (from a string, to a type implementing `IParsable<T>`) or `ToString(format, provider)` (to a string); a number goes to a narrower numeric type by a cast, as C# casts it (`(int)source.LongValue`), and an enum by a switch over its members, or by a cast to or from a number. A conversion none of these makes is reported (SMP0402), unless a `[ValueConverter]` class takes it (see below). A user-defined conversion of a reference type is not lifted, so a value that may be null goes through the operator for a value only: `source.Email is not null ? (string)source.Email : null` for an `Email?` with `implicit operator string(Email email)`.
 
-An enum going to another enum matches the members by name. A value no member of the target has the name of, such as a combination of flags, gives `default`, or `null` to a nullable enum target. A string goes to an enum the same way, a string no member has the name of going through `Enum.Parse`, which throws for one it cannot parse, or to a nullable enum target through `Enum.TryParse`, which gives `null` for it (a number in the string still gives its value).
+An enum going to another enum matches the members by name. A value no member of the target has the name of, such as a combination of flags, gives `default`, or `null` to a nullable enum target. A string goes to an enum the same way, a string no member has the name of going through `Enum.Parse`, which throws for one it cannot parse, or to a nullable enum target through `Enum.TryParse`, which gives `null` for it (a number in the string still gives its value). Strict mode reports the members of the source enum no member of the target enum has the name of (SMP0503).
 
 ### Specialized-method pattern
 
@@ -902,6 +946,25 @@ destination.StringValue = source.NullableValue is not null
     ? DefaultValueConverter.ConvertToString(source.NullableValue.GetValueOrDefault())
     : default!;
 ```
+
+### Default formats
+
+Without a `Culture` or a format, a value goes to text and back as follows (`DefaultValueConverter`, under the invariant culture):
+
+| Type | To `string` | From `string` |
+|------|-------------|---------------|
+| Numbers (`int`, `long`, `double`, `decimal`, `Half`, `Int128`, `BigInteger`, ...) | `ToString(CultureInfo.InvariantCulture)` | `Parse(text, CultureInfo.InvariantCulture)` |
+| `bool` | `True` / `False` | `bool.Parse` |
+| `char` | the character | `char.Parse` |
+| `Guid` | `D` (`00000000-0000-0000-0000-000000000000`) | `Guid.Parse` |
+| `DateTime` | `O`, the round-trip format (`2024-01-02T03:04:05.6780000Z`; the offset for a local time, nothing for an unspecified one) | `DateTime.Parse` with `DateTimeStyles.RoundtripKind`, which keeps the kind the text gives (UTC for a `Z`, local for an offset, unspecified without either) |
+| `DateTimeOffset` | `O` (`2024-01-02T03:04:05.0000000+09:00`) | `DateTimeOffset.Parse` |
+| `DateOnly` | `O` (`2024-01-02`) | `DateOnly.Parse` |
+| `TimeOnly` | `O` (`03:04:05.0000000`) | `TimeOnly.Parse` |
+| `TimeSpan` | `c` (`1.02:03:04.5000000`) | `TimeSpan.Parse` |
+| Enums | the member name (`ToString()` for a value no member has) | by member name (otherwise `Enum.Parse`, or `Enum.TryParse` for a nullable target) |
+
+With a `Culture`, the formats of the culture apply (`ToString(culture)`, `Parse(text, culture)`), and `DateTimeFormat` / `NumberFormat` give the format (see [Culture / Format](#culture--format)).
 
 ### Custom value converter (`[ValueConverter]`)
 
@@ -944,7 +1007,7 @@ Priority order (highest to lowest):
 | `[ValueConverter]` on class | All mapper methods in the class |
 | `DefaultValueConverter` | Fallback |
 
-The `Converter` of `[MapProperty]` takes the source member as the method of `[MapUsing]` takes the source, also as a type it converts to implicitly, or as the struct a nullable struct holds (see Static method calculation). It returns the target type, or a type converting to it implicitly as the method of `[MapUsing]` does (SMP0105 otherwise), and a nullable reference it returns into a target not annotated as nullable is taken with `!`.
+The `Converter` of `[MapProperty]` takes the source member as the method of `[MapUsing]` takes the source, also as a type it converts to implicitly, or as the struct a nullable struct holds (see Static method calculation). It returns the target type, or a type converting to it implicitly as the method of `[MapUsing]` does (SMP0105 otherwise), and a nullable reference it returns into a target not annotated as nullable is taken with `!`, unless it is given a value that is not null and `[return: NotNullIfNotNull]` of its first parameter says it returns one for it.
 
 ### Custom collection converter (`[CollectionConverter]`)
 
@@ -1013,16 +1076,20 @@ Smart.Mapper is fully compatible with NativeAOT and IL trimming.
 
 ## Diagnostics
 
-A diagnostic whose cause is an attribute is reported at that attribute: the second of two attributes that contradict each other (SMP0101), and the `[MapperProfile]` or `[ValueConverter]` of the class for a value it gives. One about the method itself, the automatic mapping, the construction of the destination (SMP0301, SMP0303, SMP0304, SMP0305) or strict mode (SMP0501) is reported at the mapper method.
+A diagnostic whose cause is an attribute is reported at that attribute: the second of two attributes that contradict each other (SMP0101), and the `[MapperProfile]` or `[ValueConverter]` of the class for a value it gives. One about the method itself, the automatic mapping, the construction of the destination (SMP0301, SMP0303, SMP0304, SMP0305) or the unmapped properties of strict mode (SMP0501) is reported at the mapper method, and the other warnings of strict mode (SMP0502, SMP0503) at the attribute of the mapping, or at the method for the automatic mapping. A warning reported at the method starts at its first attribute, so a `#pragma warning disable` suppresses it only when it comes before the attributes (see [Strict mode](#strict-mode-strict--true)).
+
+A mapper reported with an error gets an implementation throwing `NotImplementedException` in place of none, so that the error is not accompanied by the missing implementation (CS8795); the build fails on the error, so the implementation never runs. A method not `static partial`, or in a type not `partial` or file-local (SMP0001), which the generated code could not implement, gets none; one declared without an accessibility modifier gets one without it, as it is declared.
 
 | ID | Description | Severity |
 |----|-------------|----------|
-| SMP0001 | Mapper method must be `static partial`, in types that are all `partial` | Error |
-| SMP0002 | Mapper method has an invalid number of parameters | Error |
+| SMP0001 | Mapper method must be `static partial`, in types that are all `partial` and none file-local (`file`) | Error |
+| SMP0002 | Mapper method has no parameter, or is `void` without a destination parameter after the source | Error |
 | SMP0003 | Two custom parameters have the same type | Error |
 | SMP0004 | Mapper parameter name starts with `__` (reserved for the generated code) | Error |
 | SMP0005 | Parameter has a modifier the generated code cannot work with (`out`, or none, `in` or `ref readonly` on the struct destination of a void mapper, which is taken by `ref`) | Error |
 | SMP0006 | Source parameter is a nullable value type, which has none of the members of the struct it holds | Error |
+| SMP0007 | Source or destination is a collection, an array or a tuple, which a mapper does not map as a whole (map the elements with a mapper of the element type, or a type holding the collection with `[MapCollection]`) | Error |
+| SMP0008 | Mapper method returns by reference (`ref` / `ref readonly`), which cannot return the destination it creates | Error |
 | SMP0101 | Several mapping attributes target the same destination property or a member and a member of it (`Child` and `Child.Value`), or `[MapIgnore]` and a mapping attribute name the same target | Error |
 | SMP0102 | `BeforeMap` method signature does not match | Error |
 | SMP0103 | `AfterMap` method signature does not match | Error |
@@ -1034,12 +1101,12 @@ A diagnostic whose cause is an attribute is reported at that attribute: the seco
 | SMP0203 | `[MapFrom]` target property is not found on the destination type | Error |
 | SMP0204 | `MapFrom` member is not a parameterless method the mapper can call or a property path of the source type (inherited ones included) | Error |
 | SMP0205 | `MapFrom` member type does not convert implicitly to the target property type | Error |
-| SMP0206 | `[MapCollection]` / `[MapNested]` source property is not found | Error |
+| SMP0206 | `[MapCollection]` / `[MapNested]` source property is not found (the source is a property of the source type, not a dotted path) | Error |
 | SMP0207 | `[MapCollection]` / `[MapNested]` target property is not found | Error |
 | SMP0208 | `[MapCollection]` source property is not a collection type | Error |
 | SMP0209 | `[MapCollection]` target property is not a collection type | Error |
-| SMP0210 | `MapCollection` element mapper method is not found or its signature does not match | Error |
-| SMP0211 | `MapNested` mapper method is not found or its signature does not match | Error |
+| SMP0210 | `MapCollection` element mapper method is not found or its signature does not match, or `Mapper` is not specified | Error |
+| SMP0211 | `MapNested` mapper method is not found or its signature does not match, or `Mapper` is not specified | Error |
 | SMP0212 | `[MapCollection]` / `[MapNested]` target cannot be assigned (no setter or `init` accessor the mapper can call, or `init`-only in a void mapper; `InPlace` refills the instance it holds) | Error |
 | SMP0213 | `[MapProperty]` source property is not found | Error |
 | SMP0214 | Mapping target is not found or cannot be assigned (no setter the mapper can call, a `readonly` field, a dotted path the generated code cannot go through), including the target of `[MapIgnore]` / `[MapCondition]` | Error |
@@ -1062,6 +1129,8 @@ A diagnostic whose cause is an attribute is reported at that attribute: the seco
 | SMP0403 | AOT warning: `MapExpression` may contain a reflection pattern | Warning |
 | SMP0404 | `Culture` is not a culture name | Error |
 | SMP0501 | Strict mode: a destination property the mapper can assign, or one only a constructor the mapper can call sets, is not mapped (reported at the mapper method) | Warning |
+| SMP0502 | Strict mode: a value that may be null goes to a target that does not take null, which gets `null` or `default` for it, without `NullValue`, `NullBehavior.Skip` or `[MapCondition]` (reported at the attribute, or at the mapper method for the automatic mapping), or a return-type mapper whose source is declared nullable returns a type that does not take null (reported at the mapper method, as the target `(return)`) | Warning |
+| SMP0503 | Strict mode: members of the source enum have no member of the same name in the target enum a mapping by name goes to (reported at the attribute, or at the mapper method for the automatic mapping) | Warning |
 
 See [Diagnostics.md](Diagnostics.md) for the cause of each diagnostic and how to fix it.
 
@@ -1218,7 +1287,7 @@ Future improvements under consideration:
 
 - **Direct `FrozenSet` construction** — the generated code builds a `HashSet<T>` and calls `ToFrozenSet` (two-phase by BCL design). If the BCL ever ships a frozen-collection builder API, the intermediate set can be eliminated.
 - **Generic fallback `Convert<TSource, TDestination>` for `Half` / `Int128` / `UInt128` / `BigInteger` sources** — these currently reach the boxing fallback when routed through the generic converter opt-in; specialized branches can be added if demand arises (the default specialized-method path already covers them).
-- **Generator incrementality tuning** — output is regenerated per run via `Collect()` and destination/source property walks are repeated per feature pass. Measured cost is negligible today; revisit (per-class output splitting, property-list caching) if very large models appear.
+- **Generator incrementality** — the models are built and cached per mapper method, the source is generated and cached per class, so that an edit regenerates only the classes whose mappers it changes, and the property lists, type lookups and converter lookups are shared within a compilation. The grouping of the models by class still goes over all of them on each edit (`Collect()`); it is cheap today, and a finer split can be revisited if very large projects need it.
 
 ---
 

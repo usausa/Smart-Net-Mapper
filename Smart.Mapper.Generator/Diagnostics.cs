@@ -3,12 +3,12 @@ namespace Smart.Mapper.Generator;
 using Microsoft.CodeAnalysis;
 
 // Core Mapper generator diagnostics. IDs follow a phase-based banding aligned with the pipeline:
-//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters / nullable struct source)
+//   SMP00xx  method definition   (BuildModel entry: static partial / parameter shape / reserved parameter names / parameter modifiers / custom parameters / nullable struct source / collection mapped as a whole / ref return)
 //   SMP01xx  attribute validation(duplicate targets, callbacks, converters, conditions)
 //   SMP02xx  explicit features   (MapUsing / MapFrom / MapCollection / MapNested resolution)
 //   SMP03xx  construction        (constructor parameters, init-only / required members)
 //   SMP04xx  conversion / AOT    (culture-format pairing, TypeConverter fallback, reflection usage)
-//   SMP05xx  strict mode         (advisory unmapped-property warnings)
+//   SMP05xx  strict mode         (advisory warnings: unmapped properties, nullable values, unmatched enum members)
 internal static class Diagnostics
 {
     // ==================================================================
@@ -18,7 +18,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor InvalidMethodDefinition { get; } = new(
         id: "SMP0001",
         title: "Invalid mapper method definition",
-        messageFormat: "[Mapper] method must be static partial, in types that are all partial. method=[{0}]",
+        messageFormat: "[Mapper] method must be static partial, in types that are all partial and not file-local. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -59,6 +59,22 @@ internal static class Diagnostics
         id: "SMP0006",
         title: "Nullable value type source",
         messageFormat: "[Mapper] source parameter cannot be a nullable value type, which has none of the members of the struct it holds. method=[{0}], parameter=[{1}], type=[{2}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor CollectionMapper { get; } = new(
+        id: "SMP0007",
+        title: "Collection mapped as a whole",
+        messageFormat: "[Mapper] cannot map a collection, an array or a tuple as a whole, map the elements with a mapper of the element type (source.Select(ToDto).ToList()) or use [MapCollection] on a type holding the collection. method=[{0}], type=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor RefReturnMapper { get; } = new(
+        id: "SMP0008",
+        title: "Mapper returning by reference",
+        messageFormat: "[Mapper] method cannot return by reference, it returns the destination it creates by value. method=[{0}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -162,7 +178,7 @@ internal static class Diagnostics
     public static DiagnosticDescriptor UnresolvedMapCollectionSourceProperty { get; } = new(
         id: "SMP0206",
         title: "Unresolved MapCollection source",
-        messageFormat: "[MapCollection]/[MapNested] source property is not found. method=[{0}], source=[{1}]",
+        messageFormat: "[MapCollection]/[MapNested] source property is not found, the source is a property of the source type and cannot be a dotted path. method=[{0}], source=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -199,10 +215,28 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    // The same diagnostic for an attribute without Mapper, which the message tells
+    public static DiagnosticDescriptor MapCollectionMapperNotSpecified { get; } = new(
+        id: "SMP0210",
+        title: "Invalid MapCollection mapper method",
+        messageFormat: "[MapCollection] Mapper is not specified, the elements are mapped with an element mapper. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static DiagnosticDescriptor InvalidMapNestedMapperMethod { get; } = new(
         id: "SMP0211",
         title: "Invalid MapNested mapper method",
         messageFormat: "[MapNested] mapper method does not match. method=[{0}], mapper=[{1}], target=[{2}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // The same diagnostic for an attribute without Mapper, which the message tells
+    public static DiagnosticDescriptor MapNestedMapperNotSpecified { get; } = new(
+        id: "SMP0211",
+        title: "Invalid MapNested mapper method",
+        messageFormat: "[MapNested] Mapper is not specified, the member is mapped with a mapper. method=[{0}], target=[{1}]",
         category: "Mapping",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -400,6 +434,22 @@ internal static class Diagnostics
         id: "SMP0501",
         title: "Unmapped destination property",
         messageFormat: "Destination property is not mapped. method=[{0}], property=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor NullableValueToNonNullableTarget { get; } = new(
+        id: "SMP0502",
+        title: "Nullable value mapped to a target that does not take null",
+        messageFormat: "A value that may be null goes to a target that does not take null, which gets null or default for it. method=[{0}], target=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor UnmatchedEnumMember { get; } = new(
+        id: "SMP0503",
+        title: "Enum member without a member of the same name in the target enum",
+        messageFormat: "Members of the source enum have no member of the same name in the target enum, which gets default or null for them. method=[{0}], target=[{1}], members=[{2}]",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

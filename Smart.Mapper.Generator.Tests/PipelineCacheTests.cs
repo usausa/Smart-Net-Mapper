@@ -1,5 +1,9 @@
 namespace Smart.Mapper.Generator.Tests;
 
+using System.Linq;
+
+using Microsoft.CodeAnalysis.Text;
+
 using SourceGenerateHelper.Testing;
 
 public sealed class PipelineCacheTests
@@ -114,5 +118,26 @@ public sealed class PipelineCacheTests
 
         // Assert
         Assert.Contains(result.OutputReasons, static x => x.IsChanged());
+    }
+
+    // The properties and the types the generator looks up are kept per compilation, so a compilation in which the
+    // types have changed is looked at anew
+    [Fact]
+    public void EditedTypesAreLookedUpAgain()
+    {
+        // Arrange
+        var (driver, compilation) = GeneratorTestHelper.CreateTrackingDriver(Source);
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        var tree = compilation.SyntaxTrees.First();
+        var edited = compilation.ReplaceSyntaxTree(
+            tree,
+            tree.WithChangedText(SourceText.From(Source.Replace("public int Id { get; set; }", "public int Id { get; set; }\n    public string Name { get; set; } = \"\";", StringComparison.Ordinal))));
+
+        // Act
+        driver = driver.RunGenerators(edited, TestContext.Current.CancellationToken);
+
+        // Assert
+        var generated = String.Join("\n", driver.GetRunResult().GeneratedTrees.Select(static t => t.ToString()));
+        Assert.Contains("__d.Name = source.Name;", generated, StringComparison.Ordinal);
     }
 }

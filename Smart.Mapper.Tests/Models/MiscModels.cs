@@ -419,9 +419,9 @@ public class GetterOverrideBase
 
 public class GetterOverrideDestination : GetterOverrideBase
 {
-    public override int Id => base.Id;
+    public override int Id => Math.Max(base.Id, 0);
 
-    public override string Label => base.Label;
+    public override string Label => base.Label.Trim();
 }
 
 // A required member the dotted paths write into after construction, which the object initializer creates

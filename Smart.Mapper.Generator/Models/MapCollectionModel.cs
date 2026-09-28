@@ -41,8 +41,6 @@ internal sealed record MapCollectionModel(
     // with them as type arguments and array elements (ElementTypeArgument), so that the collections and the
     // elements created take what the target does (CS8619)
     string SourceName = default!,
-    string SourceType = default!,
-    string SourceElementType = default!,
     string SourceElementTypeArgument = default!,
     string TargetName = default!,
     string TargetType = default!,
@@ -68,7 +66,6 @@ internal sealed record MapCollectionModel(
     // struct, goes into, as the type of the conditional is that of the result
     string NullResult = "default!",
     bool IsSourceNullable = default,
-    bool TargetIsArray = default,
     bool UseHelperPath = default,
     // Optional per-mapping settings
     string? Converter = default,

@@ -124,10 +124,9 @@ internal sealed record MapperMethodModel(
     // (AttributeIndex), which does not change as the code moves; the source generation takes the models without
     // the locations, so that it is not run again for code that only moved.
     EquatableArray<LocationInfo> AttributeLocations = default,
-    // The indexes of the attributes the method-level diagnostics are about: [Mapper], [BeforeMap], [AfterMap],
-    // the one giving Culture ([Mapper] or [MapperProfile]), the one giving DateTimeFormat / NumberFormat, and
-    // [ValueConverter] (of the method or the class); -1 without one
-    int MapperAttributeIndex = -1,
+    // The indexes of the attributes the method-level diagnostics are about: [BeforeMap], [AfterMap], the one giving
+    // Culture ([Mapper] or [MapperProfile]), the one giving DateTimeFormat / NumberFormat, and [ValueConverter] (of
+    // the method or the class); -1 without one
     int BeforeMapAttributeIndex = -1,
     int AfterMapAttributeIndex = -1,
     int CultureAttributeIndex = -1,

@@ -10,7 +10,6 @@ internal sealed record MapNestedModel(
     // nullable annotations of its type arguments (Box<string?>), which the target has to get for its type (CS8619
     // otherwise), and without its own, which new cannot take
     string SourceName = default!,
-    string SourceType = default!,
     string TargetName = default!,
     string TargetType = default!,
     // The type the local of a constructor argument is declared as: the target type, with its nullable annotations

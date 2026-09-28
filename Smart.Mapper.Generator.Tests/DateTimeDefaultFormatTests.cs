@@ -1,7 +1,6 @@
 namespace Smart.Mapper.Generator.Tests;
 
 using System.Globalization;
-using System.Linq;
 
 using Microsoft.CodeAnalysis;
 
@@ -86,5 +85,73 @@ public class DateTimeDefaultFormatTests
     public void InvariantTextStillParses()
     {
         Assert.Equal(new DateTime(2024, 1, 2, 3, 4, 5), DefaultValueConverter.ConvertToDateTime("01/02/2024 03:04:05"));
+    }
+
+    // With the round-trip format given (DateTimeFormat = "O" or "o"), text keeps the kind it gives, as it does without a
+    // format, where it used to be read as local time for a Z. The generated code passes the format to the converter
+    [Fact]
+    public void FormatIsPassedToConverter()
+    {
+        const string source =
+            """
+            #nullable enable
+            using System;
+            using Smart.Mapper;
+            namespace Test;
+            public class Src { public string At { get; set; } = ""; public DateTime When { get; set; } }
+            public class Dst { public DateTime At { get; set; } public string When { get; set; } = ""; }
+            public static partial class M
+            {
+                [Mapper(Culture = "en-US", DateTimeFormat = "O")]
+                public static partial Dst Map(Src src);
+            }
+            """;
+
+        Assert.DoesNotContain(GeneratorTestHelper.GetDiagnosticsAll(source), static d => (d.Severity == DiagnosticSeverity.Error) || ((d.Severity == DiagnosticSeverity.Warning) && IsGenerated(d)));
+        var generated = GeneratorTestHelper.GetGeneratedSource(source);
+        Assert.Contains("__d.At = global::Smart.Mapper.DefaultValueConverter.ConvertToDateTime(src.At, __culture_en_US, \"O\");", generated, StringComparison.Ordinal);
+        Assert.Contains("__d.When = global::Smart.Mapper.DefaultValueConverter.ConvertToString(src.When, __culture_en_US, \"O\");", generated, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("O", "2024-01-02T03:04:05.6780000Z", DateTimeKind.Utc)]
+    [InlineData("o", "2024-01-02T03:04:05.6780000Z", DateTimeKind.Utc)]
+    [InlineData("O", "2024-01-02T03:04:05.6780000", DateTimeKind.Unspecified)]
+    [InlineData("O", "2024-01-02T03:04:05.6780000+09:00", DateTimeKind.Local)]
+    public void RoundTripFormatKeepsKind(string format, string text, DateTimeKind kind)
+    {
+        var value = DefaultValueConverter.ConvertToDateTime(text, CultureInfo.InvariantCulture, format);
+
+        Assert.Equal(kind, value.Kind);
+        Assert.Equal(DefaultValueConverter.ConvertToDateTime(text), value);
+    }
+
+    [Theory]
+    [InlineData("O", DateTimeKind.Utc)]
+    [InlineData("O", DateTimeKind.Unspecified)]
+    [InlineData("o", DateTimeKind.Local)]
+    public void RoundTripFormatRoundTrips(string format, DateTimeKind kind)
+    {
+        var value = new DateTime(2024, 1, 2, 3, 4, 5, 678, kind);
+
+        var text = DefaultValueConverter.ConvertToString(value, CultureInfo.InvariantCulture, format);
+        var back = DefaultValueConverter.ConvertToDateTime(text, CultureInfo.InvariantCulture, format);
+
+        Assert.Equal(value, back);
+        Assert.Equal(kind, back.Kind);
+    }
+
+    // The RFC 1123 format (R, r) reads the time as written, of an unspecified kind, as DateTime.ParseExact does: its GMT is
+    // text of the format and not a time zone, and ToString writes the time as it is, whatever its kind
+    [Theory]
+    [InlineData("R")]
+    [InlineData("r")]
+    public void Rfc1123FormatReadsTimeAsWritten(string format)
+    {
+        var value = DefaultValueConverter.ConvertToDateTime("Tue, 02 Jan 2024 03:04:05 GMT", CultureInfo.InvariantCulture, format);
+
+        Assert.Equal(new DateTime(2024, 1, 2, 3, 4, 5), value);
+        Assert.Equal(DateTimeKind.Unspecified, value.Kind);
+        Assert.Equal("Tue, 02 Jan 2024 03:04:05 GMT", DefaultValueConverter.ConvertToString(value, CultureInfo.InvariantCulture, format));
     }
 }

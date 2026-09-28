@@ -17,9 +17,9 @@ public class ConstantAndTargetMappingTests
         Assert.Equal((ConstantKind)9, destination.Undefined);
         Assert.Equal(ConstantAccess.Read | ConstantAccess.Run, destination.Access);
         Assert.Equal(typeof(Dictionary<string, int>), destination.Type);
-        Assert.Equal<int>([1, -2, 3], destination.Numbers);
-        Assert.Equal<string?>(["a\"b", null, "c\\d\r\n"], destination.Texts);
-        Assert.Equal<object?>([1, "x", null, typeof(int), ConstantKind.First], destination.Values);
+        Assert.Equal([1, -2, 3], destination.Numbers);
+        Assert.Equal(["a\"b", null, "c\\d\r\n"], destination.Texts);
+        Assert.Equal([1, "x", null, typeof(int), ConstantKind.First], destination.Values);
         Assert.Equal(0.1, destination.Ratio);
         Assert.Equal(1.5e-7f, destination.Scale);
         Assert.True((destination.Zero == 0) && Double.IsNegative(destination.Zero));
@@ -46,7 +46,7 @@ public class ConstantAndTargetMappingTests
 
         Assert.Equal(ConstantKind.Second, destination.Kind);
         Assert.Equal(typeof(string), destination.Type);
-        Assert.Equal<int>([7, 8], destination.Numbers);
+        Assert.Equal([7, 8], destination.Numbers);
         Assert.True(Double.IsNaN(destination.Ratio));
         Assert.Equal("none\t\"x\"", destination.Text);
     }

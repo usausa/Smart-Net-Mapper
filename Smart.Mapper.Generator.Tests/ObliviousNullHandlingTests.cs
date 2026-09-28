@@ -121,7 +121,7 @@ public class ObliviousNullHandlingTests
     [Fact]
     public void AnnotatedDestinationParameterIsNotChecked()
     {
-        var (generated, problems) = Build(Source("[MapProperty(nameof(Dst.Name))]", "public static partial void Map(Src src, Dst dst);"));
+        var (generated, problems) = Build(Source("[MapProperty(nameof(Dst.Name))]"));
 
         Assert.Empty(problems);
         Assert.DoesNotContain("dst is null", generated, StringComparison.Ordinal);

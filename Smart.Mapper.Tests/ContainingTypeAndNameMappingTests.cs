@@ -41,8 +41,7 @@ public class ContainingTypeAndNameMappingTests
     {
         var destination = NameComparisonProfileMappers.Map(new NameComparisonSource { Value = 5, Other = 4 });
 
-        Assert.Equal(5, destination.Target);
         Assert.Equal(3, destination.Field);
-        Assert.Equal(8, destination.Count);
+        Assert.Equal(new NameComparisonDestination { Target = 5, Field = 3, Count = 8 }, destination);
     }
 }

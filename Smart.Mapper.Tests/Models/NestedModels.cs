@@ -147,6 +147,11 @@ public class HeldPathLeaf
 
 public class HeldPathDestination
 {
+    public HeldPathDestination(HeldPathChild? missing = null)
+    {
+        Missing = missing;
+    }
+
     public HeldPathChild Held { get; } = new();
     public HeldPathChild? Missing { get; }
     public HeldPathChild Private { get; private set; } = new();
@@ -166,9 +171,7 @@ public abstract class PathAbstractChild
     public int Value { get; set; }
 }
 
-public class PathConcreteChild : PathAbstractChild
-{
-}
+public class PathConcreteChild : PathAbstractChild;
 
 public class PathInitChild
 {

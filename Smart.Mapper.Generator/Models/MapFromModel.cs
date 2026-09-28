@@ -6,10 +6,8 @@ using SourceGenerateHelper;
 internal sealed record MapFromModel(
     // Target member
     string TargetName = default!,
-    string TargetType = default!,
-    // Source. A method name or a property path on the source object, and what it yields
+    // Source. A method name or a property path on the source object
     string Member = default!,
-    string ReturnType = default!,
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,

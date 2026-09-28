@@ -23,7 +23,9 @@ public sealed class MapperProfileAttribute : Attribute
     // Requires a culture, from Culture here or on the mapper method (SMP0401 otherwise). It applies to every date
     // and time type, DateTime, DateTimeOffset, DateOnly, TimeOnly and TimeSpan alike; a TimeSpan format is written
     // differently (hh\:mm), and one meant for dates fails for a TimeSpan or a TimeOnly at run time, so formats for
-    // each type are given with the DateTimeFormat of MapProperty.
+    // each type are given with the DateTimeFormat of MapProperty. Text goes to DateTime with the round-trip format
+    // (O, o) keeping the kind it gives, as without a format, and with the RFC 1123 format (R, r), whose GMT is text of
+    // the format, as the time written, of an unspecified kind.
     public string? DateTimeFormat { get; set; }
 
     // Default numeric format string for the mapper methods in the class that do not set one themselves.

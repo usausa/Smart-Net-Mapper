@@ -1,7 +1,6 @@
 namespace Smart.Mapper.Generator.Tests;
 
 using System.Globalization;
-using System.Linq;
 
 using Microsoft.CodeAnalysis;
 

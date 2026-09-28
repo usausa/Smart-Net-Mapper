@@ -44,7 +44,7 @@ public class ReferenceElementSource
 
 public class ReferenceElementDestination
 {
-    public List<ReferenceElementItemDto?> Items { get; set; } = [];
+    public List<ReferenceElementItemDto?> Items { get; set; } = default!;
 }
 
 // Init-only and required targets of [MapNested] / [MapCollection], set in the object initializer
@@ -69,9 +69,7 @@ public class WideningShape
     public int Size { get; set; }
 }
 
-public class WideningCircle : WideningShape
-{
-}
+public class WideningCircle : WideningShape;
 
 public class WideningConversionSource
 {

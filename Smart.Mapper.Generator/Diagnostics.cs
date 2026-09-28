@@ -265,6 +265,15 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    // The same diagnostic for a dotted target going through a nullable struct, which the message tells
+    public static DiagnosticDescriptor NullableStructTargetPath { get; } = new(
+        id: "SMP0214",
+        title: "Unassignable mapping target",
+        messageFormat: "Mapping target goes through a nullable struct, which a dotted target cannot write into, map the struct as a whole. method=[{0}], target=[{1}]",
+        category: "Mapping",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static DiagnosticDescriptor UnsupportedConstructorAssignedOption { get; } = new(
         id: "SMP0215",
         title: "Unsupported constructor-assigned option",

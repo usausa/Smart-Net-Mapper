@@ -1,7 +1,6 @@
 namespace Smart.Mapper.Generator.Tests;
 
 using System.Globalization;
-using System.Linq;
 
 // A class, a struct or a collection going to one no conversion takes, most likely a nested member or a collection
 // without its [MapNested] / [MapCollection], is reported with SMP0402 as before, with a message telling to map a nested

@@ -538,7 +538,7 @@ if (source.Child is not null)
 }
 ```
 
-A nullable struct along the path, such as `GeoPoint? Location` for `Location.Lat`, is read through the struct it holds under the same check (`source.Location.Value.Lat`). The value at the end of a path converts as a member does: an enum by member name to another enum and to and from text, and to and from a number, with the culture and the formats of the method.
+A nullable struct along the path, such as `GeoPoint? Location` for `Location.Lat`, is read through the struct it holds under the same check (`source.Location.Value.Lat`). C# does not follow the null check of a value read through five members or more (the `Value` of a nullable struct counting as one), so where the generated code checks such a value before a converter, a condition or a conversion uses it, it takes the value into a variable (`if (source.Location.Value.In.Value.V is { } __value_V)`) and uses that. The value at the end of a path converts as a member does: an enum by member name to another enum and to and from text, and to and from a number, with the culture and the formats of the method.
 
 When an intermediate member is null, a mapping with `NullValue` takes it, and the others leave their targets as they are, as do `NullBehavior.Skip` and a mapping a `[MapCondition]` guards, which has no source value to test:
 
@@ -604,6 +604,8 @@ A struct property is a value, so it is copied into a local, filled, and assigned
     destination.Point = __copy0;
 }
 ```
+
+A dotted target cannot go through a nullable struct, as `Location.Lat` for a destination member `GeoPoint? Location`: the struct it holds is read through `Value` as a copy, which no setter takes back. Such a path is reported (SMP0214) with a message saying so; map the member as a whole instead, with `[MapUsing]` for example. A dotted source reads through one (see Flatten).
 
 An `init`-only member at the end of a path can only be set in an object initializer. A return-type mapper sets it there, creating the members it goes through, each of which has to be assignable there and creatable. A void mapper cannot (SMP0302), and a path the initializer cannot create either, through a get-only member for example, is reported (SMP0214):
 
@@ -678,7 +680,7 @@ public class DestinationChildList : List<DestinationChild> { }
 }
 ```
 
-A mapper maps an object, not a collection: one whose source or destination is a collection of the framework (a list, a set, a dictionary or one of their interfaces, and the immutable, frozen, concurrent and object model ones), a class deriving from one (`class ItemList : List<Item>`), an array or a tuple is reported (SMP0007), as it would map the members of the collection (`Count`, `Capacity`) and none of its elements. Map the elements with a mapper of the element type, or map a type holding the collection with `[MapCollection]`:
+A mapper maps an object, not a collection: one whose source or destination is a collection of the framework (a list, a set, a dictionary or one of their interfaces, `PriorityQueue<TElement, TPriority>`, and the immutable, frozen, concurrent and object model ones), a class deriving from one (`class ItemList : List<Item>`), an array or a tuple, or a type parameter constrained to one (`T Create<T>(Item source) where T : List<ItemDto>, new()`), is reported (SMP0007), as it would map the members of the collection (`Count`, `Capacity`) and none of its elements. Map the elements with a mapper of the element type, or map a type holding the collection with `[MapCollection]`:
 
 ```csharp
 [Mapper]
@@ -909,9 +911,11 @@ public static partial Dst Map(Src src);
 | `T` | `T` | Copied as-is |
 
 Nullable intermediate paths on the **source side**, of `[MapProperty]` and `[MapFrom]` alike, are guarded with `if (... is not null)`, a nullable struct read through the struct it holds (`source.Location.Value.Lat`); when one is null, a mapping with `NullValue` takes it, and the others leave their targets as they are.
-Nullable intermediate paths on the **destination side** are auto-instantiated with `??= new` when the mapper can assign and create them; otherwise the instance they hold is filled.
+Nullable intermediate paths on the **destination side** are auto-instantiated with `??= new` when the mapper can assign and create them; otherwise the instance they hold is filled. A dotted target cannot go through a nullable struct (SMP0214).
 
 A reference type declared with nullable annotations disabled (`#nullable disable`, or a library built without them) says nothing about null, so a value of it may be null: the source parameter, the source members and the elements of the source collections of such a type are handled as nullable ones. They are checked before they are read through or passed to a converter, a condition, the mapper of `[MapNested]` or an element mapper whose parameter does not take null, and `NullValue` and `NullBehavior.Skip` apply to them. Strict mode does not report them as values that may be null (SMP0502).
+
+A source member of a reference type with `[MaybeNull]`, on the property or on the return of its getter (`[MaybeNull] public string Name { get; set; }`), may be null as C# reads it, so it is handled as one of a nullable type: it is checked the same way, `NullValue`, `NullBehavior.Skip` and `[MapCondition]` apply to it, and strict mode reports it (SMP0502). The attributes of the property a path binds to count, so an override without the attribute is read as not null, and a method of `[MapFrom]` with `[return: MaybeNull]` gives a value that may be null as well.
 
 A source parameter (or the destination parameter of a void mapper) declared nullable, as in `Map(Src? source)`, is checked before anything is mapped, and so are a source parameter and the destination parameter of a void mapper declared with nullable annotations disabled; the custom parameters are passed on as they are. When one is null nothing is mapped: a return-type mapper returns `default`, and a void mapper returns without touching the destination. A return-type mapper whose source may be null returning a nullable type, as in `Dst? Map(Src? source)` or `Point? Map(Src? source)`, returns null for a null source only, so its implementation declares `[return: NotNullIfNotNull("source")]`, by the name of the parameter, and a caller passing a source that is not null uses the result without a nullable warning. The declaration may have the attribute as well. It is left out when the compilation has no `NotNullIfNotNullAttribute` the mapper class can use (.NET Standard 2.0 or .NET Framework without a copy of it).
 
@@ -964,7 +968,7 @@ Without a `Culture` or a format, a value goes to text and back as follows (`Defa
 | `TimeSpan` | `c` (`1.02:03:04.5000000`) | `TimeSpan.Parse` |
 | Enums | the member name (`ToString()` for a value no member has) | by member name (otherwise `Enum.Parse`, or `Enum.TryParse` for a nullable target) |
 
-With a `Culture`, the formats of the culture apply (`ToString(culture)`, `Parse(text, culture)`), and `DateTimeFormat` / `NumberFormat` give the format (see [Culture / Format](#culture--format)).
+With a `Culture`, the formats of the culture apply (`ToString(culture)`, `Parse(text, culture)`), and `DateTimeFormat` / `NumberFormat` give the format (see [Culture / Format](#culture--format)). With `DateTimeFormat = "O"` (or `"o"`), text goes to `DateTime` with `DateTimeStyles.RoundtripKind` as well, keeping the kind it gives; with `"R"` (or `"r"`), whose `GMT` is text of the format and not a time zone, `DateTime.ParseExact` gives the time as written, of an unspecified kind, as `ToString("R")` writes the time as it is, without converting it to UTC.
 
 ### Custom value converter (`[ValueConverter]`)
 
@@ -1088,7 +1092,7 @@ A mapper reported with an error gets an implementation throwing `NotImplementedE
 | SMP0004 | Mapper parameter name starts with `__` (reserved for the generated code) | Error |
 | SMP0005 | Parameter has a modifier the generated code cannot work with (`out`, or none, `in` or `ref readonly` on the struct destination of a void mapper, which is taken by `ref`) | Error |
 | SMP0006 | Source parameter is a nullable value type, which has none of the members of the struct it holds | Error |
-| SMP0007 | Source or destination is a collection, an array or a tuple, which a mapper does not map as a whole (map the elements with a mapper of the element type, or a type holding the collection with `[MapCollection]`) | Error |
+| SMP0007 | Source or destination is a collection, an array or a tuple, or a type parameter constrained to one, which a mapper does not map as a whole (map the elements with a mapper of the element type, or a type holding the collection with `[MapCollection]`) | Error |
 | SMP0008 | Mapper method returns by reference (`ref` / `ref readonly`), which cannot return the destination it creates | Error |
 | SMP0101 | Several mapping attributes target the same destination property or a member and a member of it (`Child` and `Child.Value`), or `[MapIgnore]` and a mapping attribute name the same target | Error |
 | SMP0102 | `BeforeMap` method signature does not match | Error |
@@ -1109,7 +1113,7 @@ A mapper reported with an error gets an implementation throwing `NotImplementedE
 | SMP0211 | `MapNested` mapper method is not found or its signature does not match, or `Mapper` is not specified | Error |
 | SMP0212 | `[MapCollection]` / `[MapNested]` target cannot be assigned (no setter or `init` accessor the mapper can call, or `init`-only in a void mapper; `InPlace` refills the instance it holds) | Error |
 | SMP0213 | `[MapProperty]` source property is not found | Error |
-| SMP0214 | Mapping target is not found or cannot be assigned (no setter the mapper can call, a `readonly` field, a dotted path the generated code cannot go through), including the target of `[MapIgnore]` / `[MapCondition]` | Error |
+| SMP0214 | Mapping target is not found or cannot be assigned (no setter the mapper can call, a `readonly` field, a dotted path the generated code cannot go through, such as one through a nullable struct), including the target of `[MapIgnore]` / `[MapCondition]` | Error |
 | SMP0215 | `[MapCondition]` / `NullBehavior.Skip` on a target assigned through a constructor or object initializer | Error |
 | SMP0216 | `[MapIgnore]` on a member assigned through a constructor the destination cannot be created without, or on a `required` member of the destination a return-type mapper creates | Error |
 | SMP0217 | `[MapCollection]` target cannot take the collection the generated code creates for it | Error |

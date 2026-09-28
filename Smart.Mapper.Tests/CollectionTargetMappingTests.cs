@@ -96,7 +96,7 @@ public class CollectionTargetMappingTests
         Assert.IsType<MatrixDstItemList>(destination.Items);
         Assert.Collection(destination.Items, static x => Assert.Equal(1, x.Value), static x => Assert.Equal(2, x.Value), static x => Assert.Equal(3, x.Value));
         Assert.IsType<ObservableCollection<MatrixDstItem>>(destination.Observed);
-        Assert.Equal(3, destination.Observed.Count);
+        Assert.Equal(source.Items.Count, destination.Observed.Count);
     }
 
     [Fact]

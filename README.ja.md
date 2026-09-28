@@ -538,7 +538,7 @@ if (source.Child is not null)
 }
 ```
 
-`Location.Lat` の `GeoPoint? Location` のように、パスの途中の null 許容の構造体は、同じ検査の下で中の構造体を通して読みます（`source.Location.Value.Lat`）。パスの末端の値はメンバーと同じく変換します。enum は別の enum や文字列との間ではメンバーの名前で、数値との間ではキャストで変換し、メソッドのカルチャと書式も当てはまります。
+`Location.Lat` の `GeoPoint? Location` のように、パスの途中の null 許容の構造体は、同じ検査の下で中の構造体を通して読みます（`source.Location.Value.Lat`）。5 段以上のメンバー（null 許容の構造体の `Value` も 1 段と数えます）を通して読む値は C# が null の検査を追わないため、変換器・条件・変換に渡す前に検査するところで変数に受け（`if (source.Location.Value.In.Value.V is { } __value_V)`）、その変数を使います。パスの末端の値はメンバーと同じく変換します。enum は別の enum や文字列との間ではメンバーの名前で、数値との間ではキャストで変換し、メソッドのカルチャと書式も当てはまります。
 
 途中のメンバーが null のときは、`NullValue` を指定したマッピングはその値を入れ、ほかはターゲットをそのまま残します。`NullBehavior.Skip` と、調べる source の値がない `[MapCondition]` 付きのマッピングも残します：
 
@@ -604,6 +604,8 @@ struct のプロパティは値なので、ローカルに写して埋め、書�
     destination.Point = __copy0;
 }
 ```
+
+ドット付きのターゲットは、宛先のメンバー `GeoPoint? Location` への `Location.Lat` のように、null 許容の構造体を通れません。中の構造体は `Value` から写しとして読むため、書き込んでも戻すセッターがないからです。このようなパスは、そのことを示す文言で診断されます（SMP0214）。メンバー全体を `[MapUsing]` などで写してください。ドット付きのソースは null 許容の構造体を通して読めます（Flatten を参照）。
 
 パスの末尾の `init` 専用メンバーは、オブジェクト初期化子でしか設定できません。戻り値のあるマッパーは、通る途中のメンバーを作りながら初期化子で設定します。途中のメンバーは、初期化子で代入でき、作れる必要があります。void マッパーでは設定できず（SMP0302）、初期化子でも作れないパス（get だけのメンバーを通るものなど）は診断されます（SMP0214）：
 
@@ -678,7 +680,7 @@ public class DestinationChildList : List<DestinationChild> { }
 }
 ```
 
-マッパーが写すのはオブジェクトで、コレクションではありません。source や destination が、フレームワークのコレクション（リスト・集合・辞書とそれらのインターフェース、イミュータブル・フローズン・コンカレント・ObjectModel のもの）、それを継承したクラス（`class ItemList : List<Item>`）、配列、タプルのマッパーは診断されます（SMP0007）。コレクションのメンバー（`Count`・`Capacity`）を写すだけで、要素をひとつも写さないためです。要素は要素の型のマッパーで写すか、コレクションを持つ型を `[MapCollection]` で写してください：
+マッパーが写すのはオブジェクトで、コレクションではありません。source や destination が、フレームワークのコレクション（リスト・集合・辞書とそれらのインターフェース、`PriorityQueue<TElement, TPriority>`、イミュータブル・フローズン・コンカレント・ObjectModel のもの）、それを継承したクラス（`class ItemList : List<Item>`）、配列、タプル、それらに制約された型引数（`T Create<T>(Item source) where T : List<ItemDto>, new()`）のマッパーは診断されます（SMP0007）。コレクションのメンバー（`Count`・`Capacity`）を写すだけで、要素をひとつも写さないためです。要素は要素の型のマッパーで写すか、コレクションを持つ型を `[MapCollection]` で写してください：
 
 ```csharp
 [Mapper]
@@ -909,9 +911,11 @@ public static partial Dst Map(Src src);
 | `T` | `T` | そのままコピー |
 
 **source 側**の nullable 中間パスには、`[MapProperty]` でも `[MapFrom]` でも `if (... is not null)` ガードが付き、null 許容の構造体は中の構造体を通して読みます（`source.Location.Value.Lat`）。途中が null のときは、`NullValue` を指定したマッピングはその値を入れ、ほかはターゲットをそのまま残します。
-**destination 側**の nullable 中間パスは、マッパーから代入でき、作れれば `??= new` で自動インスタンス化され、そうでなければ持っているインスタンスを埋めます。
+**destination 側**の nullable 中間パスは、マッパーから代入でき、作れれば `??= new` で自動インスタンス化され、そうでなければ持っているインスタンスを埋めます。ドット付きのターゲットは null 許容の構造体を通れません（SMP0214）。
 
 null 許容の注釈なし（`#nullable disable` や、注釈なしでビルドしたライブラリ）で宣言した参照型は null かどうかを何も言っていないため、その値は null になりえます。そのような型の元の引数、source のメンバー、source のコレクションの要素は、null 許容のものと同じく扱います。読み進める前や、引数が null を受け付けない変換器・条件・`[MapNested]` のマッパー・要素のマッパーに渡す前に null を調べ、`NullValue` と `NullBehavior.Skip` も当てはまります。Strict モードでは、これらを null になりうる値として警告しません（SMP0502）。
+
+参照型の source のメンバーに、プロパティか getter の戻り値の `[MaybeNull]` が付いていれば（`[MaybeNull] public string Name { get; set; }`）、C# の読み方と同じく null になりうるため、null 許容の型のものと同じく扱います。同じように null を調べ、`NullValue`・`NullBehavior.Skip`・`[MapCondition]` も当てはまり、Strict モードでは警告します（SMP0502）。パスが指すプロパティの属性を見るため、属性のない override は null でないものとして読みます。`[return: MaybeNull]` の付いた `[MapFrom]` のメソッドの値も、null になりうるものとして扱います。
 
 元の引数（void マッパーでは宛先の引数も）を `Map(Src? source)` のように null 許容で宣言すると、写す前に検査します。null 許容の注釈なしで宣言した元の引数と void マッパーの宛先の引数も同じです。カスタムパラメーターはそのまま渡します。null のときは何も写さず、戻り値のあるマッパーは `default` を返し、void マッパーは宛先に触れずに戻ります。`Dst? Map(Src? source)` や `Point? Map(Src? source)` のように、元の引数が null になりうる、null 許容の型を返すマッパーは、元の引数が null のときだけ null を返すため、実装に `[return: NotNullIfNotNull("source")]`（引数の名前で）を付けます。null でない引数を渡した呼び出し側は、null 許容の警告なしで結果を使えます。宣言の側に同じ属性を付けてもかまいません。マッパーのクラスから使える `NotNullIfNotNullAttribute` がコンパイルにないとき（その写しのない .NET Standard 2.0 や .NET Framework）は付けません。
 
@@ -964,7 +968,7 @@ destination.StringValue = source.NullableValue is not null
 | `TimeSpan` | `c`（`1.02:03:04.5000000`） | `TimeSpan.Parse` |
 | enum | メンバー名（メンバーのない値は `ToString()` の結果） | メンバー名で対応（なければ `Enum.Parse`、null 許容のターゲットなら `Enum.TryParse`） |
 
-`Culture` を指定するとそのカルチャの書式（`ToString(culture)`・`Parse(text, culture)`）になり、`DateTimeFormat` / `NumberFormat` で書式を指定できます（[Culture / Format](#culture--format) を参照）。
+`Culture` を指定するとそのカルチャの書式（`ToString(culture)`・`Parse(text, culture)`）になり、`DateTimeFormat` / `NumberFormat` で書式を指定できます（[Culture / Format](#culture--format) を参照）。`DateTimeFormat = "O"`（`"o"` も）では、文字列から `DateTime` へも `DateTimeStyles.RoundtripKind` 付きで読み、文字列の示す種類を保ちます。`"R"`（`"r"`）では、`GMT` は書式の中の文字でタイムゾーンとしては読まないため、`DateTime.ParseExact` のとおり、書かれた時刻を種類が未指定のまま返します（`ToString("R")` も時刻を UTC に直さずに書きます）。
 
 ### カスタム型変換器（`[ValueConverter]`）
 
@@ -1088,7 +1092,7 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0004 | マッパーメソッドのパラメーター名が `__` で始まっている（生成コードの予約名） | エラー |
 | SMP0005 | 生成コードが扱えない修飾子がパラメーターに付いている（`out`、void マッパーの struct の宛先の修飾子なし・`in`・`ref readonly`。struct の宛先は `ref` で受け取る） | エラー |
 | SMP0006 | 元の引数が null 許容の値型で、中の構造体のメンバーを持たない | エラー |
-| SMP0007 | source や destination がコレクション・配列・タプルで、マッパーは丸ごとは写さない（要素の型のマッパーで要素を写すか、コレクションを持つ型を `[MapCollection]` で写す） | エラー |
+| SMP0007 | source や destination がコレクション・配列・タプル（またはそれに制約された型引数）で、マッパーは丸ごとは写さない（要素の型のマッパーで要素を写すか、コレクションを持つ型を `[MapCollection]` で写す） | エラー |
 | SMP0008 | マッパーメソッドが参照（`ref` / `ref readonly`）で返し、作った destination を返せない | エラー |
 | SMP0101 | 同一目的プロパティへのマッピングが重複している、メンバーとその中（`Child` と `Child.Value`）を両方マッピングしている、または同じターゲットに `[MapIgnore]` とマッピング属性を指定している | エラー |
 | SMP0102 | `BeforeMap` メソッドのシグネチャが一致しない | エラー |
@@ -1109,7 +1113,7 @@ Smart.Mapper は NativeAOT および IL トリミングに完全対応してい�
 | SMP0211 | `MapNested` マッパーメソッドが見つからないまたはシグネチャが一致しない、または `Mapper` を指定していない | エラー |
 | SMP0212 | `[MapCollection]` / `[MapNested]` の対象に代入できない（マッパーから呼べるセッターも `init` アクセサーもない、または void マッパーで init 専用。`InPlace` は持っているインスタンスを詰め直す） | エラー |
 | SMP0213 | `[MapProperty]` のソースプロパティが見つからない | エラー |
-| SMP0214 | マッピングのターゲットが見つからない、または代入できない（マッパーから呼べるセッターがない、`readonly` フィールド、生成コードが通れないドット付きパス）。`[MapIgnore]` / `[MapCondition]` のターゲットも含む | エラー |
+| SMP0214 | マッピングのターゲットが見つからない、または代入できない（マッパーから呼べるセッターがない、`readonly` フィールド、null 許容の構造体を通るものなど、生成コードが通れないドット付きパス）。`[MapIgnore]` / `[MapCondition]` のターゲットも含む | エラー |
 | SMP0215 | コンストラクタ / 初期化子経由で代入されるターゲットに `[MapCondition]` / `NullBehavior.Skip` を指定 | エラー |
 | SMP0216 | destination をほかに作る方法がないコンストラクタの引数が代入するメンバーや、戻り値のあるマッパーが作る destination の `required` メンバーに `[MapIgnore]` を指定 | エラー |
 | SMP0217 | `[MapCollection]` の対象が、生成コードの作るコレクションを受け取れない | エラー |

@@ -9,8 +9,10 @@ using Microsoft.CodeAnalysis;
 // implementation throwing, as it would map the members of the collection (Count, Capacity) and none of its elements: it
 // used to create an empty collection, or fail on new T[]() and new (int, string)(). The collections are those of the
 // framework (System.Collections and the namespaces under it: lists, sets, dictionaries and their interfaces, the immutable,
-// frozen, concurrent and object model ones), and classes deriving from one (class ItemList : List<Item>). A type of its
-// own that only implements IEnumerable<T>, such as a page of items with its count, is mapped by its members.
+// frozen, concurrent and object model ones, and PriorityQueue<TElement, TPriority>, which does not implement IEnumerable),
+// classes deriving from one (class ItemList : List<Item>), and type parameters constrained to one (where T : List<Item>),
+// which the mapper maps by the members of the constraint. A type of its own that only implements IEnumerable<T>, such as
+// a page of items with its count, is mapped by its members, and so is a type parameter constrained to one.
 public class CollectionMapperTests
 {
     private static string Source(string declarations) =>
@@ -54,6 +56,11 @@ public class CollectionMapperTests
     [InlineData("[Mapper] public static partial void Map(Item source, HashSet<ItemDto> destination);", "HashSet<ItemDto>", "HashSet<ItemDto> destination")]
     [InlineData("[Mapper] public static partial (int Id, string Name) Map(Item source);", "(int Id, string Name)", "(int Id, string Name)")]
     [InlineData("[Mapper] public static partial Tuple<int, string> Map(Item source);", "Tuple<int, string>", "Tuple<int, string>")]
+    [InlineData("[Mapper] public static partial ItemDto Map(PriorityQueue<Item, int> source);", "PriorityQueue<Item, int>", "PriorityQueue<Item, int> source")]
+    [InlineData("[Mapper] public static partial PriorityQueue<ItemDto, int> Map(Item source);", "PriorityQueue<ItemDto, int>", "PriorityQueue<ItemDto, int>")]
+    [InlineData("[Mapper] public static partial T Map<T>(Item source) where T : List<ItemDto>, new();", "T", "T")]
+    [InlineData("[Mapper] public static partial PageDto Map<T>(T source) where T : IEnumerable<Item>;", "T", "T source")]
+    [InlineData("[Mapper] public static partial void Map<T>(Item source, T destination) where T : class, ICollection<ItemDto>;", "T", "T destination")]
     public void CollectionIsReported(string declaration, string type, string location)
     {
         var source = Source(declaration);
@@ -69,9 +76,11 @@ public class CollectionMapperTests
         Assert.Contains("throw new global::System.NotImplementedException(", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 
-    // A type of its own implementing IEnumerable<T> is mapped by its members, and so is a pair
+    // A type of its own implementing IEnumerable<T> is mapped by its members, also as the constraint of a type parameter,
+    // and so is a pair
     [Theory]
     [InlineData("[Mapper] public static partial PageDto Map(Page<Item> source);", "__d.Total = source.Total;")]
+    [InlineData("[Mapper] public static partial PageDto Map<T>(T source) where T : Page<Item>;", "__d.Total = source.Total;")]
     [InlineData("[Mapper] public static partial ItemDto Map(KeyValuePair<int, Item> source);", "var __d = new global::Test.ItemDto();")]
     public void OtherTypeIsMappedByMembers(string declaration, string expected)
     {

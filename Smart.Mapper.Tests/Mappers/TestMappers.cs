@@ -1,6 +1,8 @@
 #pragma warning disable IDE0060
 namespace Smart.Mapper.Mappers;
 
+using System.Globalization;
+
 using Smart.Mapper.Models;
 
 internal static partial class TestMappers
@@ -852,7 +854,7 @@ internal static partial class TestMappers
 
     // Collection converter nested in another class and generic
     [Mapper]
-    [CollectionConverter(typeof(ConverterHost.NestedCollectionConverter<string>))]
+    [CollectionConverter(typeof(ConverterHost.NestedCollectionConverter<ConverterHost.ReverseElementOrder>))]
     [MapCollection(nameof(NestedConverterDestination.Items), Mapper = nameof(FormatNestedItem))]
     public static partial NestedConverterDestination MapWithNestedCollectionConverter(NestedConverterSource source);
 
@@ -1586,4 +1588,35 @@ internal static partial class TestMappers
     [MapProperty(nameof(GeoRecord.Lat), "Location.Lat")]
     [MapProperty(nameof(GeoRecord.Label), "Location.Label", NullValue = "none")]
     public static partial GeoRecord MapGeoRecord(GeoSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(DeepPathDestination.Name), "Area.Spot.Name", Converter = nameof(ToUpperText))]
+    [MapProperty(nameof(DeepPathDestination.Count), "Area.Spot.Count")]
+    [MapProperty(nameof(DeepPathDestination.Level), "Area.Spot.Level", Converter = nameof(ToLevelText))]
+    [MapProperty(nameof(DeepPathDestination.Checked), "Area.Spot.Level")]
+    [MapCondition(nameof(DeepPathDestination.Checked), nameof(IsPositiveLevel))]
+    public static partial DeepPathDestination MapDeepPath(DeepPathSource source);
+
+    [Mapper]
+    [MapProperty(nameof(DeepPathRecord.Name), "Area.Spot.Name", Converter = nameof(ToUpperText))]
+    public static partial DeepPathRecord MapDeepPathRecord(DeepPathSource source);
+
+    [Mapper(AutoMap = false)]
+    [MapProperty(nameof(MaybeNullDestination.Name), NullValue = "none")]
+    [MapProperty(nameof(MaybeNullDestination.Upper), nameof(MaybeNullSource.Name), Converter = nameof(ToUpperText))]
+    [MapProperty(nameof(MaybeNullDestination.Note), NullBehavior = NullBehavior.Skip)]
+    [MapProperty(nameof(MaybeNullDestination.ChildValue), "Child.Value")]
+    public static partial MaybeNullDestination MapMaybeNull(MaybeNullSource source);
+
+    [Mapper(Culture = "en-US", DateTimeFormat = "O")]
+    public static partial FormattedDateTimeDestination MapRoundTripFormat(FormattedDateTimeSource source);
+
+    [Mapper(Culture = "en-US", DateTimeFormat = "R")]
+    public static partial FormattedDateTimeDestination MapRfc1123Format(FormattedDateTimeSource source);
+
+    private static string ToUpperText(string value) => value.ToUpperInvariant();
+
+    private static string ToLevelText(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    private static bool IsPositiveLevel(int value) => value > 0;
 }

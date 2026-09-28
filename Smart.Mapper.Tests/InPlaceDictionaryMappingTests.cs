@@ -10,12 +10,13 @@ public class InPlaceDictionaryMappingTests
     [Fact]
     public void NullTargetGetsDictionary()
     {
+        var source = new InPlaceDictionarySource { Items = { ["a"] = new ReferenceElementItem { Value = 1 } } };
         var destination = new InPlaceDictionaryDestination();
 
-        TestMappers.MapInPlaceDictionary(new InPlaceDictionarySource { Items = { ["a"] = new ReferenceElementItem { Value = 1 } } }, destination);
+        TestMappers.MapInPlaceDictionary(source, destination);
 
         Assert.IsType<Dictionary<string, ReferenceElementItemDto>>(destination.Items);
-        Assert.Equal(1, destination.Items["a"].Value);
+        Assert.Equal(source.Items["a"].Value, destination.Items["a"].Value);
     }
 
     [Fact]

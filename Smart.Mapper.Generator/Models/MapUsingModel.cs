@@ -8,11 +8,9 @@ using SourceGenerateHelper;
 internal sealed record MapUsingModel(
     // Target member, and the intermediate members of a dotted path to it
     string TargetName = default!,
-    string TargetType = default!,
     EquatableArray<NestedPathSegment> TargetPathSegments = default,
-    // Method in the containing class that computes the value, and what it returns
+    // Method in the containing class that computes the value
     string Method = default!,
-    string MethodReturnType = default!,
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,

@@ -125,7 +125,85 @@ public class PathAndConversionMappingTests
         Assert.Equal(2, withNullLabel.Lat);
         Assert.Equal("none", withNullLabel.Label);
 
-        Assert.Equal(new GeoRecord(0, "none"), TestMappers.MapGeoRecord(new GeoSource()));
-        Assert.Equal(new GeoRecord(3, "there"), TestMappers.MapGeoRecord(new GeoSource { Location = new GeoPoint { Lat = 3, Label = "there" } }));
+        var recordWithNull = TestMappers.MapGeoRecord(new GeoSource());
+        Assert.Equal(0, recordWithNull.Lat);
+        Assert.Equal("none", recordWithNull.Label);
+
+        var recordWithValue = TestMappers.MapGeoRecord(new GeoSource { Location = new GeoPoint { Lat = 3, Label = "there" } });
+        Assert.Equal(3, recordWithValue.Lat);
+        Assert.Equal("there", recordWithValue.Label);
+    }
+
+    // A value read through five members or more, the Value of a nullable struct counting as one, is taken into a variable
+    // after its null check: a converter or a condition not taking null gets the value, a null one leaves the target as it
+    // is, gives default to a conversion, and default to a constructor argument
+    [Fact]
+    public void DeepPathValueIsTakenAfterCheck()
+    {
+        var withValue = TestMappers.MapDeepPath(new DeepPathSource { Area = new DeepPathArea { Spot = new DeepPathSpot { Name = "abc", Count = "12", Level = 3 } } });
+        Assert.Equal("ABC", withValue.Name);
+        Assert.Equal(12, withValue.Count);
+        Assert.Equal("3", withValue.Level);
+        Assert.Equal(3, withValue.Checked);
+
+        var withNullValues = TestMappers.MapDeepPath(new DeepPathSource { Area = new DeepPathArea { Spot = default(DeepPathSpot) } });
+        Assert.Equal("init", withNullValues.Name);
+        Assert.Equal(0, withNullValues.Count);
+        Assert.Equal("init", withNullValues.Level);
+        Assert.Equal(-1, withNullValues.Checked);
+
+        var withZero = TestMappers.MapDeepPath(new DeepPathSource { Area = new DeepPathArea { Spot = new DeepPathSpot { Level = 0 } } });
+        Assert.Equal("0", withZero.Level);
+        Assert.Equal(-1, withZero.Checked);
+
+        var withNullSpot = TestMappers.MapDeepPath(new DeepPathSource { Area = default(DeepPathArea) });
+        Assert.Equal("init", withNullSpot.Name);
+        Assert.Equal(-1, withNullSpot.Count);
+        Assert.Equal("init", withNullSpot.Level);
+        Assert.Equal(-1, withNullSpot.Checked);
+
+        Assert.Equal("ABC", TestMappers.MapDeepPathRecord(new DeepPathSource { Area = new DeepPathArea { Spot = new DeepPathSpot { Name = "abc" } } }).Name);
+        Assert.Null(TestMappers.MapDeepPathRecord(new DeepPathSource { Area = new DeepPathArea { Spot = default(DeepPathSpot) } }).Name);
+        Assert.Null(TestMappers.MapDeepPathRecord(new DeepPathSource()).Name);
+    }
+
+    // A source member whose getter may return null by [MaybeNull] is taken as a nullable one: NullValue and
+    // NullBehavior.Skip apply to it, a converter not taking null is called for a value only, and a dotted path through it
+    // is read under its null check
+    [Fact]
+    public void MaybeNullSourceIsTakenAsNullable()
+    {
+        var withValue = TestMappers.MapMaybeNull(new MaybeNullSource { Name = "name", Note = "note", Child = new MaybeNullChild { Value = "value" } });
+        Assert.Equal("name", withValue.Name);
+        Assert.Equal("NAME", withValue.Upper);
+        Assert.Equal("note", withValue.Note);
+        Assert.Equal("value", withValue.ChildValue);
+
+        var withNull = TestMappers.MapMaybeNull(new MaybeNullSource { Name = null!, Note = null!, Child = null! });
+        Assert.Equal("none", withNull.Name);
+        Assert.Equal("init", withNull.Upper);
+        Assert.Equal("init", withNull.Note);
+        Assert.Equal("init", withNull.ChildValue);
+    }
+
+    // With DateTimeFormat = "O", text goes to DateTime keeping the kind it gives, as without a format; with "R", whose GMT
+    // is text of the format, the time is read as written, of an unspecified kind, as ToString("R") writes it as it is
+    [Fact]
+    public void DateTimeFormatGivesKind()
+    {
+        var utc = new DateTime(2024, 1, 2, 3, 4, 5, 678, DateTimeKind.Utc);
+        var roundTrip = TestMappers.MapRoundTripFormat(new FormattedDateTimeSource { At = "2024-01-02T03:04:05.6780000Z", When = utc });
+        Assert.Equal(utc, roundTrip.At);
+        Assert.Equal(DateTimeKind.Utc, roundTrip.At.Kind);
+        Assert.Equal("2024-01-02T03:04:05.6780000Z", roundTrip.When);
+
+        var unspecified = TestMappers.MapRoundTripFormat(new FormattedDateTimeSource { At = "2024-01-02T03:04:05.6780000" });
+        Assert.Equal(new DateTime(2024, 1, 2, 3, 4, 5, 678), unspecified.At);
+        Assert.Equal(DateTimeKind.Unspecified, unspecified.At.Kind);
+
+        var rfc1123 = TestMappers.MapRfc1123Format(new FormattedDateTimeSource { At = "Tue, 02 Jan 2024 03:04:05 GMT", When = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc) });
+        Assert.Equal(new DateTime(2024, 1, 2, 3, 4, 5), rfc1123.At);
+        Assert.Equal(DateTimeKind.Unspecified, rfc1123.At.Kind);
+        Assert.Equal("Tue, 02 Jan 2024 03:04:05 GMT", rfc1123.When);
     }
 }

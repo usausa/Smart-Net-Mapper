@@ -1720,14 +1720,18 @@ internal static class MapperSourceBuilder
         {
             // A condition whose parameter does not take null is not met by a null source, which is not passed to it
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+            var conditionValue = sourceAccessor;
+            var captured = false;
             builder.Indent().Append("if (");
             if (mapping.IsSourceNullable && mapping.ConditionRejectsNull)
             {
-                builder.Append(sourceAccessor).Append(" is not null && ");
+                captured = CapturesCheckedValue(mapping);
+                conditionValue = AppendValueCheck(builder, sourceAccessor, captured, ConditionValuePrefix, mapping.TargetPath);
+                builder.Append(" && ");
             }
 
-            builder.Append(IdentifierHelper.Escape(mapping.ConditionMethod!)).Append("(").Append(sourceAccessor);
-            if (mapping.ConditionUnwrapsSource)
+            builder.Append(IdentifierHelper.Escape(mapping.ConditionMethod!)).Append("(").Append(conditionValue);
+            if (mapping.ConditionUnwrapsSource && !captured)
             {
                 builder.Append(".Value");
             }
@@ -1756,11 +1760,14 @@ internal static class MapperSourceBuilder
             // not calling it, with NullBehavior.Skip, and for a converter whose parameter does not take null and no
             // NullValue to give instead
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
-            builder.Indent().Append("if (").Append(sourceAccessor).Append(" is not null)").NewLine();
+            var captured = mapping.ConverterRejectsNull && CapturesCheckedValue(mapping);
+            builder.Indent().Append("if (");
+            var value = AppendValueCheck(builder, sourceAccessor, captured, ValuePrefix, mapping.TargetPath);
+            builder.Append(")").NewLine();
             builder.BeginScope();
             create?.Invoke();
             builder.Indent().Append(target).Append(" = ");
-            AppendConverterCall(builder, mapping, sourceAccessor, method);
+            AppendConverterCall(builder, mapping, value, method, captured);
             builder.Append(";").NewLine();
             builder.EndScope();
         }
@@ -1849,12 +1856,15 @@ internal static class MapperSourceBuilder
             // a value only as well, a null source giving null to a target taking it, or default
             var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
             var substitutesNull = mapping.IsSourceNullable && (mapping.HasNullValue() || mapping.ConverterRejectsNull);
+            var captured = substitutesNull && mapping.ConverterRejectsNull && CapturesCheckedValue(mapping);
+            var value = sourceAccessor;
             if (substitutesNull)
             {
-                builder.Append(sourceAccessor).Append(" is not null ? ");
+                value = AppendValueCheck(builder, sourceAccessor, captured, ValuePrefix, mapping.TargetPath);
+                builder.Append(" ? ");
             }
 
-            AppendConverterCall(builder, mapping, sourceAccessor, method);
+            AppendConverterCall(builder, mapping, value, method, captured);
 
             if (substitutesNull)
             {
@@ -1894,11 +1904,12 @@ internal static class MapperSourceBuilder
 
     // The call of the converter method of a mapping with the source value, and the custom parameters when it takes
     // them. A nullable struct goes to a converter taking the struct it holds as its Value, the callers passing a
-    // value only. A nullable reference it returns into a target not annotated as nullable is taken with !.
-    private static void AppendConverterCall(SourceBuilder builder, PropertyMappingModel mapping, string sourceAccessor, MapperMethodModel method)
+    // value only, or as the variable a checked value was taken into (captured), which holds that struct already. A
+    // nullable reference it returns into a target not annotated as nullable is taken with !.
+    private static void AppendConverterCall(SourceBuilder builder, PropertyMappingModel mapping, string sourceAccessor, MapperMethodModel method, bool captured = false)
     {
         builder.Append(IdentifierHelper.Escape(mapping.ConverterMethod!)).Append("(").Append(sourceAccessor);
-        if (mapping.ConverterUnwrapsSource)
+        if (mapping.ConverterUnwrapsSource && !captured)
         {
             builder.Append(".Value");
         }
@@ -1924,7 +1935,11 @@ internal static class MapperSourceBuilder
         var sourceAccessor = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
         var isNullableValueType = mapping.SourceType.Contains("?") || mapping.SourceType.Contains("Nullable<");
 
-        builder.Append(sourceAccessor).Append(" is not null ? ");
+        // A nullable struct is read with GetValueOrDefault, which does not need its null state; a reference is taken
+        // into a variable where the compiler does not follow it
+        var captured = !isNullableValueType && CapturesCheckedValue(mapping);
+        var value = AppendValueCheck(builder, sourceAccessor, captured, ValuePrefix, mapping.TargetPath);
+        builder.Append(" ? ");
 
         if (isNullableValueType)
         {
@@ -1932,7 +1947,7 @@ internal static class MapperSourceBuilder
         }
         else
         {
-            BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+            BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method, captured ? value : null);
         }
 
         builder.Append(" : ");
@@ -1973,7 +1988,10 @@ internal static class MapperSourceBuilder
 
         if (mapping.NullBehavior == NullBehaviorType.Skip)
         {
-            builder.Indent().Append("if (").Append(sourceAccessor).Append(" is not null)").NewLine();
+            var captured = !isNullableValueType && CapturesCheckedValue(mapping);
+            builder.Indent().Append("if (");
+            var value = AppendValueCheck(builder, sourceAccessor, captured, ValuePrefix, mapping.TargetPath);
+            builder.Append(")").NewLine();
             builder.BeginScope();
             create?.Invoke();
             builder.Indent();
@@ -1985,7 +2003,7 @@ internal static class MapperSourceBuilder
             }
             else
             {
-                BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method);
+                BuildTypeConversion(builder, mapping, sourceParamName, nullChecked, method, captured ? value : null);
             }
 
             builder.Append(";").NewLine();
@@ -2124,6 +2142,50 @@ internal static class MapperSourceBuilder
         return String.Join(" && ", conditions);
     }
 
+    // The compiler follows the null state of a member read through four members from the parameter at most
+    // (source.A.B.C.D), so a value read through five or more, a nullable struct read through its Value counting as one
+    // (source.Location.Value.In.Value.V), is not known to be not null after its null check, and passing it on or reading
+    // its Value would warn (CS8604, CS8629). Where the generated code checks such a value and then uses it, it takes it
+    // into a variable with a pattern (is { } __value_V) and uses the variable, the struct a nullable struct holds; a value
+    // read through fewer members is checked and read again as before.
+    private const int UntrackedPathLength = 5;
+
+    private const string ValuePrefix = "__value_";
+
+    private const string ConditionValuePrefix = "__condition_";
+
+    internal static bool CapturesCheckedValue(PropertyMappingModel mapping)
+    {
+        var segments = 1;
+        foreach (var c in mapping.SourcePath)
+        {
+            if (c == '.')
+            {
+                segments++;
+            }
+        }
+
+        return segments >= UntrackedPathLength;
+    }
+
+    // Appends the null check of a value, as is { } with the variable it is taken into when captured, and returns what
+    // reads the value past the check. The variable is named by the target, which one mapping has, a dot of the path as
+    // _d and an _ of a name as __, so that the names of two targets never meet, as the variable of a pattern in the
+    // condition of an if is in scope in the rest of the method.
+    private static string AppendValueCheck(SourceBuilder builder, string sourceAccessor, bool captured, string prefix, string targetPath)
+    {
+        builder.Append(sourceAccessor);
+        if (!captured)
+        {
+            builder.Append(" is not null");
+            return sourceAccessor;
+        }
+
+        var name = prefix + targetPath.Replace("_", "__").Replace(".", "_d");
+        builder.Append(" is { } ").Append(name);
+        return name;
+    }
+
     internal static string BuildSourceAccessor(string sourcePath, string sourceParamName, bool nullChecked = false)
     {
         if (!sourcePath.Contains('.'))
@@ -2149,9 +2211,10 @@ internal static class MapperSourceBuilder
         return result.ToString();
     }
 
-    internal static void BuildTypeConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, bool nullChecked, MapperMethodModel method)
+    // The value is read through the source path, or from the variable a checked value was taken into (valueExpression)
+    internal static void BuildTypeConversion(SourceBuilder builder, PropertyMappingModel mapping, string sourceParamName, bool nullChecked, MapperMethodModel method, string? valueExpression = null)
     {
-        var sourceExpr = BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
+        var sourceExpr = valueExpression ?? BuildSourceAccessor(mapping.SourcePath, sourceParamName, nullChecked);
 
         if (mapping.IsEnumMapping())
         {

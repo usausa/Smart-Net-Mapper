@@ -126,10 +126,16 @@ public static class DefaultValueConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source) => DateTime.Parse(source, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
-    // Converts string to DateTime using specified culture and optional format.
+    // Converts string to DateTime using specified culture and optional format. The round-trip format (O, o) keeps the
+    // kind the text gives (UTC for a Z, local for an offset, unspecified without either), as the default conversion
+    // does, where DateTimeStyles.None would turn a Z into local time; the RFC 1123 format (R, r), whose GMT is text of
+    // the format and not a time zone, gives the time as written with an unspecified kind, as ToString writes the time
+    // as it is under GMT, whatever its kind.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime ConvertToDateTime(string source, IFormatProvider culture, string? format) =>
-        format is null ? DateTime.Parse(source, culture) : DateTime.ParseExact(source, format, culture);
+        format is null
+            ? DateTime.Parse(source, culture)
+            : DateTime.ParseExact(source, format, culture, format is "O" or "o" ? DateTimeStyles.RoundtripKind : DateTimeStyles.None);
 
     // Converts string to Guid.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

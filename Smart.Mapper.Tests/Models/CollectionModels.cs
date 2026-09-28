@@ -353,7 +353,7 @@ public class PathSource
 
 public class PathDestination
 {
-    public List<PointDestination> Points { get; set; } = [];
+    public List<PointDestination> Points { get; set; } = default!;
     public PointDestination[] Route { get; set; } = [];
     public PointDestination Origin { get; set; }
 }
@@ -375,7 +375,7 @@ public class NestedConverterSource
 public class NestedConverterDestination
 {
     public string Value { get; set; } = default!;
-    public List<string> Items { get; set; } = [];
+    public List<string> Items { get; set; } = default!;
 }
 
 internal static class ConverterHost
@@ -387,11 +387,23 @@ internal static class ConverterHost
         public static TDestination Convert<TSource, TDestination>(TSource source) => DefaultValueConverter.Convert<TSource, TDestination>(source);
     }
 
-    // Builds the list in reverse order, so that a test can tell it was called
-    internal static class NestedCollectionConverter<TMarker>
+    // Builds the list in the order its type argument arranges, the reverse one, so that a test can tell it was called
+    internal static class NestedCollectionConverter<TOrder>
+        where TOrder : IElementOrder
     {
         public static List<TDest> ToList<TSource, TDest>(IEnumerable<TSource> source, Func<TSource, TDest> mapper) =>
-            [.. source.Select(mapper).Reverse()];
+            [.. TOrder.Arrange(source.Select(mapper))];
+    }
+
+    // The order a generic collection converter builds its list in, given as its type argument
+    internal interface IElementOrder
+    {
+        static abstract IEnumerable<T> Arrange<T>(IEnumerable<T> items);
+    }
+
+    internal readonly struct ReverseElementOrder : IElementOrder
+    {
+        public static IEnumerable<T> Arrange<T>(IEnumerable<T> items) => items.Reverse();
     }
 }
 
@@ -409,6 +421,11 @@ public class InPlaceGetOnlyDestination
 
 public class InPlaceNullGetOnlyDestination
 {
+    public InPlaceNullGetOnlyDestination(List<MatrixDstItem>? items = null)
+    {
+        Items = items;
+    }
+
     public List<MatrixDstItem>? Items { get; }
 }
 
@@ -418,13 +435,9 @@ public class InPlaceObservableDestination
 }
 
 // Collection classes of their own, as the source and as the target
-public class MatrixSrcItemList : List<MatrixSrcItem>
-{
-}
+public class MatrixSrcItemList : List<MatrixSrcItem>;
 
-public class MatrixDstItemList : List<MatrixDstItem>
-{
-}
+public class MatrixDstItemList : List<MatrixDstItem>;
 
 public class CollectionClassSource
 {
@@ -470,7 +483,7 @@ public class NullableElementSource
 
 public class NullableElementDestination
 {
-    public List<MatrixDstItem?> Items { get; set; } = [];
+    public List<MatrixDstItem?> Items { get; set; } = default!;
 
     public MatrixDstItem?[] Array { get; set; } = [];
 
@@ -487,7 +500,7 @@ public class DictionaryDestination
 {
     public IReadOnlyDictionary<string, MatrixDstItem> Items { get; set; } = new Dictionary<string, MatrixDstItem>();
 
-    public IDictionary<string, MatrixDstItem> Editable { get; set; } = new Dictionary<string, MatrixDstItem>();
+    public IDictionary<string, MatrixDstItem> Editable { get; set; } = default!;
 }
 
 // Mappers matched through conversions: the result into an interface it implements, the source into a base class,
@@ -507,9 +520,7 @@ public class ConvertedBase
     public int Value { get; set; }
 }
 
-public class ConvertedDerived : ConvertedBase
-{
-}
+public class ConvertedDerived : ConvertedBase;
 
 public record struct ConvertedPoint(int X);
 
@@ -532,7 +543,7 @@ public class ConversionDestination
 
     public ConvertedPointDto Point { get; set; }
 
-    public List<IConvertedChild> Children { get; set; } = [];
+    public List<IConvertedChild> Children { get; set; } = default!;
 
-    public List<ConvertedPointDto?> Points { get; set; } = [];
+    public List<ConvertedPointDto?> Points { get; set; } = default!;
 }

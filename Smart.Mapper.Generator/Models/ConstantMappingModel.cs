@@ -6,7 +6,6 @@ using SourceGenerateHelper;
 internal sealed record ConstantMappingModel(
     // Target member, and the intermediate members of a dotted path to it
     string TargetName = default!,
-    string TargetType = default!,
     EquatableArray<NestedPathSegment> TargetPathSegments = default,
     // Expression written into the generated code as-is, null when the constant cannot be written (SMP0220).
     // HasNullElement tells an array holding null, whose elements the target has to take

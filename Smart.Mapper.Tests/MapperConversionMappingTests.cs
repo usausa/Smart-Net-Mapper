@@ -10,16 +10,17 @@ public class MapperConversionMappingTests
     [Fact]
     public void ConvertedMappersAreCalled()
     {
+        var point = new ConvertedPoint(4);
         var destination = TestMappers.MapConversion(new ConversionSource
         {
             Child = new ConvertedDerived { Value = 3 },
-            Point = new ConvertedPoint(4),
+            Point = point,
             Children = [new ConvertedDerived { Value = 5 }],
             Points = [new ConvertedPoint(6), null]
         });
 
         Assert.Equal(3, Assert.IsType<ConvertedChild>(destination.Child).Value);
-        Assert.Equal(4, destination.Point.X);
+        Assert.Equal(point.X, destination.Point.X);
         Assert.Equal(5, Assert.Single(destination.Children).Value);
         Assert.Collection(destination.Points, static x => Assert.Equal(6, x!.Value.X), static x => Assert.Null(x));
     }

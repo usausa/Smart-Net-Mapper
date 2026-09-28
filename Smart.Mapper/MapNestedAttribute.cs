@@ -10,11 +10,11 @@ namespace Smart.Mapper;
 // goes with ! to a target not annotated as nullable, unless the mapper gets a value and [return: NotNullIfNotNull] of
 // its first parameter says the result is not null for it, as a generated mapper declares, and a void mapper fills an
 // instance created with the nullable annotations of the target's type arguments. A source that may be null (nullable,
-// or declared with nullable annotations disabled) goes to a mapper taking null as it is, and a mapper not taking null
-// is called for a value only, the target getting default for null. The mapper may take a type the source converts to by
-// an implicit reference conversion, and return one converting the same way to the target; a nullable struct source goes
-// to a mapper taking the struct as its value, after a null check. Of overloads, the one the call binds to is used, and
-// a call binding to a method that does not match is reported (SMP0211).
+// with [MaybeNull], or declared with nullable annotations disabled) goes to a mapper taking null as it is, and a mapper
+// not taking null is called for a value only, the target getting default for null. The mapper may take a type the
+// source converts to by an implicit reference conversion, and return one converting the same way to the target; a
+// nullable struct source goes to a mapper taking the struct as its value, after a null check. Of overloads, the one the
+// call binds to is used, and a call binding to a method that does not match is reported (SMP0211).
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class MapNestedAttribute : Attribute
 {

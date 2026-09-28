@@ -1,6 +1,8 @@
 #pragma warning disable CA1815
 namespace Smart.Mapper.Models;
 
+using System.Diagnostics.CodeAnalysis;
+
 // Enums at the end of a dotted path, converted as members the path does not go through are
 public enum PathStatus
 {
@@ -128,3 +130,81 @@ public sealed class GeoDestination
 }
 
 public sealed record GeoRecord(double Lat, string Label);
+
+// A value read through five members or more, the Value of a nullable struct counting as one, whose null state C# does not
+// follow, so the generated code takes it into a variable after its null check
+public struct DeepPathSpot
+{
+    public string? Name { get; set; }
+
+    public string? Count { get; set; }
+
+    public int? Level { get; set; }
+}
+
+public struct DeepPathArea
+{
+    public DeepPathSpot? Spot { get; set; }
+}
+
+public sealed class DeepPathSource
+{
+    public DeepPathArea? Area { get; set; }
+}
+
+public sealed class DeepPathDestination
+{
+    public string Name { get; set; } = "init";
+
+    public int Count { get; set; } = -1;
+
+    public string Level { get; set; } = "init";
+
+    public int? Checked { get; set; } = -1;
+}
+
+public sealed record DeepPathRecord(string Name);
+
+// Source members whose getter may return null by [MaybeNull], taken as nullable ones
+public sealed class MaybeNullChild
+{
+    public string Value { get; set; } = string.Empty;
+}
+
+public sealed class MaybeNullSource
+{
+    [MaybeNull]
+    public string Name { get; set; } = string.Empty;
+
+    [MaybeNull]
+    public string Note { get; set; } = string.Empty;
+
+    [MaybeNull]
+    public MaybeNullChild Child { get; set; } = new();
+}
+
+public sealed class MaybeNullDestination
+{
+    public string Name { get; set; } = "init";
+
+    public string Upper { get; set; } = "init";
+
+    public string Note { get; set; } = "init";
+
+    public string ChildValue { get; set; } = "init";
+}
+
+// DateTime and text with the round-trip format (O) or the RFC 1123 format (R) given
+public sealed class FormattedDateTimeSource
+{
+    public string At { get; set; } = string.Empty;
+
+    public DateTime When { get; set; }
+}
+
+public sealed class FormattedDateTimeDestination
+{
+    public DateTime At { get; set; }
+
+    public string When { get; set; } = string.Empty;
+}

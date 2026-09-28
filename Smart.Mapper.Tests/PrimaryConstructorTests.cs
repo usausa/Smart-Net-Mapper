@@ -16,9 +16,9 @@ public class PrimaryConstructorTests
 
         var destination = PrimaryConstructorMappers.MapRecord(source);
 
-        Assert.Equal(1, destination.Id);
-        Assert.Equal("Alice", destination.Name);
-        Assert.Equal(30, destination.Age);
+        Assert.Equal(source.Id, destination.Id);
+        Assert.Equal(source.Name, destination.Name);
+        Assert.Equal(source.Age, destination.Age);
     }
 
     // D1: record → record (パラメータ数の少ない宛先)
@@ -30,8 +30,8 @@ public class PrimaryConstructorTests
 
         var destination = PrimaryConstructorMappers.MapRecordPartial(source);
 
-        Assert.Equal(2, destination.Id);
-        Assert.Equal("Bob", destination.Name);
+        Assert.Equal(source.Id, destination.Id);
+        Assert.Equal(source.Name, destination.Name);
     }
 
     // D3: クラスのプライマリコンストラクタ

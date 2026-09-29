@@ -24,13 +24,6 @@ dotnet add package Usa.Smart.Mapper
 
 The package includes the source generator DLL under `analyzers/dotnet/cs`, so the generator is activated automatically when you reference the package - no additional setup required.
 
-## Target Frameworks
-
-| Library | Frameworks |
-|---------|-----------|
-| `Smart.Mapper` | net10.0, net9.0, net8.0 |
-| `Smart.Mapper.Generator` | netstandard2.0 (Roslyn Incremental Source Generator) |
-
 ## Documentation
 
 - [API reference](docs/API.md) - every attribute and rule in detail: auto-mapping, property paths, collections, constructors, null handling, type conversion, culture, strict mode and the edge cases
@@ -408,9 +401,3 @@ dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r 
 - **Direct `FrozenSet` construction** — the generated code builds a `HashSet<T>` and calls `ToFrozenSet` (two-phase by BCL design); a frozen-collection builder API in the BCL would eliminate the intermediate set.
 - **Generic fallback `Convert<TSource, TDestination>` for `Half` / `Int128` / `UInt128` / `BigInteger` sources** — these reach the boxing fallback when routed through the generic converter opt-in; specialized branches can be added if demand arises (the default specialized-method path already covers them).
 - **Generator incrementality** — models are cached per mapper method and sources per class, so an edit regenerates only the classes whose mappers it changes, with the property lists, type lookups and converter lookups shared within a compilation; the grouping of the models by class still goes over all of them on each edit (`Collect()`), which is cheap today and can be split further if very large projects need it.
-
----
-
-## License
-
-MIT

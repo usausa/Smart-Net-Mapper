@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // An optional parameter of the constructor a return mapper calls (with a default value, [Optional], or params) the
 // mapping has no value for is left out to take its default, and the arguments after it are passed by name. It used to
-// be reported as a parameter without a source (SMP0301). One with a value is passed as before, and a parameter that
+// be reported as a parameter without a source (SMP0305). One with a value is passed as before, and a parameter that
 // is not optional still needs one. A constructor whose call, with the parameters left out, another constructor takes
 // as well is passed over, as the call would bind to that one or be ambiguous (CS0121), whether that one is obsolete
 // as an error (CS0619) or takes a ref readonly parameter (CS9193).
@@ -121,23 +121,23 @@ public class OptionalParameterTests
     [Theory]
     [InlineData(
         "public class Src { public int A { get; set; } } public class Dst { public Dst(int a, int b) { A = a; B = b; } public int A { get; } public int B { get; } }",
-        "SMP0301",
+        "SMP0305",
         "parameter=[b]")]
     [InlineData(
         "public class Src { public int A { get; set; } } public class Dst { public Dst(int a, int b = 5) { A = a; B = b; } public int A { get; } public required int B { get; set; } }",
-        "SMP0303",
+        "SMP0308",
         "member=[B]")]
     [InlineData(
         "public class Src { public string Name { get; set; } = \"\"; } public class Dst { public Dst(string name, int age = 0) { Name = name; } public Dst(string name, bool active = false) { Name = name; } public string Name { get; } }",
-        "SMP0301",
+        "SMP0305",
         "parameter=[age]")]
     [InlineData(
         "public class Src { public string Name { get; set; } = \"\"; } public class Dst { [System.Obsolete(\"Old\", true)] public Dst(string name) { Name = name; } public Dst(string name, int age = 0) { Name = name; } public string Name { get; } }",
-        "SMP0301",
+        "SMP0305",
         "parameter=[age]")]
     [InlineData(
         "public class Src { public string Name { get; set; } = \"\"; } public class Dst { public Dst(ref readonly string name) { Name = name; } public Dst(string name, int age = 0) { Name = name; } public string Name { get; } }",
-        "SMP0301",
+        "SMP0305",
         "parameter=[age]")]
     public void ParameterWithoutValueEmitsDiagnostic(string types, string id, string part)
     {

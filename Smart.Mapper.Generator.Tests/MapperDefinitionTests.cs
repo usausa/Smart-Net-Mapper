@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 
 // The declarations a mapper cannot be implemented for: in a file-local type, or one containing it, which the generated
 // file cannot declare again (SMP0001, where the implementation it used to add failed, CS0759), and one returning by
-// reference, which cannot return the destination it creates (SMP0008, where it used to fail on the implementation,
+// reference, which cannot return the destination it creates (SMP0002, where it used to fail on the implementation,
 // CS8818). A declaration without an accessibility modifier is implemented without one, as it is declared (CS8799 with
 // the private it used to be given).
 public class MapperDefinitionTests
@@ -46,7 +46,7 @@ public class MapperDefinitionTests
     {
         var source = Types + "public static partial class M\n{\n    [Mapper] " + declaration + "\n}";
 
-        Assert.Equal(["SMP0008"], Errors(source));
+        Assert.Equal(["SMP0002"], Errors(source));
         var diagnostic = GeneratorTestHelper.GetDiagnostics(source).Single();
         Assert.Equal(returnType, diagnostic.Location.SourceTree!.GetText(TestContext.Current.CancellationToken).ToString(diagnostic.Location.SourceSpan));
     }

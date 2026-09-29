@@ -27,6 +27,7 @@ public class MaybeNullSourceTests
     private static string Source(string attributes, string mapper = "public static partial Dst Map(Src src);", bool strict = false) =>
         $$"""
         #nullable enable
+        using System.Collections.Generic;
         using System.Diagnostics.CodeAnalysis;
         using Smart.Mapper;
         namespace Test;
@@ -42,8 +43,20 @@ public class MaybeNullSourceTests
             [MaybeNull] public override string Plain { get; set; } = "";
             public override string Other { get; set; } = "";
             [return: MaybeNull] public string Read() => null;
+            public Child Solid { get; set; } = new();
+            public List<Child> Items { get; set; } = [];
         }
-        public class Dst { public string Name { get; set; } = ""; public string Getter { get; set; } = ""; public ChildDto Child { get; set; } = new(); public int Count { get; set; } public string Plain { get; set; } = ""; public string Other { get; set; } = ""; }
+        public class Dst
+        {
+            public string Name { get; set; } = "";
+            public string Getter { get; set; } = "";
+            public ChildDto Child { get; set; } = new();
+            public int Count { get; set; }
+            public string Plain { get; set; } = "";
+            public string Other { get; set; } = "";
+            public ChildDto Solid { get; set; } = new();
+            public List<ChildDto> Items { get; set; } = [];
+        }
         public record Rec(string Name);
         public static partial class M
         {
@@ -59,6 +72,10 @@ public class MaybeNullSourceTests
 
             [return: NotNullIfNotNull(nameof(value))]
             private static string? Trim(string? value) => value?.Trim();
+
+            [return: MaybeNull] private static string Maybe(string value) => value;
+            [return: MaybeNull] private static string MaybeUse(Src src) => src.Other;
+            [return: MaybeNull] private static ChildDto MaybeChild(Child source) => new() { V = source.V };
         }
         """;
 
@@ -78,6 +95,21 @@ public class MaybeNullSourceTests
     [InlineData("[MapFrom(nameof(Dst.Name), nameof(Src.Read))]", "__d.Name = src.Read()!;")]
     [InlineData("[MapProperty(nameof(Dst.Plain))]", "__d.Plain = src.Plain!;")]
     public void MaybeNullSourceIsTakenAsNullable(string attributes, string expected)
+    {
+        var (generated, problems) = Build(Source(attributes));
+
+        Assert.Empty(problems);
+        Assert.Contains(expected, generated, StringComparison.Ordinal);
+    }
+
+    // The result of a method an attribute names whose return [MaybeNull] says may be null is taken as a nullable one is,
+    // with ! into a target not annotated as nullable
+    [Theory]
+    [InlineData("[MapProperty(nameof(Dst.Other), Converter = nameof(Maybe))]", "__d.Other = Maybe(src.Other)!;")]
+    [InlineData("[MapUsing(nameof(Dst.Name), nameof(MaybeUse))]", "__d.Name = MaybeUse(src)!;")]
+    [InlineData("[MapNested(nameof(Dst.Solid), Mapper = nameof(MaybeChild))]", "__d.Solid = MaybeChild(src.Solid)!;")]
+    [InlineData("[MapCollection(nameof(Dst.Items), Mapper = nameof(MaybeChild))]", "MaybeChild(__src[__i])!;")]
+    public void MaybeNullResultIsTakenAsNullable(string attributes, string expected)
     {
         var (generated, problems) = Build(Source(attributes));
 

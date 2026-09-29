@@ -80,6 +80,6 @@ public class SmallIntegerConstantTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(attribute));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0218", diagnostic.Id);
+        Assert.Equal("SMP0216", diagnostic.Id);
     }
 }

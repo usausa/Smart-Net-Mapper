@@ -6,7 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A null [MapConstant] value, a NullValue of null, and the null elements of an array constant have to go where
-// the target takes null. One whose type is a reference annotated as not null is reported (SMP0218) instead of
+// the target takes null. One whose type is a reference annotated as not null is reported (SMP0216) instead of
 // warning in the generated code (CS8625 / CS8601 / CS8619); a nullable target, one declared with nullable
 // annotations disabled, and one with [AllowNull] keep compiling.
 public class NullConstantTests
@@ -83,14 +83,14 @@ public class NullConstantTests
     [InlineData("[MapProperty(nameof(Dst.Name), NullValue = null)]")]
     public void NullIntoNonNullableReferenceEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     // A required member assigned in the object initializer is checked the same way
     [Fact]
     public void NullIntoInitializerEntryEmitsDiagnostic()
     {
-        AssertDiagnostic(Source(string.Empty).Replace("[MapConstant(nameof(Dst.Code), \"\")]", "[MapConstant(nameof(Dst.Code), null)]", StringComparison.Ordinal), "SMP0218");
+        AssertDiagnostic(Source(string.Empty).Replace("[MapConstant(nameof(Dst.Code), \"\")]", "[MapConstant(nameof(Dst.Code), null)]", StringComparison.Ordinal), "SMP0216");
     }
 
     [Theory]
@@ -126,7 +126,7 @@ public class NullConstantTests
     [InlineData("[MapProperty(nameof(Dst.Names), NullValue = new[] { \"a\", null })]")]
     public void NullElementIntoNonNullableElementsEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     [Theory]

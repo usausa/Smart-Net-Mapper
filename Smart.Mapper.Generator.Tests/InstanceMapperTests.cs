@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // [MapUsing] methods and the mappers of [MapNested] / [MapCollection], and the local function of a [MapExpression]
 // is not static, so that the expression can use the instance members. The classes containing the mapper class and
 // the global using static imports give static methods only, as C# calls them. A static mapper naming a method the
-// mapper class has as instance methods only is reported at the attribute naming it (SMP0107).
+// mapper class has as instance methods only is reported at the attribute naming it (SMP0105).
 public class InstanceMapperTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -148,8 +148,8 @@ public class InstanceMapperTests
         var (generated, problems) = Build(source);
 
         Assert.Contains("Twice(src.X)", generated, StringComparison.Ordinal);
-        Assert.Contains(problems, static p => p.StartsWith("SMP0103", StringComparison.Ordinal));
-        Assert.DoesNotContain(problems, static p => p.StartsWith("SMP0107", StringComparison.Ordinal));
+        Assert.Contains(problems, static p => p.StartsWith("SMP0107", StringComparison.Ordinal));
+        Assert.DoesNotContain(problems, static p => p.StartsWith("SMP0105", StringComparison.Ordinal));
     }
 
     // A mapper reported with an error is implemented as it is declared, not static
@@ -158,7 +158,7 @@ public class InstanceMapperTests
     {
         var (generated, problems) = Build(Source("[Mapper] [AfterMap(\"Missing\")] public partial Dst Map(Src src);"));
 
-        Assert.Equal("SMP0103", Assert.Single(problems).Split(':')[0]);
+        Assert.Equal("SMP0107", Assert.Single(problems).Split(':')[0]);
         Assert.Contains("public partial global::Test.Dst Map(global::Test.Src src)\n", generated, StringComparison.Ordinal);
     }
 
@@ -174,10 +174,92 @@ public class InstanceMapperTests
     {
         var source = Source(members);
 
-        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(source), static d => d.Id == "SMP0107");
+        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(source), static d => d.Id == "SMP0105");
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         var markedLine = Array.FindIndex(source.Split('\n'), static line => line.Contains("/*here*/", StringComparison.Ordinal));
         Assert.Equal(markedLine, diagnostic.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    // A method of the class hiding a static one of a base class is the one the name finds, an instance one here, which a
+    // static mapper cannot call (a converter in MethodLookupTests)
+    [Fact]
+    public void StaticMapperNamingInstanceMethodHidingStaticOneIsReported()
+    {
+        var source = Source(
+                         "[Mapper] [MapCondition(nameof(Dst.Text), nameof(HasText))] public static partial Dst Map(Src src); private new bool HasText(string text) => true;",
+                         "public sealed partial class M : StaticBase") +
+                     "\npublic class StaticBase { protected static bool HasText(string text) => false; }";
+
+        var (_, problems) = Build(source);
+
+        Assert.Equal("SMP0105", Assert.Single(problems).Split(':')[0]);
+    }
+
+    // A collection converter takes the element mapper as a delegate, which an instance method of a ref struct makes none
+    // of; the loop calls it
+    [Theory]
+    [InlineData("[CollectionConverter(typeof(DefaultCollectionConverter))]", "private ChildDto MapChild(Child child) => new() { V = child.V };", "SMP0213")]
+    [InlineData("[CollectionConverter(typeof(DefaultCollectionConverter))]", "private static ChildDto MapChild(Child child) => new() { V = child.V };", "")]
+    [InlineData("", "private ChildDto MapChild(Child child) => new() { V = child.V };", "")]
+    public void InstanceElementMapperOfRefStructIsNotHandedAsDelegate(string converter, string mapChild, string error)
+    {
+        var source = $$"""
+            #nullable enable
+            using System.Collections.Generic;
+            using Smart.Mapper;
+            namespace Test;
+            public class Child { public int V { get; set; } }
+            public class ChildDto { public int V { get; set; } }
+            public class Src { public List<Child> Items { get; set; } = []; }
+            public class Dst { public List<ChildDto> Items { get; set; } = []; }
+            public ref partial struct M
+            {
+                [Mapper]
+                {{converter}}
+                [MapCollection(nameof(Dst.Items), Mapper = nameof(MapChild))]
+                public partial Dst Map(Src src);
+
+                {{mapChild}}
+            }
+            """;
+
+        var (_, problems) = Build(source);
+
+        Assert.Equal(error, String.Join(",", problems.Select(static p => p.Split(':')[0])));
+    }
+
+    // The implementation repeats the modifiers the declaration has to match (CS8800, CS8663): virtual, override, sealed
+    // and readonly, and so does the one of a mapper reported with an error
+    [Theory]
+    [InlineData("public partial class M : Base", "[Mapper] public override partial Dst Map(Src src);", "public override partial global::Test.Dst Map(global::Test.Src src)\n", "")]
+    [InlineData("public partial class M : Base", "[Mapper] public sealed override partial Dst Map(Src src);", "public sealed override partial global::Test.Dst Map(global::Test.Src src)\n", "")]
+    [InlineData("public partial struct M", "[Mapper] public readonly partial Dst Map(Src src);", "public readonly partial global::Test.Dst Map(global::Test.Src src)\n", "")]
+    [InlineData("public partial class M : Base", "[Mapper] [AfterMap(\"Missing\")] public override partial Dst Map(Src src);", "public override partial global::Test.Dst Map(global::Test.Src src)\n", "SMP0107")]
+    [InlineData("public partial struct M", "[Mapper] [AfterMap(\"Missing\")] public readonly partial Dst Map(Src src);", "public readonly partial global::Test.Dst Map(global::Test.Src src)\n", "SMP0107")]
+    public void DeclarationModifiersAreRepeated(string declaration, string members, string expected, string error)
+    {
+        var source = $$"""
+            #nullable enable
+            using Smart.Mapper;
+            namespace Test;
+            public class Src { public int X { get; set; } }
+            public class Dst { public int X { get; set; } }
+            public partial class Base
+            {
+                [Mapper] public virtual partial Dst Map(Src src);
+            }
+            {{declaration}}
+            {
+                {{members}}
+            }
+            """;
+
+        var (_, problems) = Build(source);
+        var generated = String.Concat(GeneratorTestHelper.Run(source).GeneratedSources.Values).Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        Assert.Equal(error, String.Join(",", problems.Select(static p => p.Split(':')[0])));
+        Assert.Contains("public virtual partial global::Test.Dst Map(global::Test.Src src)\n", generated, StringComparison.Ordinal);
+        Assert.Contains(expected, generated, StringComparison.Ordinal);
     }
 
     // A static overload of the name is matched as before, the static mapper not reporting the instance ones

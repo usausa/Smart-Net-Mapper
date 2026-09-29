@@ -42,13 +42,13 @@ public class GenericMethodTests
 
     [Theory]
     [InlineData("[MapFrom(nameof(Dst.X), \"Get\")]", "", "SMP0204")]
-    [InlineData("[MapProperty(nameof(Dst.X), nameof(Src.Y), Converter = nameof(Conv))]", "private static int Conv<T>(int value) => value;", "SMP0104")]
-    [InlineData("[MapProperty(nameof(Dst.X), nameof(Src.Y))] [MapCondition(nameof(Dst.X), nameof(Cond))]", "private static bool Cond<T>(int value) => true;", "SMP0106")]
+    [InlineData("[MapProperty(nameof(Dst.X), nameof(Src.Y), Converter = nameof(Conv))]", "private static int Conv<T>(int value) => value;", "SMP0110")]
+    [InlineData("[MapProperty(nameof(Dst.X), nameof(Src.Y))] [MapCondition(nameof(Dst.X), nameof(Cond))]", "private static bool Cond<T>(int value) => true;", "SMP0112")]
     [InlineData("[MapUsing(nameof(Dst.X), nameof(Calc))]", "private static int Calc<T>(Src src) => 1;", "SMP0201")]
-    [InlineData("[BeforeMap(nameof(Before))]", "private static void Before<T>(Src src, Dst dst) { }", "SMP0102")]
-    [InlineData("[AfterMap(nameof(After))]", "private static void After<T>(Src src, Dst dst) { }", "SMP0103")]
-    [InlineData("[MapCollection(nameof(Dst.Items), Mapper = nameof(MapItem))]", "private static Item MapItem<T>(Item source) => source;", "SMP0210")]
-    [InlineData("[MapNested(nameof(Dst.Nested), Mapper = nameof(MapItem))]", "private static Item MapItem<T>(Item source) => source;", "SMP0211")]
+    [InlineData("[BeforeMap(nameof(Before))]", "private static void Before<T>(Src src, Dst dst) { }", "SMP0106")]
+    [InlineData("[AfterMap(nameof(After))]", "private static void After<T>(Src src, Dst dst) { }", "SMP0107")]
+    [InlineData("[MapCollection(nameof(Dst.Items), Mapper = nameof(MapItem))]", "private static Item MapItem<T>(Item source) => source;", "SMP0213")]
+    [InlineData("[MapNested(nameof(Dst.Nested), Mapper = nameof(MapItem))]", "private static Item MapItem<T>(Item source) => source;", "SMP0214")]
     public void GenericMethodEmitsDiagnostic(string attributes, string methods, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(attributes, methods));

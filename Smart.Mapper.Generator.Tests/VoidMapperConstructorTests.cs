@@ -121,7 +121,7 @@ public class VoidMapperConstructorTests
     [InlineData(GetOnlyByConstructor, "[MapConstant(nameof(Dst.Id), \"x\")]")]
     public void UnassignableMemberEmitsDiagnostic(string destination, string attributes)
     {
-        AssertDiagnostic(Source(destination, attributes, "[Mapper(AutoMap = false)]"), "SMP0214");
+        AssertDiagnostic(Source(destination, attributes, "[Mapper(AutoMap = false)]"), "SMP0102");
     }
 
     // A return mapper still constructs through the constructor

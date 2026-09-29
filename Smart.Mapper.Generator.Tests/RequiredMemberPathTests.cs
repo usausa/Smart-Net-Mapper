@@ -6,7 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A required member of the destination a return mapper creates is set when the object initializer creates it. The
-// dotted paths into one used to leave it reported as unmapped (SMP0303), even where the initializer created it with
+// dotted paths into one used to leave it reported as unmapped (SMP0308), even where the initializer created it with
 // the member at the end of a path (Item = new Child() { Value = ... }). A member of a type that can be created is
 // now created in the initializer, and the paths write into it after construction as into any member, a
 // [MapCondition] still guarding them; one of a type that cannot be created is still reported.
@@ -112,7 +112,7 @@ public class RequiredMemberPathTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(destination, $"[MapProperty(\"{path}\", nameof(Src.Y))]"));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0303", diagnostic.Id);
+        Assert.Equal("SMP0308", diagnostic.Id);
         Assert.Contains("member=[Item]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }

@@ -303,7 +303,7 @@ public class ExpressionLocalFunctionTests
     }
 
     // An unresolved target has no type to declare the function with, and is reported as a target that is not
-    // found (SMP0214) instead of failing in the generated code (CS1061).
+    // found (SMP0102) instead of failing in the generated code (CS1061).
     [Fact]
     public void UnresolvedTargetReportsMissingMember()
     {
@@ -326,7 +326,7 @@ public class ExpressionLocalFunctionTests
             .Select(static d => d.Id)
             .ToList();
 
-        Assert.Contains("SMP0214", errors);
+        Assert.Contains("SMP0102", errors);
         Assert.DoesNotContain("CS1061", errors);
     }
 }

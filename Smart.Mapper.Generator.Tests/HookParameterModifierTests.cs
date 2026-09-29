@@ -106,20 +106,20 @@ public class HookParameterModifierTests
 
     [Theory]
     // out never takes an argument
-    [InlineData("[AfterMap(nameof(After))]", "public static partial Dst Map(Src src);", "private static void After(Src s, out Dst d) { d = new Dst(); }", "", "SMP0103")]
-    [InlineData("[BeforeMap(nameof(Before))]", "public static partial Dst Map(Src src, Ctx ctx);", "private static void Before(Src s, Dst d, out Ctx c) { c = new Ctx(); }", "", "SMP0102")]
+    [InlineData("[AfterMap(nameof(After))]", "public static partial Dst Map(Src src);", "private static void After(Src s, out Dst d) { d = new Dst(); }", "", "SMP0107")]
+    [InlineData("[BeforeMap(nameof(Before))]", "public static partial Dst Map(Src src, Ctx ctx);", "private static void Before(Src s, Dst d, out Ctx c) { c = new Ctx(); }", "", "SMP0106")]
     [InlineData("[MapUsing(nameof(Dst.Name), nameof(Describe))]", "public static partial Dst Map(Src src);", "private static string Describe(out Src s) { s = new Src(); return \"\"; }", "", "SMP0201")]
     // ref cannot take a read-only variable (an in or ref readonly parameter of the mapper)
     [InlineData("[MapUsing(nameof(Dst.Name), nameof(Describe))]", "public static partial Dst Map(in ReadOnlySrc src);", "private static string Describe(ref ReadOnlySrc s) => \"\";", "", "SMP0201")]
-    [InlineData("[AfterMap(nameof(After))]", "public static partial void Map(Src src, in Dst dst);", "private static void After(Src s, ref Dst d) { }", "", "SMP0103")]
-    [InlineData("[MapCondition(nameof(Dst.Name), nameof(HasName))]", "public static partial Dst Map(Src src, in Ctx ctx);", "private static bool HasName(string v, ref Ctx c) => true;", "", "SMP0106")]
+    [InlineData("[AfterMap(nameof(After))]", "public static partial void Map(Src src, in Dst dst);", "private static void After(Src s, ref Dst d) { }", "", "SMP0107")]
+    [InlineData("[MapCondition(nameof(Dst.Name), nameof(HasName))]", "public static partial Dst Map(Src src, in Ctx ctx);", "private static bool HasName(string v, ref Ctx c) => true;", "", "SMP0112")]
     // A property value cannot go by ref, and a ref readonly parameter wants a variable (CS9193)
-    [InlineData("[MapProperty(nameof(Dst.Name), nameof(Src.Value), Converter = nameof(Format))]", "public static partial Dst Map(Src src);", "private static string Format(ref int v) => \"\";", "", "SMP0104")]
-    [InlineData("[MapProperty(nameof(Dst.Name), nameof(Src.Value), Converter = nameof(Format))]", "public static partial Dst Map(Src src);", "private static string Format(ref readonly int v) => \"\";", "", "SMP0104")]
-    [InlineData("[MapCondition(nameof(Dst.Name), nameof(HasName))]", "public static partial Dst Map(Src src);", "private static bool HasName(ref string v) => true;", "", "SMP0106")]
+    [InlineData("[MapProperty(nameof(Dst.Name), nameof(Src.Value), Converter = nameof(Format))]", "public static partial Dst Map(Src src);", "private static string Format(ref int v) => \"\";", "", "SMP0110")]
+    [InlineData("[MapProperty(nameof(Dst.Name), nameof(Src.Value), Converter = nameof(Format))]", "public static partial Dst Map(Src src);", "private static string Format(ref readonly int v) => \"\";", "", "SMP0110")]
+    [InlineData("[MapCondition(nameof(Dst.Name), nameof(HasName))]", "public static partial Dst Map(Src src);", "private static bool HasName(ref string v) => true;", "", "SMP0112")]
     // Converter class methods get the value too
-    [InlineData("[ValueConverter(typeof(Conv))] [MapProperty(nameof(Dst.Name), nameof(Src.Value))]", "public static partial Dst Map(Src src);", "", "public static class Conv { public static string ConvertToString(ref int value) => \"\"; public static TDest Convert<TSrc, TDest>(TSrc source) => throw new System.NotSupportedException(); }", "SMP0104")]
-    [InlineData("[ValueConverter(typeof(Conv))] [MapProperty(nameof(Dst.Name), nameof(Src.Value))]", "public static partial Dst Map(Src src);", "", "public static class Conv { public static TDest Convert<TSrc, TDest>(ref TSrc source) => throw new System.NotSupportedException(); }", "SMP0104")]
+    [InlineData("[ValueConverter(typeof(Conv))] [MapProperty(nameof(Dst.Name), nameof(Src.Value))]", "public static partial Dst Map(Src src);", "", "public static class Conv { public static string ConvertToString(ref int value) => \"\"; public static TDest Convert<TSrc, TDest>(TSrc source) => throw new System.NotSupportedException(); }", "SMP0110")]
+    [InlineData("[ValueConverter(typeof(Conv))] [MapProperty(nameof(Dst.Name), nameof(Src.Value))]", "public static partial Dst Map(Src src);", "", "public static class Conv { public static TDest Convert<TSrc, TDest>(ref TSrc source) => throw new System.NotSupportedException(); }", "SMP0110")]
     public void ModifierThatCannotTakeArgumentEmitsSignatureDiagnostic(string attributes, string declaration, string members, string types, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(attributes, declaration, members, types));

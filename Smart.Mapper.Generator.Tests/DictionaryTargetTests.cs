@@ -7,9 +7,9 @@ using Microsoft.CodeAnalysis;
 // A [MapCollection] target of IDictionary<TKey, TValue> or IReadOnlyDictionary<TKey, TValue> gets a
 // Dictionary<TKey, TValue>, filled through ICollection<KeyValuePair<TKey, TValue>> with the pairs the element mapper
 // returns, as a List<T> is created for IList<T>. The loop used to build a List<KeyValuePair<TKey, TValue>> for it,
-// which was reported (SMP0217). InPlace keeps its rules: an IReadOnlyDictionary<TKey, TValue> cannot be refilled
-// (SMP0219), and a null IDictionary<TKey, TValue> the mapper can assign gets a Dictionary<TKey, TValue>, as a null
-// IList<T> gets a List<T>, where the List<KeyValuePair<TKey, TValue>> it used to try was reported (SMP0217).
+// which was reported (SMP0212). InPlace keeps its rules: an IReadOnlyDictionary<TKey, TValue> cannot be refilled
+// (SMP0208), and a null IDictionary<TKey, TValue> the mapper can assign gets a Dictionary<TKey, TValue>, as a null
+// IList<T> gets a List<T>, where the List<KeyValuePair<TKey, TValue>> it used to try was reported (SMP0212).
 public class DictionaryTargetTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -89,7 +89,7 @@ public class DictionaryTargetTests
 
     // InPlace keeps its rules
     [Theory]
-    [InlineData("public IReadOnlyDictionary<string, DstItem> Items { get; set; } = new Dictionary<string, DstItem>();", "SMP0219")]
+    [InlineData("public IReadOnlyDictionary<string, DstItem> Items { get; set; } = new Dictionary<string, DstItem>();", "SMP0208")]
     public void InPlaceKeepsItsRules(string target, string id)
     {
         var (_, problems) = Build(Source(

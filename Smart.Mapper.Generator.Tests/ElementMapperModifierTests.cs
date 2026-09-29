@@ -166,23 +166,23 @@ public class ElementMapperModifierTests
 
     [Theory]
     // Element mappers: out, ref for a read-only element or a value, ref readonly for a value
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(out E1 s) { s = new E1(); return new E2(); }", "", "SMP0210")]
-    [InlineData("public IReadOnlyList<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0210")]
-    [InlineData("public IReadOnlyList<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref readonly E1 s) => new();", "", "SMP0210")]
-    [InlineData("public IEnumerable<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0210")]
-    [InlineData("public ImmutableArray<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0210")]
-    [InlineData("public E1? Child { get; set; }", "public E2? Child { get; set; }", Child, "static E2 MapChild(ref E1 s) => new();", "", "SMP0211")]
-    [InlineData("public E1? Child { get; set; }", "public E2? Child { get; set; }", Child, "static E2 MapChild(ref readonly E1 s) => new();", "", "SMP0211")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(out E1 s) { s = new E1(); return new E2(); }", "", "SMP0213")]
+    [InlineData("public IReadOnlyList<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0213")]
+    [InlineData("public IReadOnlyList<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref readonly E1 s) => new();", "", "SMP0213")]
+    [InlineData("public IEnumerable<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0213")]
+    [InlineData("public ImmutableArray<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", Items, "static E2 MapElem(ref E1 s) => new();", "", "SMP0213")]
+    [InlineData("public E1? Child { get; set; }", "public E2? Child { get; set; }", Child, "static E2 MapChild(ref E1 s) => new();", "", "SMP0214")]
+    [InlineData("public E1? Child { get; set; }", "public E2? Child { get; set; }", Child, "static E2 MapChild(ref readonly E1 s) => new();", "", "SMP0214")]
     // The instance a void mapper fills cannot go to out
-    [InlineData("public E1[] Items { get; set; } = [];", "public List<S2> Items { get; set; } = [];", Items, "static void MapElem(E1 s, out S2 d) => d = new S2();", "", "SMP0210")]
+    [InlineData("public E1[] Items { get; set; } = [];", "public List<S2> Items { get; set; } = [];", Items, "static void MapElem(E1 s, out S2 d) => d = new S2();", "", "SMP0213")]
     // Passed to a collection converter as a Func / Action, the element mapper has to take its parameters by value
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(in E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(IEnumerable<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0210")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(in E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(IEnumerable<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0213")]
     // Converter of [MapCollection] without [CollectionConverter] calls DefaultCollectionConverter, which takes a Func
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[MapCollection(\"Items\", Mapper = nameof(MapElem), Converter = \"ToList\")]", "static E2 MapElem(in E1 s) => new();", "", "SMP0210")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[MapCollection(\"Items\", Mapper = nameof(MapElem), Converter = \"ToList\")]", "static E2 MapElem(in E1 s) => new();", "", "SMP0213")]
     // Collection converter methods get the property value and the element mapper
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(ref List<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0104")]
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(IEnumerable<TSource>? source, out System.Func<TSource, TDest> mapper) { mapper = null!; return null; } }", "SMP0104")]
-    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(ref readonly IEnumerable<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0104")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(ref List<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0110")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(IEnumerable<TSource>? source, out System.Func<TSource, TDest> mapper) { mapper = null!; return null; } }", "SMP0110")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public List<E2> Items { get; set; } = [];", "[CollectionConverter(typeof(Conv))] " + Items, "static E2 MapElem(E1 s) => new();", "public static class Conv { public static List<TDest>? ToList<TSource, TDest>(ref readonly IEnumerable<TSource>? source, System.Func<TSource, TDest> mapper) => null; }", "SMP0110")]
     public void ModifierThatCannotTakeArgumentEmitsDiagnostic(string sourceMember, string targetMember, string attributes, string members, string types, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(sourceMember, targetMember, attributes, members, types));
@@ -210,7 +210,7 @@ public class ElementMapperModifierTests
             "[Mapper(Culture = \"en-US\")]"));
 
         var diagnostic = Assert.Single(diagnostics, d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0104", diagnostic.Id);
+        Assert.Equal("SMP0110", diagnostic.Id);
     }
 
     // Without a culture the one-parameter method is called, so the overload is not looked at.

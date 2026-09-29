@@ -88,9 +88,9 @@ public class ConstructorParameterTypeTests
 
     // A value of the member's type does not fit the parameter, as it would not fit a property of that type
     [Theory]
-    [InlineData("[MapProperty(nameof(Dst.Value), nameof(Src.Value), Converter = nameof(Number))]", "SMP0105")]
-    [InlineData("[MapProperty(nameof(Dst.Value), nameof(Src.Optional), NullValue = 0)]", "SMP0218")]
-    [InlineData("[MapConstant(nameof(Dst.Value), 7)]", "SMP0218")]
+    [InlineData("[MapProperty(nameof(Dst.Value), nameof(Src.Value), Converter = nameof(Number))]", "SMP0111")]
+    [InlineData("[MapProperty(nameof(Dst.Value), nameof(Src.Optional), NullValue = 0)]", "SMP0216")]
+    [InlineData("[MapConstant(nameof(Dst.Value), 7)]", "SMP0216")]
     [InlineData("[MapUsing(nameof(Dst.Value), nameof(NumberOf))]", "SMP0202")]
     [InlineData("[MapFrom(nameof(Dst.Value), nameof(Src.Count))]", "SMP0205")]
     public void ValueOfMemberTypeEmitsDiagnostic(string attributes, string id)

@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // A constructor with a ref, out or ref readonly parameter takes a variable, which the generated code does not pass:
 // such a constructor used to be called with a value (CS1620, or CS9192 / CS9193 for ref readonly) and is no longer
-// called, another one is. A destination no other constructor creates is reported (SMP0305). An in parameter takes a
+// called, another one is. A destination no other constructor creates is reported (SMP0303). An in parameter takes a
 // value as a parameter without a modifier does.
 public class ByReferenceParameterTests
 {
@@ -52,7 +52,7 @@ public class ByReferenceParameterTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(destination));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0305", diagnostic.Id);
+        Assert.Equal("SMP0303", diagnostic.Id);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }
 

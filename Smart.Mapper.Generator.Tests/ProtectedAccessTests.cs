@@ -87,15 +87,15 @@ public class ProtectedAccessTests
     [InlineData(
         "public class Dst { protected Dst() { } public int A { get; set; } }",
         "public partial class M : Dst { [Mapper] public static partial Dst Map(Src src); }",
-        "SMP0305")]
+        "SMP0303")]
     [InlineData(
         "public class Dst { public int A { get; protected set; } }",
         "public partial class M : Dst { [Mapper(AutoMap = false)] [MapProperty(\"A\", \"A\")] public static partial Dst Map(Src src); }",
-        "SMP0214")]
+        "SMP0102")]
     [InlineData(
         "public class Dst { public int A { get; protected set; } }",
         "public partial class M : Dst { [Mapper(AutoMap = false)] [MapConstant(\"A\", 1)] public static partial Dst Map(Src src); }",
-        "SMP0214")]
+        "SMP0102")]
     public void ProtectedMemberNamedOrNeededEmitsDiagnostic(string types, string mapper, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(types, mapper));

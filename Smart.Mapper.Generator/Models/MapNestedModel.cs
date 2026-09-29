@@ -22,6 +22,9 @@ internal sealed record MapNestedModel(
     // The custom parameters of the mapper the nested mapper takes after its source (and instance), as the arguments the
     // generated code appends to its call (", culture")
     string MapperCustomArguments = "",
+    // The arguments pass the CultureInfo parameter that may be null as the culture not null, which the culture of the
+    // method gives for null (MapCustomArguments)
+    bool PassesNonNullCulture = default,
     // Emit order. Order is the attribute's Order, DefinitionOrder is the declaration sequence and breaks ties
     int Order = default,
     int DefinitionOrder = default,

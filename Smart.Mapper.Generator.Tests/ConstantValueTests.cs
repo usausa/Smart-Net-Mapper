@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // A [MapConstant] value, and the NullValue of [MapProperty] where the generated code writes it, have to
 // convert to the type they are assigned to the way the compiler converts the literal. One that does not is
-// reported (SMP0218) instead of failing in the generated code with CS0029 / CS0019 / CS0664; a literal the
+// reported (SMP0216) instead of failing in the generated code with CS0029 / CS0019 / CS0664; a literal the
 // compiler converts implicitly (an int to a long or a byte, null to a reference) keeps compiling.
 public class ConstantValueTests
 {
@@ -78,7 +78,7 @@ public class ConstantValueTests
     [InlineData("[MapConstant<string>(nameof(Dst.Big), \"1\")]")]
     public void ConstantThatCannotBeAssignedEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     [Theory]
@@ -105,7 +105,7 @@ public class ConstantValueTests
     [InlineData("[MapProperty(nameof(Dst.Text), NullValue = \"x\")]")]
     public void NullValueThatCannotBeAssignedEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     [Theory]
@@ -127,7 +127,7 @@ public class ConstantValueTests
     {
         AssertDiagnostic(
             Source("[MapProperty(nameof(Dst.Num), Converter = nameof(ToNum), NullValue = \"x\")]", "static int ToNum(int? value) => value ?? 0;"),
-            "SMP0218");
+            "SMP0216");
     }
 
     // A NullValue the generated code does not write, with NullBehavior.Skip, is not checked, as before.

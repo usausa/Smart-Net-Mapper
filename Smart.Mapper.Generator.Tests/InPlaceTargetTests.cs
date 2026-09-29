@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // a private setter, init-only) is filled when it holds an instance and left null otherwise, and a
 // collection class it can create, such as ObservableCollection<T>, is created with its own constructor when
 // the target is null. A declared type without ICollection<T>, or one that is read-only by design, cannot be
-// refilled and is reported (SMP0219) instead of throwing at run time.
+// refilled and is reported (SMP0208) instead of throwing at run time.
 public class InPlaceTargetTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -100,7 +100,7 @@ public class InPlaceTargetTests
     [InlineData("public ReadOnlyCollection<E2> Items { get; set; } = new([]);")]
     public void TargetThatCannotBeRefilledEmitsDiagnostic(string targetMember)
     {
-        AssertDiagnostic(Source(targetMember), "SMP0219");
+        AssertDiagnostic(Source(targetMember), "SMP0208");
     }
 
     // A settable target whose type the mapper cannot create, nor take a List<T> into, is reported as before.
@@ -111,6 +111,6 @@ public class InPlaceTargetTests
     {
         AssertDiagnostic(
             Source(targetMember, "public abstract class ItemsBase : Collection<E2> { } public interface IItems : IList<E2> { } public class ItemsImpl : ItemsBase, IItems { }"),
-            "SMP0217");
+            "SMP0212");
     }
 }

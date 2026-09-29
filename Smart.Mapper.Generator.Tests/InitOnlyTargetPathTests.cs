@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // return mapper assigns it in its object initializer, creating the members it goes through there (Child = new
 // Inner() { Value = ... }), when each of them can be assigned there and created; the init-only members under
 // the same member share its creation. A void mapper cannot (SMP0302), and a path the initializer cannot create
-// either, through a get-only member or a type the mapper cannot create, is reported (SMP0214). This holds for
+// either, through a get-only member or a type the mapper cannot create, is reported (SMP0102). This holds for
 // the targets of [MapProperty], [MapConstant], [MapExpression] and [MapUsing].
 public class InitOnlyTargetPathTests
 {
@@ -138,6 +138,6 @@ public class InitOnlyTargetPathTests
     [InlineData("[MapProperty(\"GetOnly.Value\", nameof(Src.X))]", false)]
     public void InitOnlyMemberInitializerCannotReachEmitsDiagnostic(string attribute, bool returns)
     {
-        AssertDiagnostic(Source(attribute, returns), "SMP0214");
+        AssertDiagnostic(Source(attribute, returns), "SMP0102");
     }
 }

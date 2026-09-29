@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // reads the struct it holds through its Value, under the null check of the nullable struct, as it reads through a nullable
 // reference: a statement leaves the target as it is when it is null, NullValue applies, and an expression (a constructor
 // argument) gives null or default, which Strict mode reports for a target not taking null. It used to be reported as a
-// source that is not found (SMP0213, SMP0204). A path naming Value itself, or a member of the nullable struct (HasValue),
+// source that is not found (SMP0108, SMP0204). A path naming Value itself, or a member of the nullable struct (HasValue),
 // is read as it is written.
 public class NullableStructPathTests
 {

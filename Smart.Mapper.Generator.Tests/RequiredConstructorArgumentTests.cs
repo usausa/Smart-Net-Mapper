@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // A required member that a parameter of the constructor a return mapper calls assigns has to be set in the object
 // initializer as well, unless the constructor has [SetsRequiredMembers]. The generated code used to pass the
 // argument only (CS9035), and setting the member again in the initializer would replace what the constructor made
-// of the argument, so it is reported (SMP0304).
+// of the argument, so it is reported (SMP0307).
 public class RequiredConstructorArgumentTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -49,7 +49,7 @@ public class RequiredConstructorArgumentTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(destination));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0304", diagnostic.Id);
+        Assert.Equal("SMP0307", diagnostic.Id);
         var message = diagnostic.GetMessage(CultureInfo.InvariantCulture);
         Assert.Contains("member=[X]", message, StringComparison.Ordinal);
         Assert.Contains($"parameter=[{parameter}]", message, StringComparison.Ordinal);

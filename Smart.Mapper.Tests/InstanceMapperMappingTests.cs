@@ -59,6 +59,17 @@ public sealed partial class InstanceMapperMappingTests
         Assert.Equal("1234.5", english.Value);
     }
 
+    // A virtual mapper is overridden by the one of a derived class, which the call through the base class reaches
+    [Fact]
+    public void OverridingMapperIsCalledThroughBaseClass()
+    {
+        var plain = new PriceMapper();
+        PriceMapper rounding = new RoundingPriceMapper();
+
+        Assert.Equal("1234.5", plain.Format(new Price { Value = 1234.5m }).Value);
+        Assert.Equal("1235", rounding.Format(new Price { Value = 1234.5m }).Value);
+    }
+
     public sealed class Customer
     {
         public string Name { get; set; } = string.Empty;
@@ -158,5 +169,20 @@ public sealed partial class InstanceMapperMappingTests
         private partial Customer MapCustomerName(Customer source);
 
         private string ToName(Customer source) => prefix + source.Name;
+    }
+
+    public partial class PriceMapper
+    {
+        [Mapper]
+        public virtual partial PriceText Format(Price source);
+    }
+
+    public sealed partial class RoundingPriceMapper : PriceMapper
+    {
+        [Mapper]
+        [MapProperty(nameof(PriceText.Value), Converter = nameof(Round))]
+        public override partial PriceText Format(Price source);
+
+        private static string Round(decimal value) => Math.Round(value, MidpointRounding.AwayFromZero).ToString(CultureInfo.InvariantCulture);
     }
 }

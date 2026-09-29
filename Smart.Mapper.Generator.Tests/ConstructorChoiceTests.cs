@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // A member whose setter the mapper class cannot call (a private or protected one) is assigned through a constructor,
 // as a get-only one is: the constructor setting it is called, when the mapping gives it every argument. It used to be
 // constructed without arguments, and the member left unset without a word. Of the constructors, the longest the
-// mapping gives every argument is called, so one it cannot fill no longer stops the mapping (SMP0301) when a shorter
+// mapping gives every argument is called, so one it cannot fill no longer stops the mapping (SMP0305) when a shorter
 // one can be called or the destination can be created without arguments, the members only a constructor assigns
 // left unmapped then. A [MapIgnore] naming a parameter or its member leaves it without a value. A type whose setters
 // the mapper class can all call keeps constructing as it did.
@@ -144,22 +144,22 @@ public class ConstructorChoiceTests
     [InlineData(
         "public class Src { public string Name { get; set; } = \"\"; } public class Dst { public Dst(int id, string name) { Id = id; Name = name; } public int Id { get; private set; } public string Name { get; set; } }",
         "",
-        "SMP0301",
+        "SMP0305",
         "parameter=[id]")]
     [InlineData(
         "public class Src { public int A { get; set; } } public record Dst(int A, int B);",
         "",
-        "SMP0301",
+        "SMP0305",
         "parameter=[B]")]
     [InlineData(
         "public class Src { public int A { get; set; } public int B { get; set; } } public class Dst { public Dst(int a, int b) { A = a; B = b; } public int A { get; } public int B { get; } }",
         "[MapIgnore(\"B\")]",
-        "SMP0216",
+        "SMP0304",
         "target=[B]")]
     [InlineData(
         "public class Src { public int X { get; set; } } public class Dst { public Dst() { } public Dst(int a, int b) { A = a; B = b; } public int A { get; } public int B { get; } }",
         "[MapProperty(\"A\", \"X\")]",
-        "SMP0214",
+        "SMP0102",
         "target=[A]")]
     public void ParameterWithoutValueEmitsDiagnostic(string types, string attributes, string id, string part)
     {

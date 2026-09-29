@@ -6,8 +6,8 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // The required members of the destination concern only the construction of a return mapper. A void mapper fills
-// an instance that exists, so an unmapped required member is not reported for it (SMP0303 used to be). A
-// required field is treated like a required property: a return mapper reports it unmapped (SMP0303) instead of
+// an instance that exists, so an unmapped required member is not reported for it (SMP0308 used to be). A
+// required field is treated like a required property: a return mapper reports it unmapped (SMP0308) instead of
 // failing in the generated code (CS9035), and assigns it in the object initializer when a constant, an
 // expression or a method is mapped to it.
 public class RequiredMemberMappingTests
@@ -67,7 +67,7 @@ public class RequiredMemberMappingTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(destination, string.Empty, returns: true));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0303", diagnostic.Id);
+        Assert.Equal("SMP0308", diagnostic.Id);
         Assert.Contains($"member=[{member}]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 

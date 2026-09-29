@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // A dotted path into a member the constructor of a return mapper assigns from an argument used to write, after
 // construction, into the object passed to the constructor, the source's own when the argument copied it
-// (new RDst(src.Item) and then __d.Item.B = ...). It is reported (SMP0222), whichever attribute the path is of.
+// (new RDst(src.Item) and then __d.Item.B = ...). It is reported (SMP0301), whichever attribute the path is of.
 // The member and the parameter are matched as the arguments are bound. A void mapper never constructs, and a
 // constructor construction does not call assigns nothing, so they are not concerned.
 public class ConstructorAssignedPathTests
@@ -70,14 +70,14 @@ public class ConstructorAssignedPathTests
     [InlineData("[MapUsing(\"Item.B\", nameof(Calc))]")]
     public void PathIntoRecordParameterEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(Record, attribute), "SMP0222", "Item.B", "Item");
+        AssertDiagnostic(Source(Record, attribute), "SMP0301", "Item.B", "Item");
     }
 
     // A longer path, a path named ignoring case, and a constructor parameter named in camelCase
     [Fact]
     public void LongerPathIntoRecordParameterEmitsDiagnostic()
     {
-        AssertDiagnostic(Source(Record, "[MapConstant(\"Item.Inner.B\", 3)]"), "SMP0222", "Item.Inner.B", "Item");
+        AssertDiagnostic(Source(Record, "[MapConstant(\"Item.Inner.B\", 3)]"), "SMP0301", "Item.Inner.B", "Item");
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ConstructorAssignedPathTests
     {
         AssertDiagnostic(
             Source(Record, "[MapExpression(\"item.b\", \"1\")]", "[Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]"),
-            "SMP0222",
+            "SMP0301",
             "Item.B",
             "Item");
     }
@@ -95,7 +95,7 @@ public class ConstructorAssignedPathTests
     [InlineData("public class Dst { public Dst(Child item) { Item = item; } public Child Item { get; } }")]
     public void PathIntoParameterOfCalledConstructorEmitsDiagnostic(string destination)
     {
-        AssertDiagnostic(Source(destination, "[MapProperty(\"Item.B\", nameof(Src.Y))]"), "SMP0222", "Item.B", "item");
+        AssertDiagnostic(Source(destination, "[MapProperty(\"Item.B\", nameof(Src.Y))]"), "SMP0301", "Item.B", "item");
     }
 
     // A constructor construction does not call, a void mapper, which never constructs, and a member no
@@ -127,7 +127,7 @@ public class ConstructorAssignedPathTests
     {
         AssertDiagnostic(
             Source("public class Dst { public Dst(Child value) { Text = value.B.ToString(); } public string Text { get; } }", "[MapProperty(\"Value.B\", nameof(Src.Y))]"),
-            "SMP0214",
+            "SMP0102",
             "Value.B");
     }
 }

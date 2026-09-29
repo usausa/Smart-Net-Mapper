@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // declaration of a partial method repeats. It used to be implemented without them, which did not compile (CS0759).
 // A type parameter as the source or the destination has the properties of its constraint types, as the members
 // of a generic mapper class already did not, and a destination one is created with new T(), which its constraints
-// have to allow (SMP0305 otherwise, instead of CS0304 in the generated code).
+// have to allow (SMP0303 otherwise, instead of CS0304 in the generated code).
 public class GenericMapperMethodTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -87,7 +87,7 @@ public class GenericMapperMethodTests
     {
         var (_, problems) = Build(Source(mapperClass, members));
 
-        Assert.Equal("SMP0305", Assert.Single(problems));
+        Assert.Equal("SMP0303", Assert.Single(problems));
     }
 
     [Theory]

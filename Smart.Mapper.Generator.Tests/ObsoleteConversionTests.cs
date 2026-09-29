@@ -94,17 +94,17 @@ public class ObsoleteConversionTests
         "public class Src { public List<Child> Items { get; set; } = []; } public class Dst { public List<Child> Items { get; set; } = []; } public static class MyCollections { [Obsolete(\"Old\", true)] public static List<TD> ToList<TS, TD>(IEnumerable<TS> source, Func<TS, TD> map) => new(); }",
         "[Mapper(AutoMap = false)] [MapCollection(\"Items\", Mapper = nameof(MapChild))]",
         "[CollectionConverter(typeof(MyCollections))]",
-        "SMP0104")]
+        "SMP0110")]
     [InlineData(
         "public class Src { public List<Child> Items { get; set; } = []; } public class Dst { public Bag Items { get; set; } = new(0); } public class Bag : Collection<Child> { [Obsolete(\"Old\", true)] public Bag() { } public Bag(int capacity) { } }",
         "[Mapper(AutoMap = false)] [MapCollection(\"Items\", Mapper = nameof(MapChild))]",
         "",
-        "SMP0217")]
+        "SMP0212")]
     [InlineData(
         "public class Src { public int Amount { get; set; } } public class Dst { public string Amount { get; set; } = \"\"; } public static class MyConverter { public static string ConvertToString(int value) => \"\"; [Obsolete(\"Old\", true)] public static string ConvertToString(int value, IFormatProvider provider, string? format) => \"\"; public static TD Convert<TS, TD>(TS value) => default!; }",
         "[Mapper(Culture = \"en-US\")]",
         "[ValueConverter(typeof(MyConverter))]",
-        "SMP0104")]
+        "SMP0110")]
     public void ConverterOrCollectionObsoleteAsErrorEmitsDiagnostic(string types, string mapper, string classAttributes, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(types, mapper, classAttributes, "[Mapper] public static partial Child MapChild(Child source);"));

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // member without a setter the mapper class can call, chooses the constructor: of the candidates the mapping gives
 // every argument, the one receiving the most of these targets, then the longest, then the first declared. It used to
 // be the longest (the first declared), or construction without arguments, whatever the attributes named, so the
-// value had nowhere to go (SMP0214). A target a setter receives does not choose one, and one no candidate the mapping
+// value had nowhere to go (SMP0102). A target a setter receives does not choose one, and one no candidate the mapping
 // fills receives is reported as before.
 public class ConstructorPreferenceTests
 {
@@ -97,7 +97,7 @@ public class ConstructorPreferenceTests
             "[MapProperty(\"A\", \"X\")]"));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.Contains("target=[A]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }

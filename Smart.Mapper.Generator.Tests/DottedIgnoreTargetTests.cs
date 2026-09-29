@@ -7,9 +7,9 @@ using Microsoft.CodeAnalysis;
 
 // [MapIgnore] keeps a member of the destination from the automatic mapping, which assigns the members as a whole,
 // so a dotted target (Child.Value) did nothing without a word: the member was still copied as a whole. Leaving out
-// a part of what a member is assigned cannot be done, so it is reported (SMP0223). A dotted target another
+// a part of what a member is assigned cannot be done, so it is reported (SMP0103). A dotted target another
 // attribute maps as well is still reported as naming the same target (SMP0101), and one that is not found as not
-// found (SMP0214).
+// found (SMP0102).
 public class DottedIgnoreTargetTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -59,20 +59,20 @@ public class DottedIgnoreTargetTests
     [InlineData("[MapIgnore(\"Holder.Inner\")]", "Holder.Inner")]
     public void DottedTargetEmitsDiagnostic(string attribute, string target)
     {
-        AssertDiagnostic(Source(attribute), "SMP0223", target);
+        AssertDiagnostic(Source(attribute), "SMP0103", target);
     }
 
     [Fact]
     public void DottedTargetInVoidMapperEmitsDiagnostic()
     {
-        AssertDiagnostic(Source("[MapIgnore(\"Child.Value\")]", signature: "public static partial void Map(Src src, Dst dst);"), "SMP0223", "Child.Value");
+        AssertDiagnostic(Source("[MapIgnore(\"Child.Value\")]", signature: "public static partial void Map(Src src, Dst dst);"), "SMP0103", "Child.Value");
     }
 
     // Matched as declared under the mapper's name comparison
     [Fact]
     public void DottedTargetNamedIgnoringCaseEmitsDiagnostic()
     {
-        AssertDiagnostic(Source("[MapIgnore(\"child.value\")]", "[Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]"), "SMP0223", "Child.Value");
+        AssertDiagnostic(Source("[MapIgnore(\"child.value\")]", "[Mapper(NameComparison = StringComparison.OrdinalIgnoreCase)]"), "SMP0103", "Child.Value");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class DottedIgnoreTargetTests
     [Fact]
     public void MissingDottedTargetEmitsNotFound()
     {
-        AssertDiagnostic(Source("[MapIgnore(\"Child.Missing\")]"), "SMP0214", "Child.Missing");
+        AssertDiagnostic(Source("[MapIgnore(\"Child.Missing\")]"), "SMP0102", "Child.Missing");
     }
 
     // A member as a whole is left out as before

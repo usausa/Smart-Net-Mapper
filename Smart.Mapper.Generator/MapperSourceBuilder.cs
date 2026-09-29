@@ -68,6 +68,11 @@ internal static class MapperSourceBuilder
                     usedCultures.Add(mapping.EffectiveCulture!);
                 }
             }
+
+            if (!String.IsNullOrEmpty(method.Culture) && PassesNonNullCulture(method))
+            {
+                usedCultures.Add(method.Culture!);
+            }
         }
 
         if (usedCultures.Count > 0)
@@ -114,7 +119,7 @@ internal static class MapperSourceBuilder
         }
     }
 
-    // A culture name (SMP0404 keeps it to letters and digits separated by hyphens and one underscore) as the
+    // A culture name (SMP0401 keeps it to letters and digits separated by hyphens and one underscore) as the
     // name of its field: a hyphen becomes an underscore and an underscore two, so that different names never
     // meet in one field (de-DE and de_DE).
     internal static string GetCultureFieldName(string cultureName) =>
@@ -750,7 +755,7 @@ internal static class MapperSourceBuilder
         call.Append('(').Append(GetCallArgumentModifier(mapUsing.ParameterRefKinds, 0)).Append(method.SourceParameterName);
         for (var i = 0; i < mapUsing.CustomArguments.Count; i++)
         {
-            call.Append(", ").Append(GetCallArgumentModifier(mapUsing.ParameterRefKinds, i + 1)).Append(method.CustomParameters[mapUsing.CustomArguments[i]].Name);
+            call.Append(", ").Append(GetCustomArgument(method, mapUsing.ParameterRefKinds, i + 1, mapUsing.CustomArguments[i]));
         }
         call.Append(')');
         if (mapUsing.ForgivesNull)
@@ -806,9 +811,26 @@ internal static class MapperSourceBuilder
     {
         for (var i = 0; i < customArguments.Count; i++)
         {
-            builder.Append(", ").Append(GetCallArgumentModifier(parameterRefKinds, firstIndex + i)).Append(method.CustomParameters[customArguments[i]].Name);
+            builder.Append(", ").Append(GetCustomArgument(method, parameterRefKinds, firstIndex + i, customArguments[i]));
         }
     }
+
+    // The argument for the custom parameter of an index MapperModelBuilder.MapCustomArguments gives: the parameter with
+    // the modifier of the parameter taking it, or for its complement the culture not null, a value
+    private static string GetCustomArgument(MapperMethodModel method, EquatableArray<RefKind> parameterRefKinds, int parameterIndex, int index) =>
+        index < 0
+            ? method.CustomParameters[~index].NonNullArgument!
+            : GetCallArgumentModifier(parameterRefKinds, parameterIndex) + method.CustomParameters[index].Name;
+
+    // Whether a call passes the CultureInfo parameter that may be null as the culture not null, which the field of the
+    // culture of the method gives for null
+    private static bool PassesNonNullCulture(MapperMethodModel method) =>
+        method.BeforeMapCustomArguments.Any(static i => i < 0) ||
+        method.AfterMapCustomArguments.Any(static i => i < 0) ||
+        method.PropertyMappings.Any(static m => m.ConverterCustomArguments.Any(static i => i < 0) || m.ConditionCustomArguments.Any(static i => i < 0)) ||
+        method.MapUsingMappings.Any(static m => m.CustomArguments.Any(static i => i < 0)) ||
+        method.MapNestedMappings.Any(static m => m.PassesNonNullCulture) ||
+        method.MapCollectionMappings.Any(static m => m.PassesNonNullCulture);
 
     private static string GetExpressionFunctionName(int index) =>
         ExpressionFunctionPrefix + index.ToString(CultureInfo.InvariantCulture);
@@ -2115,8 +2137,15 @@ internal static class MapperSourceBuilder
             var pathBuilder = new StringBuilder();
             pathBuilder.Append(sourceParamName);
 
-            foreach (var segment in sourceSegmentsArr)
+            for (var i = 0; i < sourceSegmentsArr.Count; i++)
             {
+                // A member read through one the compiler does not follow the null state of, which is checked before it
+                if (i >= UntrackedPathLength)
+                {
+                    pathBuilder.Append('!');
+                }
+
+                var segment = sourceSegmentsArr[i];
                 pathBuilder.Append('.').Append(IdentifierHelper.Escape(GetLastName(segment.Path)));
                 if (segment.IsNullable)
                 {
@@ -2188,7 +2217,9 @@ internal static class MapperSourceBuilder
             result.Append('.');
             result.Append(IdentifierHelper.Escape(parts[i]));
 
-            if ((i < parts.Length - 1) && (!nullChecked))
+            // A null check of a member the compiler does not follow the null state of does not tell it the member is not
+            // null (UntrackedPathLength)
+            if ((i < parts.Length - 1) && (!nullChecked || (i >= UntrackedPathLength - 1)))
             {
                 result.Append('!');
             }

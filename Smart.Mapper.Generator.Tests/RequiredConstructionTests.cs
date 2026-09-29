@@ -6,9 +6,9 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A return mapper creates its destination, so a required member it ignores would be left unset: reported
-// (SMP0216) instead of failing in the generated code (CS9035). A void mapper fills an instance that exists, so it
+// (SMP0304) instead of failing in the generated code (CS9035). A void mapper fills an instance that exists, so it
 // may ignore one. A constructor with [SetsRequiredMembers] sets the required members itself: the one a return
-// mapper calls neither needs them mapped (SMP0303) nor refuses ignoring them (SMP0216), and a required target of
+// mapper calls neither needs them mapped (SMP0308) nor refuses ignoring them (SMP0304), and a required target of
 // [MapNested] / [MapCollection] can then be assigned after construction; without it, the value is made before
 // construction and set in the object initializer, as that of a constructor argument is. A type along a dotted path
 // with such a constructor is created, as before.
@@ -72,7 +72,7 @@ public class RequiredConstructionTests
     [InlineData(RequiredField)]
     public void IgnoredRequiredMemberInReturnMapperEmitsDiagnostic(string destination)
     {
-        AssertDiagnostic(Source(destination, "[MapIgnore(nameof(Dst.X))]"), "SMP0216", "target=[X]");
+        AssertDiagnostic(Source(destination, "[MapIgnore(nameof(Dst.X))]"), "SMP0304", "target=[X]");
     }
 
     [Fact]

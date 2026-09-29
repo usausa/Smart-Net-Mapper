@@ -125,7 +125,7 @@ public sealed partial class OrderMapper
 }
 ```
 
-A static mapper naming an instance method is reported (SMP0107). See [Static and instance mappers](docs/API.md#static-and-instance-mappers).
+A static mapper naming an instance method is reported (SMP0105). See [Static and instance mappers](docs/API.md#static-and-instance-mappers).
 
 ### Renaming and nested properties
 

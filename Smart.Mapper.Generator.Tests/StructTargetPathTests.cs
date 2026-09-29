@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // (CS1612), and ??= does not apply to it (CS0019). It is copied into a local, written into and assigned back,
 // and consecutive assignments into the same struct share the copy. A struct field is a variable and is written
 // into directly. A struct that cannot be written back, a get-only property or a readonly field, is reported
-// (SMP0214); an init-only one is created in the object initializer of a return mapper, and reported in a void
+// (SMP0102); an init-only one is created in the object initializer of a return mapper, and reported in a void
 // mapper (SMP0302).
 public class StructTargetPathTests
 {
@@ -139,7 +139,7 @@ public class StructTargetPathTests
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
         // A void mapper could set an init-only struct in the initializer of a return mapper (SMP0302)
-        Assert.Equal(attribute.Contains("Fixed", StringComparison.Ordinal) || attribute.Contains("InitOnly", StringComparison.Ordinal) ? "SMP0302" : "SMP0214", diagnostic.Id);
+        Assert.Equal(attribute.Contains("Fixed", StringComparison.Ordinal) || attribute.Contains("InitOnly", StringComparison.Ordinal) ? "SMP0302" : "SMP0102", diagnostic.Id);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }
 

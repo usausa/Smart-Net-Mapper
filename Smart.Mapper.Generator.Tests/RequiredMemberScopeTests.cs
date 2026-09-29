@@ -6,7 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // Every required member of the destination a return mapper creates is set in its object initializer: the check
-// that each one is mapped (SMP0303), and not ignored (SMP0216), covers properties and fields of any accessibility
+// that each one is mapped (SMP0308), and not ignored (SMP0304), covers properties and fields of any accessibility
 // and those of the base types, where it used to leave out the properties that are not public, which then failed
 // in the generated code (CS9035). A constructor with [SetsRequiredMembers] sets them all itself.
 public class RequiredMemberScopeTests
@@ -62,7 +62,7 @@ public class RequiredMemberScopeTests
     [InlineData("public class Base { public required int X { get; set; } } public class Dst : Base { public int Y { get; set; } }")]
     public void UnmappedRequiredMemberEmitsDiagnostic(string destination)
     {
-        AssertDiagnostic(Source(destination), "SMP0303", "X");
+        AssertDiagnostic(Source(destination), "SMP0308", "X");
     }
 
     // A property overriding a required one is required as well, and is reported once
@@ -71,7 +71,7 @@ public class RequiredMemberScopeTests
     {
         AssertDiagnostic(
             Source("public class Base { public virtual required int X { get; set; } } public class Dst : Base { public override required int X { get; set; } public int Y { get; set; } }"),
-            "SMP0303",
+            "SMP0308",
             "X");
     }
 
@@ -80,7 +80,7 @@ public class RequiredMemberScopeTests
     [InlineData("internal class Base { internal required int X; } internal class Dst : Base { public int Y { get; set; } }")]
     public void IgnoredRequiredMemberEmitsDiagnostic(string destination)
     {
-        AssertDiagnostic(Source(destination, "[MapIgnore(\"X\")]"), "SMP0216", "X");
+        AssertDiagnostic(Source(destination, "[MapIgnore(\"X\")]"), "SMP0304", "X");
     }
 
     // Mapped, the member is set in the object initializer

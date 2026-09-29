@@ -5,8 +5,8 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A [BeforeMap] / [AfterMap] callback takes the source and the destination as base classes or interfaces they convert
-// to by an implicit reference conversion, by value (Audit(IEntity, IDto)), where only their own types matched (SMP0102
-// / SMP0103). A struct goes to its own type only, as boxing it would give the callback a copy to write in vain. The
+// to by an implicit reference conversion, by value (Audit(IEntity, IDto)), where only their own types matched (SMP0106
+// / SMP0107). A struct goes to its own type only, as boxing it would give the callback a copy to write in vain. The
 // custom parameters match as before. Of overloads, the one the call binds to is used, as C# binds it, and an ambiguous
 // call is reported.
 public class CallbackConversionTests
@@ -67,9 +67,9 @@ public class CallbackConversionTests
 
     // A struct goes to its own type only, and a conversion to a parameter by value only
     [Theory]
-    [InlineData("[AfterMap(nameof(Audit))]", "public static partial PointDst Map(Src src);", "private static void Audit(IEntity source, IDto destination) { }", "SMP0103")]
-    [InlineData("[BeforeMap(nameof(Audit))]", "public static partial void Map(PointSrc src, Dst dst);", "private static void Audit(IEntity source, IDto destination) { }", "SMP0102")]
-    [InlineData("[AfterMap(nameof(Audit))]", "public static partial void Map(Src src, Dst dst);", "private static void Audit(IEntity source, ref IDto destination) { }", "SMP0103")]
+    [InlineData("[AfterMap(nameof(Audit))]", "public static partial PointDst Map(Src src);", "private static void Audit(IEntity source, IDto destination) { }", "SMP0107")]
+    [InlineData("[BeforeMap(nameof(Audit))]", "public static partial void Map(PointSrc src, Dst dst);", "private static void Audit(IEntity source, IDto destination) { }", "SMP0106")]
+    [InlineData("[AfterMap(nameof(Audit))]", "public static partial void Map(Src src, Dst dst);", "private static void Audit(IEntity source, ref IDto destination) { }", "SMP0107")]
     public void ConversionIsReported(string attributes, string mapper, string methods, string expected)
     {
         var (_, problems) = Build(Source(attributes, mapper, methods));
@@ -94,6 +94,6 @@ public class CallbackConversionTests
             "public static partial void Map(Src src, Dst dst);",
             "private static void Audit(IEntity source, Dst destination) { } private static void Audit(Src source, IDto destination) { }"));
 
-        Assert.Equal(["SMP0103"], ambiguousProblems);
+        Assert.Equal(["SMP0107"], ambiguousProblems);
     }
 }

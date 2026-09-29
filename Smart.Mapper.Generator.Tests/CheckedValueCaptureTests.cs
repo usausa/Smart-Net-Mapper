@@ -33,7 +33,9 @@ public class CheckedValueCaptureTests
         public struct Geo { public Inner? In { get; set; } public Owner? Owner { get; set; } }
         public class Owner { public string? Name { get; set; } }
         public class Holder { public Geo? Geo { get; set; } }
-        public class D { public string? Name { get; set; } }
+        public class F { public string? Name { get; set; } }
+        public class E { public string? Name { get; set; } public int I { get; set; } public F? F { get; set; } }
+        public class D { public string? Name { get; set; } public E? E { get; set; } }
         public class C { public D? D { get; set; } }
         public class B { public C? C { get; set; } }
         public class A { public B? B { get; set; } }
@@ -91,6 +93,21 @@ public class CheckedValueCaptureTests
             "new global::Test.Rec(src.Location is not null && src.Location.Value.In is not null ? src.Location.Value.In.Value.V is { } __value_V ? ToText(__value_V) : default! : default!)",
             generated,
             StringComparison.Ordinal);
+    }
+
+    // A member read through five or more is not known to be not null after its null check either, so the path past it
+    // takes it with !, in the null checks as well
+    [Theory]
+    [InlineData("[MapProperty(nameof(Dst.Number), \"A.B.C.D.E.I\")]", "__d.Number = src.A.B.C.D.E!.I;")]
+    [InlineData("[MapProperty(nameof(Dst.Name), \"A.B.C.D.E.Name\", NullValue = \"none\")]", "__d.Name = src.A.B.C.D.E!.Name ?? \"none\";")]
+    [InlineData("[MapProperty(nameof(Dst.Name), \"A.B.C.D.E.F.Name\", NullValue = \"none\")]", "src.A.B.C.D.E is not null && src.A.B.C.D.E!.F is not null")]
+    [InlineData("[MapProperty(nameof(Dst.Name), \"A.B.C.D.E.F.Name\", NullValue = \"none\")]", "__d.Name = src.A.B.C.D.E!.F!.Name ?? \"none\";")]
+    public void MemberPastTrackedOnesIsTakenAsNotNull(string attributes, string expected)
+    {
+        var (generated, problems) = Build(Source(attributes));
+
+        Assert.Empty(problems);
+        Assert.Contains(expected, generated, StringComparison.Ordinal);
     }
 
     // Read through four members, the value is checked and read again as before

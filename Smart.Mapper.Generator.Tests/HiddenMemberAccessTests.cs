@@ -87,7 +87,7 @@ public class HiddenMemberAccessTests
             "[Mapper(AutoMap = false)]"));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.Contains("target=[X]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 

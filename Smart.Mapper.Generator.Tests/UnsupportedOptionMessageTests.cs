@@ -2,7 +2,7 @@ namespace Smart.Mapper.Generator.Tests;
 
 using System.Globalization;
 
-// SMP0215 is reported for [MapCondition] and for NullBehavior.Skip alike on a target assigned through a constructor
+// SMP0306 is reported for [MapCondition] and for NullBehavior.Skip alike on a target assigned through a constructor
 // argument or an object initializer entry, and its message names both, where it used to name [MapCondition] only.
 public class UnsupportedOptionMessageTests
 {
@@ -28,7 +28,7 @@ public class UnsupportedOptionMessageTests
     [InlineData("[MapCondition(nameof(Dst.Name), nameof(IsWanted))]", "option=[MapCondition]")]
     public void MessageNamesBothOptions(string attributes, string option)
     {
-        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(Source(attributes)), static d => d.Id == "SMP0215");
+        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(Source(attributes)), static d => d.Id == "SMP0306");
         var message = diagnostic.GetMessage(CultureInfo.InvariantCulture);
 
         Assert.StartsWith("[MapCondition] / NullBehavior.Skip requires a property assignment", message, StringComparison.Ordinal);

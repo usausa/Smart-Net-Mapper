@@ -37,6 +37,19 @@ public class PragmaSuppressionTests
         Assert.Equal(attributeWarningSuppressed, Warning(source, "SMP0502").IsSuppressed);
     }
 
+    // An error leaves the mapper to an implementation throwing, so it is not suppressed, which would build that one into
+    // the program
+    [Theory]
+    [InlineData("#pragma warning disable SMP0107\n[Mapper]\n[AfterMap(\"Missing\")]\npublic static partial Dst Map(Src src);\n#pragma warning restore SMP0107")]
+    [InlineData("[SuppressMessage(\"Usage\", \"SMP0107\")]\n[Mapper]\n[AfterMap(\"Missing\")]\npublic static partial Dst Map(Src src);")]
+    public void ErrorIsNotSuppressed(string declaration)
+    {
+        var error = Assert.Single(GeneratorTestHelper.GetDiagnostics(Source(declaration)), static d => d.Id == "SMP0107");
+
+        Assert.Equal(DiagnosticSeverity.Error, error.Severity);
+        Assert.False(error.IsSuppressed);
+    }
+
     // The diagnostics of the test runner come with their suppression, as the compiler reports them
     [Fact]
     public void WarningWithoutPragmaIsNotSuppressed()

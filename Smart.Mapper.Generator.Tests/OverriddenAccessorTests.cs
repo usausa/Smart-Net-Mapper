@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // A property overriding one accessor only inherits the other one from the property it overrides. The accessors
 // used to be looked up on the overriding property alone, so one overriding the getter only was taken as get-only:
-// the target of an attribute was reported (SMP0214), where the automatic mapping reached the base property. The
+// the target of an attribute was reported (SMP0102), where the automatic mapping reached the base property. The
 // setter found up the overridden properties decides whether the property can be assigned, where (init-only), and
 // by whom (its accessibility), for the automatic mapping and the attributes alike, and so does the getter for a
 // member a dotted path goes through.
@@ -116,7 +116,7 @@ public class OverriddenAccessorTests
             "[MapProperty(nameof(Dst.X), nameof(Src.Y))]"));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.Contains("target=[X]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 

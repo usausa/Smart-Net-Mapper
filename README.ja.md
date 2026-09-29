@@ -125,7 +125,7 @@ public sealed partial class OrderMapper
 }
 ```
 
-static のマッパーがインスタンスメソッドを指すと診断されます（SMP0107）。[static とインスタンスのマッパー](docs/API.ja.md#static-とインスタンスのマッパー)を参照してください。
+static のマッパーがインスタンスメソッドを指すと診断されます（SMP0105）。[static とインスタンスのマッパー](docs/API.ja.md#static-とインスタンスのマッパー)を参照してください。
 
 ### 名前の変更とネストしたプロパティ
 

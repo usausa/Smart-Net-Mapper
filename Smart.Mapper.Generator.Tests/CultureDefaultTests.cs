@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // A profile of the assembly gives every setting the method and the profile of the class do not set. A CultureInfo
 // parameter of the mapper gives the culture of its conversions, over the culture of the method and the profiles and
 // under the one of [MapProperty], and one that may be null falls back to the culture the method takes without it. The
-// culture of [Mapper] on such a method is not used, which is reported (SMP0405).
+// culture of [Mapper] on such a method is not used, which is reported (SMP0404).
 public class CultureDefaultTests
 {
     private const string Current = "global::System.Globalization.CultureInfo.CurrentCulture";
@@ -129,6 +129,25 @@ public class CultureDefaultTests
         Assert.Contains(call, generated, StringComparison.Ordinal);
     }
 
+    [Theory]
+    // An empty culture name is the invariant culture's, of [MapProperty] over the parameter and the culture of the
+    // method, with the invariant culture when a format applies
+    [InlineData("", "[Mapper(Culture = \"de-DE\")] [MapProperty(nameof(Dst.Amount), Culture = \"\")] public static partial Dst Map(Src src);", "ConvertToString(src.Amount)")]
+    [InlineData("", "[Mapper] [MapProperty(nameof(Dst.Amount), Culture = \"\")] public static partial Dst Map(Src src, CultureInfo culture);", "ConvertToString(src.Amount)")]
+    [InlineData("", "[Mapper(Culture = \"de-DE\")] [MapProperty(nameof(Dst.Amount), Culture = \"\", NumberFormat = \"N2\")] public static partial Dst Map(Src src);", "ConvertToString(src.Amount, " + Invariant + ", \"N2\")")]
+    // Of the method or a profile over the culture of the profiles and DefaultCulture Current
+    [InlineData("[MapperProfile(Culture = \"ja-JP\", DefaultCulture = MapperCulture.Current)]", "[Mapper(Culture = \"\")] public static partial Dst Map(Src src);", "ConvertToString(src.Amount)")]
+    [InlineData("[MapperProfile(Culture = \"\", DefaultCulture = MapperCulture.Current)]", "[Mapper] public static partial Dst Map(Src src);", "ConvertToString(src.At)")]
+    // What a parameter that may be null falls back to
+    [InlineData("[MapperProfile(Culture = \"ja-JP\")]", "[Mapper(Culture = \"\")] public static partial Dst Map(Src src, CultureInfo? culture);", "ConvertToString(src.Amount, (culture ?? " + Invariant + "), null)")]
+    public void EmptyCultureNameIsInvariantCulture(string classAttributes, string members, string call)
+    {
+        var (generated, problems) = Build(Source(string.Empty, classAttributes, members));
+
+        Assert.Empty(problems);
+        Assert.Contains(call, generated, StringComparison.Ordinal);
+    }
+
     // The parameter is passed on to the methods taking the custom parameters, as before
     [Fact]
     public void CultureParameterIsPassedOnToCallbacks()
@@ -149,11 +168,24 @@ public class CultureDefaultTests
         const string members = "[Mapper(Culture = \"ja-JP\")] /*here*/\n    public static partial Dst Map(Src src, CultureInfo culture);";
         var source = Source(string.Empty, string.Empty, members);
 
-        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(source), static d => d.Id == "SMP0405");
+        var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(source), static d => d.Id == "SMP0404");
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         var markedLine = Array.FindIndex(source.Split('\n'), static line => line.Contains("/*here*/", StringComparison.Ordinal));
         Assert.Equal(markedLine, diagnostic.Location.GetLineSpan().StartLinePosition.Line);
         Assert.Contains("ConvertToString(src.Amount, culture, null)", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
+    }
+
+    // A parameter that may be null, nullable or declared with nullable annotations disabled, falls back to the culture
+    // of [Mapper] for a null argument, so the culture is used, and not reported
+    [Theory]
+    [InlineData("#nullable enable", "CultureInfo? culture")]
+    [InlineData("#nullable disable", "CultureInfo culture")]
+    public void CultureOfMapperWithNullableParameterIsNotReported(string context, string parameter)
+    {
+        var (generated, problems) = Build(Source(string.Empty, string.Empty, $"{context}\n    [Mapper(Culture = \"ja-JP\")] public static partial Dst Map(Src src, {parameter});\n#nullable enable"));
+
+        Assert.Empty(problems);
+        Assert.Contains("ConvertToString(src.Amount, (culture ?? __culture_ja_JP), null)", generated, StringComparison.Ordinal);
     }
 
     // The culture of a profile is a default, which the parameter takes over without a warning
@@ -162,7 +194,7 @@ public class CultureDefaultTests
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source("[assembly: MapperProfile(Culture = \"en-US\")]", "[MapperProfile(Culture = \"ja-JP\")]", "[Mapper] public static partial Dst Map(Src src, CultureInfo culture);"));
 
-        Assert.DoesNotContain(diagnostics, static d => d.Id == "SMP0405");
+        Assert.DoesNotContain(diagnostics, static d => d.Id == "SMP0404");
     }
 
     // A value converter of its own is called through the overload taking the culture under Current and with the
@@ -185,6 +217,6 @@ public class CultureDefaultTests
 
         var diagnostics = GeneratorTestHelper.GetDiagnostics(source);
 
-        Assert.Equal(reported, diagnostics.Any(static d => d.Id == "SMP0104"));
+        Assert.Equal(reported, diagnostics.Any(static d => d.Id == "SMP0110"));
     }
 }

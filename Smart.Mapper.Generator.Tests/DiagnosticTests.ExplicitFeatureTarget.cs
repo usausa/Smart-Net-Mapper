@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis;
 //   - any init-only target × void mapper: rejected with SMP0302 (cannot assign init-only on an existing instance)
 //   - MapCollection/MapNested × init-only or required × return mapper: accepted, made before construction and set in
 //     the object initializer
-//   - MapCollection/MapNested × init-only × void mapper: rejected with SMP0212
+//   - MapCollection/MapNested × init-only × void mapper: rejected with SMP0209
 public partial class DiagnosticTests
 {
     private static IReadOnlyList<Diagnostic> AllDiagnostics(string source) =>
@@ -105,8 +105,8 @@ public partial class DiagnosticTests
         AssertCompiles(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: true));
 
     [Fact]
-    public void Smp0212CollectionOnInitOnlyVoidMapperIsRejectedEmitsDiagnostic() =>
-        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: false), "SMP0212");
+    public void Smp0209CollectionOnInitOnlyVoidMapperIsRejectedEmitsDiagnostic() =>
+        AssertRejected(CollectionSource("public List<E2> Items { get; init; } = default!;", returns: false), "SMP0209");
 
     [Fact]
     public void CollectionOnRequiredReturnMapperCompiles() =>

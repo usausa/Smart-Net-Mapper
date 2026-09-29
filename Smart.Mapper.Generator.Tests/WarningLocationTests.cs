@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 // The warnings are reported where they arise, as the errors are: SMP0501 at the mapper method, the location of
-// SMP0303, and SMP0403 at the [MapExpression] attribute. They used to be reported without a location, so the error
+// SMP0308, and SMP0403 at the [MapExpression] attribute. They used to be reported without a location, so the error
 // list could not go to them and a #pragma warning disable around the method did not suppress them.
 public class WarningLocationTests
 {

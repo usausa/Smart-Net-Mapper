@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // The converter of [MapProperty] returns the target type or a type C# converts to it implicitly, as [MapUsing] and
-// [MapFrom] do (decimal to decimal?, int to long), where it used to have to return the target type itself (SMP0105);
+// [MapFrom] do (decimal to decimal?, int to long), where it used to have to return the target type itself (SMP0111);
 // one only an explicit conversion takes is still reported. The automatic mapping and [MapProperty] assign a value the
 // target takes by an implicit reference conversion as it is, through variance as well (IReadOnlyList<Circle> to
 // IReadOnlyList<Shape>, Circle[] to Shape[]), where it used to be reported as having no conversion (SMP0402) or to go
@@ -101,7 +101,7 @@ public class ImplicitConversionAssignmentTests
     {
         var (_, problems) = Build(Source("[MapProperty(nameof(Dst.Big), Converter = nameof(Widen))]"));
 
-        Assert.Equal("SMP0105", Assert.Single(problems));
+        Assert.Equal("SMP0111", Assert.Single(problems));
     }
 
     [Theory]

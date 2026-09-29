@@ -41,6 +41,21 @@ public sealed class MapperGenerator : IIncrementalGenerator
             methodProvider.Combine(treeProvider),
             static (context, pair) => ReportDiagnostics(context, pair.Left, pair.Right));
 
+        // The profile of the assembly is looked at once, so that a culture of it that is not a culture name is reported
+        // once, at the profile, and not for every mapper taking it
+        var assemblyProfileProvider = context.CompilationProvider
+            .Select(static (compilation, _) => MapperModelBuilder.ValidateAssemblyProfile(compilation));
+        context.RegisterSourceOutput(
+            assemblyProfileProvider,
+            static (context, profile) =>
+            {
+                ImmutableArray<SyntaxTree> trees = profile.Tree is null ? [] : [profile.Tree];
+                foreach (var info in profile.Diagnostics)
+                {
+                    context.ReportDiagnostic(ToDiagnostic(info, trees));
+                }
+            });
+
         // The source does not depend on the locations the diagnostics are reported at (the warnings, and the
         // attributes), which change as the code around them moves
         var groups = methodProvider.SelectMany(static (methods, _) =>

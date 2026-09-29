@@ -3,7 +3,7 @@ namespace Smart.Mapper.Generator.Tests;
 using System.Globalization;
 using System.Linq;
 
-// [MapCollection] / [MapNested] without Mapper is reported as the mapper not matching (SMP0210 / SMP0211) with a message
+// [MapCollection] / [MapNested] without Mapper is reported as the mapper not matching (SMP0213 / SMP0214) with a message
 // saying that it is not specified, where it used to name an empty mapper (mapper=[]). Their source is a property of the
 // source type, which the message of SMP0206 says for a dotted path.
 public class MapperNotSpecifiedTests
@@ -31,10 +31,10 @@ public class MapperNotSpecifiedTests
         """;
 
     [Theory]
-    [InlineData("[MapCollection(nameof(Dst.Items))]", "SMP0210", "[MapCollection] Mapper is not specified", "target=[Items]")]
-    [InlineData("[MapNested(nameof(Dst.Child))]", "SMP0211", "[MapNested] Mapper is not specified", "target=[Child]")]
-    [InlineData("[MapCollection(nameof(Dst.Items), Mapper = \"Missing\")]", "SMP0210", "element mapper method does not match", "mapper=[Missing]")]
-    [InlineData("[MapNested(nameof(Dst.Child), Mapper = \"Missing\")]", "SMP0211", "mapper method does not match", "mapper=[Missing]")]
+    [InlineData("[MapCollection(nameof(Dst.Items))]", "SMP0213", "[MapCollection] Mapper is not specified", "target=[Items]")]
+    [InlineData("[MapNested(nameof(Dst.Child))]", "SMP0214", "[MapNested] Mapper is not specified", "target=[Child]")]
+    [InlineData("[MapCollection(nameof(Dst.Items), Mapper = \"Missing\")]", "SMP0213", "element mapper method does not match", "mapper=[Missing]")]
+    [InlineData("[MapNested(nameof(Dst.Child), Mapper = \"Missing\")]", "SMP0214", "mapper method does not match", "mapper=[Missing]")]
     [InlineData("[MapNested(nameof(Dst.Child), \"Parent.Child\", Mapper = nameof(MapChild))]", "SMP0206", "cannot be a dotted path", "source=[Parent.Child]")]
     public void MessageTellsCause(string attributes, string id, string cause, string argument)
     {

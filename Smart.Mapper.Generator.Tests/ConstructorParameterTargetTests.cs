@@ -8,8 +8,8 @@ using Microsoft.CodeAnalysis;
 // As with [MapProperty], the target of [MapConstant], [MapExpression], [MapUsing], [MapFrom], [MapNested] and
 // [MapCollection] can be the name of a parameter of the constructor a return mapper calls, when no member of the
 // destination has that name, matched under the mapper's name comparison. It used to be reported as a parameter
-// without a source (SMP0301), or a target that is not found (SMP0214). [MapIgnore] and [MapCondition] on such a
-// parameter of the only constructor are reported as before (SMP0216 / SMP0215).
+// without a source (SMP0305), or a target that is not found (SMP0102). [MapIgnore] and [MapCondition] on such a
+// parameter of the only constructor are reported as before (SMP0304 / SMP0306).
 public class ConstructorParameterTargetTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -113,19 +113,19 @@ public class ConstructorParameterTargetTests
     [Fact]
     public void ValueThatDoesNotFitEmitsDiagnostic()
     {
-        AssertDiagnostic(Source("[MapConstant(\"number\", \"text\")]"), "SMP0218", "number");
+        AssertDiagnostic(Source("[MapConstant(\"number\", \"text\")]"), "SMP0216", "number");
     }
 
     // A parameter with a member of its name takes an attribute naming the member, not the parameter
     [Fact]
     public void ParameterWithMemberIsNotTarget()
     {
-        AssertDiagnostic(Source("[MapConstant(\"number\", 3)]", destination: "public record Dst(int Number);"), "SMP0214", "number");
+        AssertDiagnostic(Source("[MapConstant(\"number\", 3)]", destination: "public record Dst(int Number);"), "SMP0102", "number");
     }
 
     [Theory]
-    [InlineData("[MapIgnore(\"number\")]", "SMP0216")]
-    [InlineData("[MapCondition(\"number\", nameof(IsPositive))]", "SMP0215")]
+    [InlineData("[MapIgnore(\"number\")]", "SMP0304")]
+    [InlineData("[MapCondition(\"number\", nameof(IsPositive))]", "SMP0306")]
     public void IgnoreAndConditionOnParameterEmitDiagnostic(string attribute, string id)
     {
         AssertDiagnostic(Source(attribute), id, "number");

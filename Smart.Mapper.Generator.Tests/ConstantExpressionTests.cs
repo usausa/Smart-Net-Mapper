@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis;
 // a cast for an enum (which used to be written as its number, CS0266), and literals spelled the same whatever
 // culture the generator runs under, with NaN / infinity as the members of float / double and the characters
 // of strings and chars escaped. A value that cannot be written, such as a file-local type, is reported
-// (SMP0220).
+// (SMP0215).
 public class ConstantExpressionTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -141,7 +141,7 @@ public class ConstantExpressionTests
     [InlineData("[MapConstant(nameof(Dst.Number), new[] { 1 })]")]
     public void ArrayThatCannotBeAssignedEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     // An array constant used to stop the generator, so that no mapper of the compilation was generated. Both
@@ -190,7 +190,7 @@ public class ConstantExpressionTests
     [InlineData("[MapProperty(nameof(Dst.Kind), NullValue = Access.Read)]")]
     public void EnumThatCannotBeAssignedEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 
     //--------------------------------------------------------------------------------
@@ -303,7 +303,7 @@ public class ConstantExpressionTests
     [InlineData("[MapProperty(nameof(Dst.Type), NullValue = typeof(Hidden))]")]
     public void FileLocalTypeEmitsDiagnostic(string attribute)
     {
-        AssertDiagnostic(Source(attribute, "file class Hidden { }"), "SMP0220");
+        AssertDiagnostic(Source(attribute, "file class Hidden { }"), "SMP0215");
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class ConstantExpressionTests
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source("[MapConstant(nameof(Dst.Type), typeof(Missing))]"));
 
-        Assert.Contains(diagnostics, static d => d.Id == "SMP0220");
+        Assert.Contains(diagnostics, static d => d.Id == "SMP0215");
         Assert.DoesNotContain(diagnostics, IsGeneratorFailure);
     }
 
@@ -340,6 +340,6 @@ public class ConstantExpressionTests
             }
             """);
 
-        AssertDiagnostic(source, "SMP0220");
+        AssertDiagnostic(source, "SMP0215");
     }
 }

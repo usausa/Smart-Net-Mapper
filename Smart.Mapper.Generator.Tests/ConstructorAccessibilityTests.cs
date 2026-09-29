@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis;
 // it is passed over for the longest one the mapper class can call, as is one obsolete as an error (CS0619). A
 // destination that cannot be created at all, an abstract class (whatever its constructors are declared as), an
 // interface, or one without a constructor the mapper class can call, used to fail there as well (CS0144 / CS0122)
-// and is reported (SMP0305). A void mapper, which never constructs, is not concerned.
+// and is reported (SMP0303). A void mapper, which never constructs, is not concerned.
 public class ConstructorAccessibilityTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -66,7 +66,7 @@ public class ConstructorAccessibilityTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(destination, returnType));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0305", diagnostic.Id);
+        Assert.Equal("SMP0303", diagnostic.Id);
         Assert.Contains($"type=[{returnType}]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }

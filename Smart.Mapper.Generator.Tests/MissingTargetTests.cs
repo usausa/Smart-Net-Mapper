@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // The target of [MapConstant], [MapExpression] and [MapUsing] has to be a property or field the mapper class
 // can assign, as __d.<target> binds it. One that is not found (a misspelled or differently cased name, a
 // method, a static member, a missing segment of a dotted path) or that cannot be assigned (a readonly field)
-// is reported (SMP0214) instead of failing in the generated code (CS1061 / CS1656 / CS0176 / CS0191).
+// is reported (SMP0102) instead of failing in the generated code (CS1061 / CS1656 / CS0176 / CS0191).
 public class MissingTargetTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -78,7 +78,7 @@ public class MissingTargetTests
     [InlineData("[MapUsing(\"Child.Missing\", nameof(Calc))]", false)]
     public void TargetThatIsNotFoundEmitsDiagnostic(string attribute, bool returns)
     {
-        AssertDiagnostic(Source(attribute, returns), "SMP0214");
+        AssertDiagnostic(Source(attribute, returns), "SMP0102");
     }
 
     [Theory]
@@ -111,6 +111,6 @@ public class MissingTargetTests
     [InlineData("[MapConstant(\"Child.Value\", \"x\")]")]
     public void ConstantForFieldOrPathIsChecked(string attribute)
     {
-        AssertDiagnostic(Source(attribute), "SMP0218");
+        AssertDiagnostic(Source(attribute), "SMP0216");
     }
 }

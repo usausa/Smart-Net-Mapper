@@ -36,13 +36,13 @@ public class PlaceholderImplementationTests
         """;
 
     [Theory]
-    [InlineData("[Mapper(AutoMap = false)] [MapProperty(\"Missing\", nameof(Src.Value))] public static partial Dst Map(Src source);", "SMP0214", "public static partial global::Test.Dst Map(global::Test.Src source)")]
-    [InlineData("[Mapper] public static partial void Map(Src source);", "SMP0002", "public static partial void Map(global::Test.Src source)")]
+    [InlineData("[Mapper(AutoMap = false)] [MapProperty(\"Missing\", nameof(Src.Value))] public static partial Dst Map(Src source);", "SMP0102", "public static partial global::Test.Dst Map(global::Test.Src source)")]
+    [InlineData("[Mapper] public static partial void Map(Src source);", "SMP0003", "public static partial void Map(global::Test.Src source)")]
     [InlineData("[Mapper] public static partial Dst Map(Src source, out int count);", "SMP0005", "public static partial global::Test.Dst Map(global::Test.Src source, out int count)")]
     [InlineData("[Mapper] public static partial Dst? Map(Src? source, int __value);", "SMP0004", "public static partial global::Test.Dst? Map(global::Test.Src? source, int __value)")]
-    [InlineData("[Mapper] [BeforeMap(\"Missing\")] internal static partial TDst Map<TDst>(Src source, params int[] values) where TDst : class, new();", "SMP0102", "internal static partial TDst Map<TDst>(global::Test.Src source, params int[] values) where TDst : class, new()")]
-    [InlineData("[Mapper] public static partial ref Dst Map(Src source);", "SMP0008", "public static partial ref global::Test.Dst Map(global::Test.Src source)")]
-    [InlineData("[Mapper] public static partial ref readonly Dst Map(Src source);", "SMP0008", "public static partial ref readonly global::Test.Dst Map(global::Test.Src source)")]
+    [InlineData("[Mapper] [BeforeMap(\"Missing\")] internal static partial TDst Map<TDst>(Src source, params int[] values) where TDst : class, new();", "SMP0106", "internal static partial TDst Map<TDst>(global::Test.Src source, params int[] values) where TDst : class, new()")]
+    [InlineData("[Mapper] public static partial ref Dst Map(Src source);", "SMP0002", "public static partial ref global::Test.Dst Map(global::Test.Src source)")]
+    [InlineData("[Mapper] public static partial ref readonly Dst Map(Src source);", "SMP0002", "public static partial ref readonly global::Test.Dst Map(global::Test.Src source)")]
     [InlineData("[Mapper] public static partial List<Dst> Map(List<Src> source);", "SMP0007", "public static partial global::System.Collections.Generic.List<global::Test.Dst> Map(global::System.Collections.Generic.List<global::Test.Src> source)")]
     public void MapperWithErrorGetsPlaceholder(string declaration, string error, string signature)
     {
@@ -63,7 +63,7 @@ public class PlaceholderImplementationTests
             "[Mapper(AutoMap = false)] [MapProperty(\"Missing\", nameof(Src.Value))] public static partial Dst Map(Src source);\n" +
             "[Mapper] public static partial Dst MapOther(Src source);");
 
-        Assert.Equal(["SMP0214"], Errors(source));
+        Assert.Equal(["SMP0102"], Errors(source));
         Assert.Contains("__d.Value = source.Value;", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 
@@ -84,7 +84,7 @@ public class PlaceholderImplementationTests
     {
         var source = Source("[Mapper] static partial void Map(Src source);");
 
-        Assert.Equal(["SMP0002"], Errors(source));
+        Assert.Equal(["SMP0003"], Errors(source));
         var generated = GeneratorTestHelper.GetGeneratedSource(source);
         Assert.Contains("\n        static partial void Map(global::Test.Src source)", generated.Replace("\r\n", "\n", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.Contains("throw new global::System.NotImplementedException(", generated, StringComparison.Ordinal);

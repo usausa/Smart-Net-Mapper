@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // C# binds it. A mapper taking the source by an implicit reference conversion was used even when the call bound to
 // another overload: a more specific one returning another type (CS0029), a generic one, one with an optional parameter,
 // or one obsolete as an error (CS0619), all errors in the generated code. Such a call is reported as a mapper that does
-// not match (SMP0211 / SMP0210), and when the call binds to another mapper matched, that one is used.
+// not match (SMP0214 / SMP0213), and when the call binds to another mapper matched, that one is used.
 public class MapperOverloadBindingTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -62,8 +62,8 @@ public class MapperOverloadBindingTests
         var (_, nestedProblems) = Build(Source("[MapNested(nameof(ZooDto.Star), Mapper = nameof(ToDto))]", methods + other));
         var (_, collectionProblems) = Build(Source("[MapCollection(nameof(ZooDto.Dogs), Mapper = nameof(ToDto))]", methods + other));
 
-        Assert.Equal(["SMP0211"], nestedProblems);
-        Assert.Equal(["SMP0210"], collectionProblems);
+        Assert.Equal(["SMP0214"], nestedProblems);
+        Assert.Equal(["SMP0213"], collectionProblems);
     }
 
     // Methods the call does not bind to leave the match as it is: other types, a generic one the argument does not give

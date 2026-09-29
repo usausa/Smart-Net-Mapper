@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A converter, a condition and a [MapUsing] method take the value by an implicit conversion as well, where only a
-// parameter of the type of the value matched (SMP0104 / SMP0106 / SMP0201): to a base class or an interface (a
+// parameter of the type of the value matched (SMP0110 / SMP0112 / SMP0201): to a base class or an interface (a
 // converter taking IEnumerable<string> for a List<string>), boxing, a wider number, a nullable struct, or a
 // user-defined implicit conversion, to a parameter taken by value; a parameter by in takes the type of the value only.
 // A nullable struct goes to a method taking the struct it holds, or a type that struct converts to implicitly, as its
@@ -343,12 +343,12 @@ public class ParameterConversionTests
         "[MapProperty(nameof(Dst.Text), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static string Show(IHasName x) => x.Name; private static string Show(IAudited x) => \"\";",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0104")]
+        "SMP0110")]
     [InlineData(
         "[MapCondition(nameof(Dst.Note), nameof(Check))] [MapProperty(nameof(Dst.Note), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static bool Check(IHasName x) => true; private static bool Check(IAudited x) => true; private static string Show(Person x) => x.Name;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0106")]
+        "SMP0112")]
     [InlineData(
         "[MapUsing(nameof(Dst.Text), nameof(Label))]",
         "private static string Label(IHasName x) => x.Name; private static string Label(IAudited x) => \"\";",
@@ -367,17 +367,17 @@ public class ParameterConversionTests
         "[MapProperty(nameof(Dst.Text), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static int Show(Person x) => 0; private static string Show(IHasName x) => x.Name;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0105")]
+        "SMP0111")]
     [InlineData(
         "[MapProperty(nameof(Dst.Text), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static int Show(EntityBase x) => 0; private static string Show(object x) => \"\";",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0105")]
+        "SMP0111")]
     [InlineData(
         "[MapCondition(nameof(Dst.Note), nameof(Check))] [MapProperty(nameof(Dst.Note), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static int Check(IHasName x) => 0; private static bool Check(object x) => true; private static string Show(Person x) => x.Name;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0106")]
+        "SMP0112")]
     [InlineData(
         "[MapUsing(nameof(Dst.Text), nameof(Label))]",
         "private static int Label(IHasName x) => 0; private static string Label(object x) => \"\";",
@@ -397,12 +397,12 @@ public class ParameterConversionTests
         "[MapProperty(nameof(Dst.Text), nameof(Src.Entity), Converter = nameof(Show))]",
         "private static string Show(Person x) => x.Name;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0104")]
+        "SMP0110")]
     [InlineData(
         "[MapCondition(nameof(Dst.Text), nameof(Check))] [MapProperty(nameof(Dst.Text), nameof(Src.Entity), Converter = nameof(Show))]",
         "private static bool Check(Person x) => true; private static string Show(EntityBase x) => \"\";",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0106")]
+        "SMP0112")]
     [InlineData(
         "[MapUsing(nameof(Dst.Text), nameof(Label))]",
         "private static string Label(Person x) => x.Name;",
@@ -412,7 +412,7 @@ public class ParameterConversionTests
         "[MapProperty(nameof(Dst.Text), nameof(Src.Old), Converter = nameof(Show))]",
         "private static string Show(string x) => x;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0104")]
+        "SMP0110")]
     public void ExplicitConversionIsNotTaken(string attributes, string methods, string mapper, string expected)
     {
         var (_, problems) = Build(Source(attributes, methods, mapper));
@@ -434,7 +434,7 @@ public class ParameterConversionTests
             "[MapProperty(nameof(Dst.Text), nameof(Src.Owner), Converter = nameof(Show))]",
             "private static string Show(IHasName x) => x.Name; " + other));
 
-        Assert.Equal(["SMP0104"], problems);
+        Assert.Equal(["SMP0110"], problems);
     }
 
     // A method the call does not bind to over the one taking the value by a reference conversion leaves the match as it
@@ -483,17 +483,17 @@ public class ParameterConversionTests
         "[MapProperty(nameof(Dst.Text), nameof(Src.Owner), Converter = nameof(Show))]",
         "private static string Show(in IHasName x) => x.Name;",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0104")]
+        "SMP0110")]
     [InlineData(
         "[MapProperty(nameof(Dst.Text), nameof(Src.Count), Converter = nameof(Show))]",
         "private static string Show(in long x) => \"\";",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0104")]
+        "SMP0110")]
     [InlineData(
         "[MapCondition(nameof(Dst.Text), nameof(Check))] [MapProperty(nameof(Dst.Text), nameof(Src.Count), Converter = nameof(Show))]",
         "private static bool Check(in object x) => true; private static string Show(int x) => \"\";",
         "public static partial void Map(Src src, Dst dst);",
-        "SMP0106")]
+        "SMP0112")]
     public void InParameterTakesOwnTypeOnly(string attributes, string methods, string mapper, string expected)
     {
         var (_, problems) = Build(Source(attributes, methods, mapper));
@@ -571,7 +571,7 @@ public class ParameterConversionTests
     {
         var (_, problems) = Build(Source(attributes, methods));
 
-        Assert.Equal(["SMP0104"], problems);
+        Assert.Equal(["SMP0110"], problems);
     }
 
     // The overload of the type of the value chosen, taking every argument by value first, has to be the one the call
@@ -579,8 +579,8 @@ public class ParameterConversionTests
     // error as not matching, where the call bound to them. One of a derived class the call binds to, which leaves out
     // those of its base classes, is used instead.
     [Theory]
-    [InlineData("private static long Show(int x) => x; private static string Show(in int x) => \"\";", "SMP0105")]
-    [InlineData("[Obsolete(\"\", true)] private static string Show(int x) => \"\"; private static string Show(in int x) => \"\";", "SMP0104")]
+    [InlineData("private static long Show(int x) => x; private static string Show(in int x) => \"\";", "SMP0111")]
+    [InlineData("[Obsolete(\"\", true)] private static string Show(int x) => \"\"; private static string Show(in int x) => \"\";", "SMP0110")]
     public void ExactChoiceTheCallDoesNotBindToIsReported(string methods, string expected)
     {
         var (_, problems) = Build(Source("[MapProperty(nameof(Dst.Text), nameof(Src.Count), Converter = nameof(Show))]", methods));

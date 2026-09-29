@@ -45,20 +45,20 @@ public class DiagnosticLocationTests
 
     // At the attribute that is the cause
     [Theory]
-    [InlineData("    [Mapper(AutoMap = false)]\n    [MapProperty(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0213")]
-    [InlineData("    [Mapper(AutoMap = false)]\n    [MapProperty(\"Missing\", nameof(Src.X))] /*here*/", "", "SMP0214")]
-    [InlineData("    [Mapper]\n    [MapProperty(nameof(Dst.Y), nameof(Src.X), Converter = \"Missing\")] /*here*/", "", "SMP0104")]
-    [InlineData("    [Mapper]\n    [MapCondition(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0106")]
-    [InlineData("    [Mapper]\n    [BeforeMap(\"Missing\")] /*here*/", "", "SMP0102")]
-    [InlineData("    [Mapper]\n    [AfterMap(\"Missing\")] /*here*/", "", "SMP0103")]
+    [InlineData("    [Mapper(AutoMap = false)]\n    [MapProperty(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0108")]
+    [InlineData("    [Mapper(AutoMap = false)]\n    [MapProperty(\"Missing\", nameof(Src.X))] /*here*/", "", "SMP0102")]
+    [InlineData("    [Mapper]\n    [MapProperty(nameof(Dst.Y), nameof(Src.X), Converter = \"Missing\")] /*here*/", "", "SMP0110")]
+    [InlineData("    [Mapper]\n    [MapCondition(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0112")]
+    [InlineData("    [Mapper]\n    [BeforeMap(\"Missing\")] /*here*/", "", "SMP0106")]
+    [InlineData("    [Mapper]\n    [AfterMap(\"Missing\")] /*here*/", "", "SMP0107")]
     [InlineData("    [Mapper(AutoMap = false)]\n    [MapUsing(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0201")]
     [InlineData("    [Mapper(AutoMap = false)]\n    [MapFrom(nameof(Dst.Y), \"Missing\")] /*here*/", "", "SMP0204")]
     [InlineData("    [Mapper(AutoMap = false)]\n    [MapNested(nameof(Dst.Item), \"Missing\", Mapper = nameof(MapChild))] /*here*/", "public static partial Child MapChild(Child source);", "SMP0206")]
-    [InlineData("    [Mapper(AutoMap = false)]\n    [MapNested(nameof(Dst.Item), Mapper = \"Missing\")] /*here*/", "", "SMP0211")]
-    [InlineData("    [Mapper(AutoMap = false)]\n    [MapConstant(nameof(Dst.Y), \"text\")] /*here*/", "", "SMP0218")]
-    [InlineData("    [Mapper]\n    [MapIgnore(\"Item.V\")] /*here*/", "", "SMP0223")]
-    [InlineData("    [Mapper(AutoMap = false)]\n    [MapCondition(nameof(Dst.Y), nameof(Can))] /*here*/", "private static bool Can(Src src) => true;", "SMP0221")]
-    [InlineData("    [Mapper(Culture = \"not a culture\")] /*here*/", "", "SMP0404")]
+    [InlineData("    [Mapper(AutoMap = false)]\n    [MapNested(nameof(Dst.Item), Mapper = \"Missing\")] /*here*/", "", "SMP0214")]
+    [InlineData("    [Mapper(AutoMap = false)]\n    [MapConstant(nameof(Dst.Y), \"text\")] /*here*/", "", "SMP0216")]
+    [InlineData("    [Mapper]\n    [MapIgnore(\"Item.V\")] /*here*/", "", "SMP0103")]
+    [InlineData("    [Mapper(AutoMap = false)]\n    [MapCondition(nameof(Dst.Y), nameof(Can))] /*here*/", "private static bool Can(Src src) => true;", "SMP0109")]
+    [InlineData("    [Mapper(Culture = \"not a culture\")] /*here*/", "", "SMP0401")]
     public void DiagnosticOfAttributeIsReportedAtAttribute(string attributes, string members, string id)
     {
         AssertReportedAtMarker(Source(attributes, members), id);
@@ -79,7 +79,7 @@ public class DiagnosticLocationTests
     [Fact]
     public void ProfileValueIsReportedAtProfile()
     {
-        AssertReportedAtMarker(Source("    [Mapper]", classAttributes: "[MapperProfile(Culture = \"not a culture\")] /*here*/"), "SMP0404");
+        AssertReportedAtMarker(Source("    [Mapper]", classAttributes: "[MapperProfile(Culture = \"not a culture\")] /*here*/"), "SMP0401");
     }
 
     // The converter class the [ValueConverter] of the class names lacks the overload taking the culture
@@ -90,14 +90,14 @@ public class DiagnosticLocationTests
             "    [Mapper(Culture = \"en-US\")]\n    [MapProperty(nameof(Dst.Text), nameof(Src.X))]",
             classAttributes: "public static class MyConverter { public static string ConvertToString(int value) => \"\"; public static TD Convert<TS, TD>(TS value) => default!; }\n[ValueConverter(typeof(MyConverter))] /*here*/");
 
-        AssertReportedAtMarker(source, "SMP0104");
+        AssertReportedAtMarker(source, "SMP0110");
     }
 
     // The automatic mapping, the construction and the method itself are reported at the method
     [Theory]
-    [InlineData("    [Mapper] /*here*/", "public static partial Rec Map(Src src);", "SMP0301")]
-    [InlineData("    [Mapper] /*here*/", "public static partial IDisposable Map(Src src);", "SMP0305")]
-    [InlineData("    [Mapper] /*here*/", "public static partial Dst Map(Src src, System.Globalization.CultureInfo a, System.Globalization.CultureInfo b);", "SMP0406")]
+    [InlineData("    [Mapper] /*here*/", "public static partial Rec Map(Src src);", "SMP0305")]
+    [InlineData("    [Mapper] /*here*/", "public static partial IDisposable Map(Src src);", "SMP0303")]
+    [InlineData("    [Mapper] /*here*/", "public static partial Dst Map(Src src, System.Globalization.CultureInfo a, System.Globalization.CultureInfo b);", "SMP0008")]
     public void DiagnosticOfMethodIsReportedAtMethod(string attributes, string signature, string id)
     {
         AssertReportedAtMarker(Source(attributes, signature: signature), id);

@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 
 // The methods the attributes name are looked up as C# looks up the simple name the generated code calls them by: in the
 // mapper class and its base classes (protected ones included, as the mapper class can call them), or else in the class
-// containing it and its base classes, and so on outward, where only the mapper class was looked in (SMP0104 and the
+// containing it and its base classes, and so on outward, where only the mapper class was looked in (SMP0110 and the
 // others otherwise). The first class having a member of the name the call can invoke is the only one looked in, as in
 // C#, and a member the call cannot invoke (a property or a field not of a delegate type, a nested type) is passed over,
 // where it hid the methods outside. The call has to bind to the method matched: one of a derived class hides those of
@@ -133,7 +133,7 @@ public class MethodLookupTests
     {
         var (_, problems) = Build(Source(Converter, members: members, baseMembers: baseMembers, outerMembers: "private " + Upper));
 
-        Assert.Equal(["SMP0104"], problems);
+        Assert.Equal(["SMP0110"], problems);
     }
 
     // A member the call cannot invoke is passed over, as C# passes it over for a call: a property or a field of another
@@ -157,7 +157,7 @@ public class MethodLookupTests
     // is
     [Theory]
     [InlineData("private " + Upper, "private " + Upper, null)]
-    [InlineData("private " + Upper, "", "SMP0104")]
+    [InlineData("private " + Upper, "", "SMP0110")]
     public void InaccessibleMethodIsNotFound(string baseMembers, string outerMembers, string? expected)
     {
         var (generated, problems) = Build(Source(Converter, baseMembers: baseMembers, outerMembers: outerMembers));
@@ -202,8 +202,8 @@ public class MethodLookupTests
         Assert.DoesNotContain("src.Nick is not null", generated, StringComparison.Ordinal);
     }
 
-    // An instance method is not taken, and hides a static method of a base class of the same signature, as the static
-    // mapper could not call it (CS0120)
+    // An instance method is not taken, and hides a static method of a base class of the same signature, so the static
+    // mapper names an instance method only, which it cannot call (CS0120)
     [Fact]
     public void InstanceMethodIsNotTaken()
     {
@@ -212,6 +212,6 @@ public class MethodLookupTests
             members: "private string Upper(string value) => value;",
             baseMembers: "protected " + Upper));
 
-        Assert.Equal(["SMP0104"], problems);
+        Assert.Equal(["SMP0105"], problems);
     }
 }

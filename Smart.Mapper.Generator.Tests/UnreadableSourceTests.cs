@@ -68,9 +68,9 @@ public class UnreadableSourceTests
     }
 
     [Theory]
-    [InlineData("[MapProperty(nameof(Dst.Y), \"X\")]", "SMP0213")]
-    [InlineData("[MapProperty(nameof(Dst.Y), \"SetOnly\")]", "SMP0213")]
-    [InlineData("[MapProperty(nameof(Dst.Y), \"Child.V\")]", "SMP0213")]
+    [InlineData("[MapProperty(nameof(Dst.Y), \"X\")]", "SMP0108")]
+    [InlineData("[MapProperty(nameof(Dst.Y), \"SetOnly\")]", "SMP0108")]
+    [InlineData("[MapProperty(nameof(Dst.Y), \"Child.V\")]", "SMP0108")]
     [InlineData("[MapFrom(nameof(Dst.Y), \"Child.V\")]", "SMP0204")]
     [InlineData("[MapNested(nameof(Dst.Nested), Mapper = nameof(MapItem))]", "SMP0206")]
     [InlineData("[MapCollection(nameof(Dst.Items), Mapper = nameof(MapItem))]", "SMP0206")]
@@ -88,7 +88,7 @@ public class UnreadableSourceTests
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(string.Empty, "public record Dst(int X);", "[Mapper]"));
 
-        Assert.Equal("SMP0301", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
+        Assert.Equal("SMP0305", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }
 }

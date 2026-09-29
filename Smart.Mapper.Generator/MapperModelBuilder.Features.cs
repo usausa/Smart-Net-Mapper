@@ -59,12 +59,12 @@ internal static partial class MapperModelBuilder
     }
 
     // [MapIgnore] and [MapCondition] name a target that has to exist, or they would do nothing without a word:
-    // a property or field of the destination, a dotted path of them (for [MapCondition]; SMP0223 for
+    // a property or field of the destination, a dotted path of them (for [MapCondition]; SMP0103 for
     // [MapIgnore]), or a parameter of the constructor a return mapper calls (or, for [MapIgnore], of one it
     // could call, which the parameter without a value keeps from being chosen). The names are canonical here
     // (CanonicalizeTargetNames), so they are matched as declared, under the mapper's name comparison. Not
-    // found, it is reported as a target that is not found (SMP0214); a [MapCondition] on a member no property
-    // mapping assigns is reported later (SMP0221).
+    // found, it is reported as a target that is not found (SMP0102); a [MapCondition] on a member no property
+    // mapping assigns is reported later (SMP0109).
     internal static DiagnosticInfo? ValidateIgnoredAndConditionTargets(
         MapperMethodModel model,
         ITypeSymbol destinationType,
@@ -113,7 +113,7 @@ internal static partial class MapperModelBuilder
     // A dotted path into a member the constructor of a return mapper assigns from an argument (a parameter
     // matching the member, as the arguments are bound) would write, after construction, into the object passed
     // to the constructor, which is the source's own when the argument copies it. It is reported instead,
-    // whichever attribute the path is of (SMP0222). A void mapper never constructs, so it is not concerned.
+    // whichever attribute the path is of (SMP0301). A void mapper never constructs, so it is not concerned.
     internal static DiagnosticInfo? ValidateConstructorAssignedPaths(
         MapperMethodModel model,
         ITypeSymbol destinationType,
@@ -159,8 +159,8 @@ internal static partial class MapperModelBuilder
 
     // A [MapCondition] guards the property mapping of its target, the automatic one or a [MapProperty]. On a
     // target no property mapping assigns (nothing maps it, it is ignored, or another attribute assigns it,
-    // which the condition does not guard), it would do nothing without a word, so it is reported (SMP0221).
-    // The mappings of constructor arguments and initializer entries were reported before (SMP0215).
+    // which the condition does not guard), it would do nothing without a word, so it is reported (SMP0109).
+    // The mappings of constructor arguments and initializer entries were reported before (SMP0306).
     internal static DiagnosticInfo? ValidateConditionTargetsMapped(MapperMethodModel model, MethodDeclarationSyntax syntax)
     {
         foreach (var condition in model.PropertyConditions)
@@ -351,7 +351,8 @@ internal static partial class MapperModelBuilder
                 IsTargetRequired = target.IsRequired,
                 CustomArguments = match.CustomArguments,
                 ParameterRefKinds = GetParameterRefKinds(matchedMethod),
-                ForgivesNull = IsNullableReference(matchedMethod.ReturnType) && !target.Type.IsNullableType() && !ReturnsNotNullForValue(matchedMethod, compilation)
+                ForgivesNull = (IsNullableReference(matchedMethod.ReturnType) || ReturnsMaybeNull(matchedMethod)) && !target.Type.IsNullableType() &&
+                               !ReturnsNotNullForValue(matchedMethod, compilation)
             });
         }
 
@@ -725,7 +726,9 @@ internal static partial class MapperModelBuilder
                         mapCollection.TargetName);
                 }
 
-                canCallMapper = (m, _) => converterMethods.Any(c => IsDelegateFor(c.Parameters[1].Type, m));
+                // An instance method of a ref struct makes no delegate, which would box the instance
+                canCallMapper = (m, _) => (m.IsStatic || !m.ContainingType.IsRefLikeType) &&
+                                          converterMethods.Any(c => IsDelegateFor(c.Parameters[1].Type, m));
             }
             else
             {
@@ -806,7 +809,8 @@ internal static partial class MapperModelBuilder
                 UnwrapsSource = unwrapsElement,
                 NullResult = GetNullResult(elementMapper, targetElementType),
                 MapperParameterRefKinds = GetParameterRefKinds(elementMapper),
-                MapperCustomArguments = GetCustomArgumentText(elementMapper, matchedElementMapper.CustomArguments, model.CustomParameters)
+                MapperCustomArguments = GetCustomArgumentText(elementMapper, matchedElementMapper.CustomArguments, model.CustomParameters),
+                PassesNonNullCulture = matchedElementMapper.CustomArguments.Any(static i => i < 0)
             });
         }
 
@@ -945,7 +949,8 @@ internal static partial class MapperModelBuilder
                 UnwrapsSource = matchedNestedMapper.UnwrapsSource,
                 NullResult = GetNullResult(nestedMapper, targetMemberType),
                 MapperParameterRefKinds = GetParameterRefKinds(nestedMapper),
-                MapperCustomArguments = GetCustomArgumentText(nestedMapper, matchedNestedMapper.CustomArguments, model.CustomParameters)
+                MapperCustomArguments = GetCustomArgumentText(nestedMapper, matchedNestedMapper.CustomArguments, model.CustomParameters),
+                PassesNonNullCulture = matchedNestedMapper.CustomArguments.Any(static i => i < 0)
             });
         }
 
@@ -989,8 +994,10 @@ internal static partial class MapperModelBuilder
             ? "default(" + target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ")"
             : "default!";
 
+    // A mapper returning a nullable reference, or one whose return [MaybeNull] says may be null
     private static bool ReturnsNullable(IMethodSymbol mapper) =>
-        !mapper.ReturnsVoid && mapper.ReturnType.IsReferenceType && (mapper.ReturnType.NullableAnnotation == NullableAnnotation.Annotated);
+        !mapper.ReturnsVoid && mapper.ReturnType.IsReferenceType &&
+        ((mapper.ReturnType.NullableAnnotation == NullableAnnotation.Annotated) || ReturnsMaybeNull(mapper));
 
     // Whether a method returning a nullable reference returns one that is not null for a first argument that is not
     // null: [return: NotNullIfNotNull] names its first parameter, or it is a [Mapper] the generated code puts the
@@ -1040,8 +1047,9 @@ internal static partial class MapperModelBuilder
     // (BindCall), which may be another one: one matched of the same shape is used instead, and none otherwise (a
     // more specific one returning another type, a generic one, one with optional parameters, one obsolete as an
     // error), as the call would bind to it. After the source (and the instance of a void one) it takes the custom
-    // parameters of the mapper it declares (MapCustomArguments), one taking more of them going first, which a mapper
-    // handed to a collection converter as a delegate cannot take.
+    // parameters of the mapper it declares (MapCustomArguments), one taking more of them going first, and none of
+    // several taking as many but other ones (TakeDifferentCustomParameters), which a mapper handed to a collection
+    // converter as a delegate cannot take.
     internal static MapperMatch? FindMapperMethod(
         INamedTypeSymbol containingType,
         string methodName,
@@ -1059,7 +1067,7 @@ internal static partial class MapperModelBuilder
         foreach (var method in methods.Where(IsCallableByName))
         {
             if (MatchesMapperShape(method, sourceElementType, targetElementType, compilation, sourceArgument is not null, out var score, out var unwraps) &&
-                (MapCustomArguments(method, method.ReturnsVoid ? 2 : 1, customParams) is { } custom) &&
+                (MapCustomArguments(method, method.ReturnsVoid ? 2 : 1, customParams, customTypes, compilation) is { } custom) &&
                 ((sourceArgument is not null) || (custom.Length == 0)) &&
                 canCall(method, unwraps))
             {
@@ -1074,6 +1082,11 @@ internal static partial class MapperModelBuilder
 
         var mostCustom = matches.Max(static m => m.Custom.Length);
         var preferred = matches.Where(m => m.Custom.Length == mostCustom).ToList();
+        if ((preferred.Count > 1) && TakeDifferentCustomParameters(preferred.Select(static m => m.Custom).ToList()))
+        {
+            return null;
+        }
+
         var closestScore = preferred.Min(static m => m.Score);
         var closest = preferred.Where(m => m.Score == closestScore).ToList();
         var returnsVoid = closest[0].Method.ReturnsVoid;
@@ -1118,19 +1131,22 @@ internal static partial class MapperModelBuilder
     }
 
     // The custom parameters a mapper of [MapCollection] / [MapNested] takes after the source (and the instance of a void
-    // one), as the arguments the generated code appends to its call, each with the modifier of the parameter taking it
+    // one), as the arguments the generated code appends to its call, each with the modifier of the parameter taking it,
+    // or the culture not null (MapCustomArguments)
     private static string GetCustomArgumentText(IMethodSymbol mapper, EquatableArray<int> customArguments, EquatableArray<CustomParameterModel> customParams)
     {
         var first = mapper.ReturnsVoid ? 2 : 1;
         return String.Concat(Enumerable.Range(0, customArguments.Count).Select(i =>
             ", " +
-            GetArgumentModifierKind(mapper.Parameters[first + i].RefKind) switch
-            {
-                RefKind.Ref => "ref ",
-                RefKind.In => "in ",
-                _ => string.Empty
-            } +
-            customParams[customArguments[i]].Name));
+            (customArguments[i] < 0
+                ? customParams[~customArguments[i]].NonNullArgument
+                : GetArgumentModifierKind(mapper.Parameters[first + i].RefKind) switch
+                  {
+                      RefKind.Ref => "ref ",
+                      RefKind.In => "in ",
+                      _ => string.Empty
+                  } +
+                  customParams[customArguments[i]].Name)));
     }
 
     // What the call of the mapper of [MapCollection] / [MapNested] passes: the source, or the value a nullable struct
@@ -1159,7 +1175,7 @@ internal static partial class MapperModelBuilder
         var first = arguments.Count;
         for (var i = 0; i < custom.Length; i++)
         {
-            arguments.Add(new CallArgument(customTypes[custom[i]], GetArgumentModifierKind(mapper.Parameters[first + i].RefKind)));
+            arguments.Add(CustomCallArgument(custom[i], customTypes, mapper.Parameters[first + i]));
         }
 
         return arguments;
@@ -1442,7 +1458,7 @@ internal static partial class MapperModelBuilder
         symbol.GetObsoleteKind() == ObsoleteKind.Warning;
 
     // A [MapConstant] value, and the NullValue of a mapping wherever the generated code writes it, have to be
-    // written as an expression (SMP0220 for one that cannot be, such as a file-local type) that converts to
+    // written as an expression (SMP0215 for one that cannot be, such as a file-local type) that converts to
     // the type it is assigned to the way the compiler converts it (an int constant to a long or a byte, null
     // to a reference), and that puts null only where the target takes it. One that does not is reported
     // instead of failing or warning in the generated code (CS0029 / CS0019 / CS0266 / CS8625 / CS8601 /
@@ -1844,7 +1860,7 @@ internal static partial class MapperModelBuilder
     private static bool IsAssignableField(IFieldSymbol field) =>
         !field.IsReadOnly && !field.IsConst && (field.GetObsoleteKind() != ObsoleteKind.Error);
 
-    // A dotted target path the generated code cannot assign: one it cannot reach or assign at all (SMP0214), or
+    // A dotted target path the generated code cannot assign: one it cannot reach or assign at all (SMP0102), or
     // one only an object initializer reaches, in a void mapper, which never constructs (SMP0302).
     private static DiagnosticInfo? ValidateTargetPath(
         MapperMethodModel model,
@@ -1871,7 +1887,7 @@ internal static partial class MapperModelBuilder
         return null;
     }
 
-    // A target that is not found or cannot be assigned (SMP0214), told apart when it is a dotted path going through a
+    // A target that is not found or cannot be assigned (SMP0102), told apart when it is a dotted path going through a
     // nullable struct (Location.Lat for a GeoPoint? Location): the path would write into the struct it holds, a copy
     // read through Value that no setter takes back, so a dotted target does not go through one, as a dotted source does.
     private static DiagnosticDescriptor GetUnassignableTargetDescriptor(ITypeSymbol destinationType, string path, INamedTypeSymbol within, Compilation compilation)

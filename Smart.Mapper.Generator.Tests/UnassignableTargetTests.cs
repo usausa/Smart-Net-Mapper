@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 // A property whose setter the mapper class cannot call (get-only, or a private setter) is left out of the
 // automatic mapping, as a get-only one was, unless a constructor assigns it. Named explicitly, it is
-// reported as an unassignable target (SMP0214) instead of failing in the generated code with CS0200 /
+// reported as an unassignable target (SMP0102) instead of failing in the generated code with CS0200 /
 // CS0272. Strict mode does not report it as unmapped, as it did not for get-only properties.
 public class UnassignableTargetTests
 {
@@ -114,7 +114,7 @@ public class UnassignableTargetTests
     [InlineData("[MapFrom(nameof(Dst.Name), nameof(Src.GetName))]", "")]
     public void ExplicitTargetMapperCannotAssignEmitsDiagnostic(string attributes, string members)
     {
-        AssertDiagnostic(Source("[Mapper(AutoMap = false)]", attributes, members: members), "SMP0214");
+        AssertDiagnostic(Source("[Mapper(AutoMap = false)]", attributes, members: members), "SMP0102");
     }
 
     [Theory]

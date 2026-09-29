@@ -107,7 +107,7 @@ public class ConverterTypeResolutionTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(converter, attributes));
 
         var diagnostic = Assert.Single(diagnostics, d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0104", diagnostic.Id);
+        Assert.Equal("SMP0110", diagnostic.Id);
     }
 
     // A dotted source path to a parsable type, nested or not, is parsed. Its types used to be compared and

@@ -73,4 +73,40 @@ public class CultureFormatPrecedenceTests
         AssertCompiles(source);
         Assert.Contains(call, GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
+
+    [Theory]
+    // The Parse of IParsable<T> takes no format, so a format of the method or a profile leaves it to parse the text
+    [InlineData("", "[Mapper(NumberFormat = \"N2\")]", "global::Test.Money.Parse(src.Price, global::System.Globalization.CultureInfo.InvariantCulture)")]
+    [InlineData("", "[Mapper(DateTimeFormat = \"yyyy-MM-dd\")]", "global::Test.Money.Parse(src.Price, global::System.Globalization.CultureInfo.InvariantCulture)")]
+    [InlineData("[assembly: MapperProfile(DateTimeFormat = \"yyyy-MM-dd\")]", "[Mapper]", "global::Test.Money.Parse(src.Price, global::System.Globalization.CultureInfo.InvariantCulture)")]
+    [InlineData("", "[Mapper(Culture = \"de-DE\", NumberFormat = \"N2\")]", "global::Test.Money.Parse(src.Price, __culture_de_DE)")]
+    // A number is parsed by the value converter, with the format
+    [InlineData("", "[Mapper(NumberFormat = \"N2\")]", "ConvertToDecimal(src.Amount, global::System.Globalization.CultureInfo.InvariantCulture, \"N2\")")]
+    public void FormatLeavesParsableToParse(string assemblyAttributes, string mapper, string call)
+    {
+        var source = $$"""
+            #nullable enable
+            using System;
+            using Smart.Mapper;
+            {{assemblyAttributes}}
+            namespace Test;
+            public readonly struct Money : IParsable<Money>
+            {
+                public decimal Value { get; init; }
+                public static Money Parse(string s, IFormatProvider? provider) => new() { Value = decimal.Parse(s, provider) };
+                public static bool TryParse(string? s, IFormatProvider? provider, out Money result) { result = default; return false; }
+            }
+            public class Src { public string Price { get; set; } = ""; public string Amount { get; set; } = ""; }
+            public class Dst { public Money Price { get; set; } public decimal Amount { get; set; } }
+            public static partial class M
+            {
+                {{mapper}}
+                public static partial Dst Map(Src src);
+            }
+            """;
+
+        AssertCompiles(source);
+        Assert.DoesNotContain(GeneratorTestHelper.GetDiagnostics(source), static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
+        Assert.Contains(call, GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
+    }
 }

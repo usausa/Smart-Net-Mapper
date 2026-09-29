@@ -7,9 +7,9 @@ using Microsoft.CodeAnalysis;
 
 // A collection class of its own, such as class ItemList : List<Item>, is a collection by the IEnumerable<T>
 // it implements through its base type or interfaces, on the source and on the target. It used to be
-// reported as not a collection (SMP0208 / SMP0209). A target of such a class, generic or not, that cannot
+// reported as not a collection (SMP0210 / SMP0211). A target of such a class, generic or not, that cannot
 // take the List<T> the loop builds is created with its own constructor and filled through ICollection<T>;
-// one the mapper cannot create is reported (SMP0217).
+// one the mapper cannot create is reported (SMP0212).
 public class CollectionClassTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -98,10 +98,10 @@ public class CollectionClassTests
 
     [Theory]
     // A class the mapper cannot create, or one that is only a sequence
-    [InlineData("public List<E1> Items { get; set; } = [];", "public E2NoCtorList Items { get; set; } = new(0);", "SMP0217")]
-    [InlineData("public List<E1> Items { get; set; } = [];", "public E2Sequence Items { get; set; } = new();", "SMP0217")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public E2NoCtorList Items { get; set; } = new(0);", "SMP0212")]
+    [InlineData("public List<E1> Items { get; set; } = [];", "public E2Sequence Items { get; set; } = new();", "SMP0212")]
     // A string is not a collection of chars
-    [InlineData("public string Items { get; set; } = \"\";", "public List<E2> Items { get; set; } = [];", "SMP0208")]
+    [InlineData("public string Items { get; set; } = \"\";", "public List<E2> Items { get; set; } = [];", "SMP0210")]
     public void CollectionClassThatCannotBeMappedEmitsDiagnostic(string sourceMember, string targetMember, string id)
     {
         AssertDiagnostic(Source(sourceMember, targetMember), id);

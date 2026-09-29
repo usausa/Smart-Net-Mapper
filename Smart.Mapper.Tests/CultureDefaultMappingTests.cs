@@ -105,6 +105,25 @@ public sealed partial class CultureDefaultMappingTests
         Assert.Equal("de-DE:1,5", destination.Culture);
     }
 
+    // The Parse of IParsable<T> takes no format, so a format leaves the text to it
+    [Fact]
+    public void FormatLeavesParsableToParse()
+    {
+        var destination = InvariantMappers.ParseFormatted(new AmountText { Value = "1234.5" });
+
+        Assert.Equal(1234.5m, destination.Value.Value);
+    }
+
+    // A nested mapper taking a culture not null gets the one the conversions go with, the culture of the method for null
+    [Fact]
+    public void NullCultureParameterGoesToNestedMapperAsCultureOfMethod()
+    {
+        var source = new AmountHolder { Price = new Amount { Value = 1234.5m } };
+
+        Assert.Equal("1234,5", GermanMappers.MapHolder(source, null).Price.Value);
+        Assert.Equal("1234.5", GermanMappers.MapHolder(source, English).Price.Value);
+    }
+
     public sealed class Amount
     {
         public decimal Value { get; set; }
@@ -112,6 +131,16 @@ public sealed partial class CultureDefaultMappingTests
         public decimal Other { get; set; }
 
         public DateTime At { get; set; }
+    }
+
+    public sealed class AmountHolder
+    {
+        public Amount Price { get; set; } = new();
+    }
+
+    public sealed class AmountTextHolder
+    {
+        public AmountText Price { get; set; } = new();
     }
 
     public sealed class AmountText
@@ -123,6 +152,25 @@ public sealed partial class CultureDefaultMappingTests
         public string At { get; set; } = string.Empty;
 
         public string Culture { get; set; } = string.Empty;
+    }
+
+    public sealed class Money : IParsable<Money>
+    {
+        public decimal Value { get; init; }
+
+        public static Money Parse(string s, IFormatProvider? provider) => new() { Value = Decimal.Parse(s, provider) };
+
+        public static bool TryParse(string? s, IFormatProvider? provider, out Money result)
+        {
+            var parsed = Decimal.TryParse(s, provider, out var value);
+            result = new Money { Value = value };
+            return parsed;
+        }
+    }
+
+    public sealed class ParsedAmount
+    {
+        public Money Value { get; set; } = new();
     }
 
     internal static partial class InvariantMappers
@@ -151,6 +199,9 @@ public sealed partial class CultureDefaultMappingTests
         public static partial AmountText MapWithCallback(Amount source, CultureInfo culture);
 
         private static void SetCulture(Amount source, AmountText destination, CultureInfo culture) => destination.Culture = culture.Name + ":" + source.Value.ToString(culture);
+
+        [Mapper(NumberFormat = "N2")]
+        public static partial ParsedAmount ParseFormatted(AmountText source);
     }
 
     [MapperProfile(DefaultCulture = MapperCulture.Current)]
@@ -168,5 +219,12 @@ public sealed partial class CultureDefaultMappingTests
     {
         [Mapper]
         public static partial AmountText MapWithOptional(Amount source, CultureInfo? culture);
+
+        [Mapper]
+        [MapNested(nameof(AmountTextHolder.Price), Mapper = nameof(MapAmount))]
+        public static partial AmountTextHolder MapHolder(AmountHolder source, CultureInfo? culture);
+
+        [Mapper]
+        private static partial AmountText MapAmount(Amount source, CultureInfo culture);
     }
 }

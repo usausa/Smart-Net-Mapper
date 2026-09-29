@@ -82,7 +82,7 @@ internal sealed record PropertyMappingModel(
     bool ConditionRejectsNull = default,
     NullBehaviorType NullBehavior = NullBehaviorType.Default,
     string? NullValue = default,
-    // Set for a NullValue that cannot be written (NullValue is then null, SMP0220), and for one that is
+    // Set for a NullValue that cannot be written (NullValue is then null, SMP0215), and for one that is
     // an array holding null
     bool IsNullValueUnsupported = default,
     bool NullValueHasNullElement = default,

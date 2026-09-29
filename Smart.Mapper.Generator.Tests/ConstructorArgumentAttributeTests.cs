@@ -7,10 +7,10 @@ using Microsoft.CodeAnalysis;
 
 // A member the constructor a return mapper calls assigns from an argument can be assigned by [MapConstant],
 // [MapExpression], [MapUsing], [MapFrom], [MapNested] or [MapCollection]: the value goes to the argument
-// (new Dst(Build(src))). It used to be reported as a member [MapIgnore] leaves out (SMP0216) without one. The value
+// (new Dst(Build(src))). It used to be reported as a member [MapIgnore] leaves out (SMP0304) without one. The value
 // is checked as when it is assigned to the member, and [MapNested] and [MapCollection] make theirs before
-// construction into locals the call passes; InPlace, which has no instance to refill there, is reported (SMP0219).
-// SMP0216 is left to [MapIgnore].
+// construction into locals the call passes; InPlace, which has no instance to refill there, is reported (SMP0208).
+// SMP0304 is left to [MapIgnore].
 public class ConstructorArgumentAttributeTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -114,8 +114,8 @@ public class ConstructorArgumentAttributeTests
 
     // The value is checked as when it is assigned to the member
     [Theory]
-    [InlineData("[MapConstant(\"Y\", \"text\")]", "SMP0218", "target=[Y]")]
-    [InlineData("[MapConstant(\"Item\", null)]", "SMP0218", "target=[Item]")]
+    [InlineData("[MapConstant(\"Y\", \"text\")]", "SMP0216", "target=[Y]")]
+    [InlineData("[MapConstant(\"Item\", null)]", "SMP0216", "target=[Item]")]
     [InlineData("[MapUsing(\"Y\", nameof(Text))]", "SMP0202", "using=[Text]")]
     public void ValueThatDoesNotFitEmitsDiagnostic(string attribute, string id, string text)
     {
@@ -132,14 +132,14 @@ public class ConstructorArgumentAttributeTests
     {
         AssertDiagnostic(
             Source("[MapCollection(\"Items\", Mapper = nameof(MapChild), Strategy = CollectionStrategy.InPlace)]", "public record Dst(List<Child> Items);"),
-            "SMP0219",
+            "SMP0208",
             "Items");
     }
 
     // [MapIgnore] of such a member is still reported, and a condition has no property mapping to guard
     [Theory]
-    [InlineData("[MapIgnore(\"Item\")]", "SMP0216", "Item")]
-    [InlineData("[MapExpression(\"Y\", \"1\")] [MapCondition(\"Y\", nameof(IsPositive))]", "SMP0221", "Y")]
+    [InlineData("[MapIgnore(\"Item\")]", "SMP0304", "Item")]
+    [InlineData("[MapExpression(\"Y\", \"1\")] [MapCondition(\"Y\", nameof(IsPositive))]", "SMP0109", "Y")]
     public void IgnoreAndConditionEmitDiagnostic(string attributes, string id, string target)
     {
         AssertDiagnostic(Source(attributes), id, target);

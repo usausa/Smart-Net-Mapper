@@ -8,8 +8,8 @@ using Microsoft.CodeAnalysis;
 // source (element) goes to a parameter taken by value through an implicit reference conversion, a nullable struct as
 // the value it holds after a null check (a null one giving default), the result goes to the target through an implicit
 // reference conversion or into a nullable struct, and the instance a void mapper fills goes to a parameter taken by
-// value through an implicit reference conversion. Such mappers used to be reported as not matching (SMP0211 /
-// SMP0210). An overload of the types themselves is taken over one through conversions, overloads matching through
+// value through an implicit reference conversion. Such mappers used to be reported as not matching (SMP0214 /
+// SMP0213). An overload of the types themselves is taken over one through conversions, overloads matching through
 // conversions alike are ambiguous and reported, and a mapper that no conversion reaches is reported as before.
 public class MapperTypeConversionTests
 {
@@ -107,7 +107,7 @@ public class MapperTypeConversionTests
     // of a nullable struct
     [Theory]
     [InlineData("[MapCollection(nameof(Dst.L), Mapper = nameof(ToChild))]", "static Child ToChild(SrcBase src) => new();", "")]
-    [InlineData("[MapCollection(nameof(Dst.N), Mapper = nameof(MapP))]", "static DP MapP(SP src) => new();", "SMP0210")]
+    [InlineData("[MapCollection(nameof(Dst.N), Mapper = nameof(MapP))]", "static DP MapP(SP src) => new();", "SMP0213")]
     public void ConverterTakesReferenceConversionsOnly(string attributes, string members, string id)
     {
         var (generated, problems) = Build(Source(attributes, members, classAttributes: "[CollectionConverter(typeof(DefaultCollectionConverter))]"));
@@ -147,6 +147,6 @@ public class MapperTypeConversionTests
     {
         var (_, problems) = Build(Source("[MapNested(nameof(Dst.AC), nameof(Src.A), Mapper = nameof(ToChild))]", members));
 
-        Assert.Equal("SMP0211", Assert.Single(problems));
+        Assert.Equal("SMP0214", Assert.Single(problems));
     }
 }

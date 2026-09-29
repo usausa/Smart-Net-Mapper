@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // A [MapCondition] guards the property mapping of its target: the automatic one, or a [MapProperty], also along a
 // dotted path. On a target no property mapping assigns it used to do nothing without a word: one nothing maps, one
 // ignored, and one another attribute assigns ([MapConstant], [MapExpression], [MapUsing], [MapFrom], [MapNested],
-// [MapCollection]), which the condition does not guard. It is reported (SMP0221).
+// [MapCollection]), which the condition does not guard. It is reported (SMP0109).
 public class UnguardedConditionTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -83,7 +83,7 @@ public class UnguardedConditionTests
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source(attributes, mapper));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0221", diagnostic.Id);
+        Assert.Equal("SMP0109", diagnostic.Id);
         Assert.Contains($"target=[{target}]", diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 

@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 // A dotted source whose intermediate member is null takes NullValue: in an assignment, an else of the null check of
 // the intermediate members gives NullValue to the mappings of the group that have one, as a constructor argument and
 // an object initializer already did. Without NullValue, and with NullBehavior.Skip or a [MapCondition], which has no
-// source value to test, the target is left as it is, as before. The NullValue given this way is checked (SMP0218).
+// source value to test, the target is left as it is, as before. The NullValue given this way is checked (SMP0216).
 public class NullValueIntermediateTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -138,6 +138,6 @@ public class NullValueIntermediateTests
     {
         var (_, problems) = Build(Source("[MapProperty(nameof(Dst.Value), \"C.Value\", NullValue = \"x\")]"));
 
-        Assert.Equal("SMP0218", Assert.Single(problems));
+        Assert.Equal("SMP0216", Assert.Single(problems));
     }
 }

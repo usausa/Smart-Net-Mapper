@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 // to construct without arguments then. It used to be called as any other, and the generated code warned (CS0618). A
 // type that constructs only through one still calls it, warning as before. The targets of the attributes choose before
 // an obsolete constructor is avoided, so one alone receiving the target of an attribute is called, warning as well,
-// where it used to be passed over for the target to be reported (SMP0214).
+// where it used to be passed over for the target to be reported (SMP0102).
 public class ObsoleteConstructorTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>

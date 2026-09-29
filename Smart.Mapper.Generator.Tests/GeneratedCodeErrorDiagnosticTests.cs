@@ -93,7 +93,7 @@ public class GeneratedCodeErrorDiagnosticTests
     [InlineData("public static TDest Convert<TSrc, TDest>(TSrc source, TDest other) => other;", "[Mapper]")]
     public void MissingValueConverterMethodEmitsDiagnostic(string converterMembers, string mapper)
     {
-        AssertDiagnostic(ValueConverterSource(converterMembers, mapper), "SMP0104");
+        AssertDiagnostic(ValueConverterSource(converterMembers, mapper), "SMP0110");
     }
 
     [Theory]
@@ -125,7 +125,7 @@ public class GeneratedCodeErrorDiagnosticTests
     [InlineData("", "[MapCollection(nameof(Dst.Items), Mapper = nameof(MapElem), Converter = \"ToBag\")] public static partial Dst Map(Src src);")]
     public void MissingCollectionConverterMethodEmitsDiagnostic(string types, string declaration)
     {
-        AssertDiagnostic(Source("static E2 MapElem(E1 s) => new();", declaration, CollectionSourceTypes + types), "SMP0104");
+        AssertDiagnostic(Source("static E2 MapElem(E1 s) => new();", declaration, CollectionSourceTypes + types), "SMP0110");
     }
 
     [Theory]
@@ -146,7 +146,7 @@ public class GeneratedCodeErrorDiagnosticTests
 
         AssertDiagnostic(
             Source("static void Fill(E1 s, NoCtor d) { }", "[MapCollection(nameof(NoCtorDst.Items), Mapper = nameof(Fill), Converter = \"ToList\")] public static partial NoCtorDst Map(Src src);", types),
-            "SMP0210");
+            "SMP0213");
     }
 
     // ------------------------------------------------------------------
@@ -155,14 +155,14 @@ public class GeneratedCodeErrorDiagnosticTests
 
     [Theory]
     // Replace builds a List<T> for a type that is not a collection class it can create
-    [InlineData("public Queue<E2> Items { get; set; } = new();", "", "SMP0217")]
+    [InlineData("public Queue<E2> Items { get; set; } = new();", "", "SMP0212")]
     // InPlace refills the target, which a read-only type cannot take (see InPlaceTargetTests)
-    [InlineData("public E2[] Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
-    [InlineData("public ImmutableArray<E2> Items { get; set; }", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
-    [InlineData("public IReadOnlyList<E2> Items { get; set; } = new List<E2>();", ", Strategy = CollectionStrategy.InPlace", "SMP0219")]
+    [InlineData("public E2[] Items { get; set; } = [];", ", Strategy = CollectionStrategy.InPlace", "SMP0208")]
+    [InlineData("public ImmutableArray<E2> Items { get; set; }", ", Strategy = CollectionStrategy.InPlace", "SMP0208")]
+    [InlineData("public IReadOnlyList<E2> Items { get; set; } = new List<E2>();", ", Strategy = CollectionStrategy.InPlace", "SMP0208")]
     // A target without a setter the mapper class can call, which Replace has to assign
-    [InlineData("public List<E2> Items { get; } = [];", "", "SMP0212")]
-    [InlineData("public List<E2> Items { get; private set; } = [];", "", "SMP0212")]
+    [InlineData("public List<E2> Items { get; } = [];", "", "SMP0209")]
+    [InlineData("public List<E2> Items { get; private set; } = [];", "", "SMP0209")]
     public void UnsupportedCollectionTargetEmitsDiagnostic(string targetMember, string options, string id)
     {
         var types = "public class Src { public List<E1> Items { get; set; } = []; } public class Dst { " + targetMember + " }";
@@ -205,7 +205,7 @@ public class GeneratedCodeErrorDiagnosticTests
     {
         var types = "public class Src { public E1? Child { get; set; } } public class Dst { public E2? Child { get; } }";
 
-        AssertDiagnostic(Source("static E2 MapChild(E1 s) => new();", "[MapNested(nameof(Dst.Child), Mapper = nameof(MapChild))] public static partial Dst Map(Src src);", types), "SMP0212");
+        AssertDiagnostic(Source("static E2 MapChild(E1 s) => new();", "[MapNested(nameof(Dst.Child), Mapper = nameof(MapChild))] public static partial Dst Map(Src src);", types), "SMP0209");
     }
 
     // ------------------------------------------------------------------
@@ -213,10 +213,10 @@ public class GeneratedCodeErrorDiagnosticTests
     // ------------------------------------------------------------------
 
     [Theory]
-    [InlineData("public List<NoCtor> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, NoCtor d) { }", "SMP0210")]
-    [InlineData("public NoCtor? Child { get; set; }", "[MapNested(nameof(Dst.Child), Mapper = nameof(Fill))]", "static void Fill(E1 s, NoCtor d) { }", "SMP0211")]
-    [InlineData("public List<Req> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, Req d) { }", "SMP0210")]
-    [InlineData("public List<Abs> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, Abs d) { }", "SMP0210")]
+    [InlineData("public List<NoCtor> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, NoCtor d) { }", "SMP0213")]
+    [InlineData("public NoCtor? Child { get; set; }", "[MapNested(nameof(Dst.Child), Mapper = nameof(Fill))]", "static void Fill(E1 s, NoCtor d) { }", "SMP0214")]
+    [InlineData("public List<Req> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, Req d) { }", "SMP0213")]
+    [InlineData("public List<Abs> Items { get; set; } = [];", "[MapCollection(nameof(Dst.Items), Mapper = nameof(Fill))]", "static void Fill(E1 s, Abs d) { }", "SMP0213")]
     public void VoidMapperForInstanceThatCannotBeCreatedEmitsDiagnostic(string targetMember, string attribute, string members, string id)
     {
         var types =

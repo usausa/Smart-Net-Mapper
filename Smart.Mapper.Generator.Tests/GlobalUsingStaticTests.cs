@@ -90,6 +90,6 @@ public class GlobalUsingStaticTests
     {
         var (_, problems) = Build(Source(usings, attributes, members));
 
-        Assert.Equal(["SMP0104"], problems);
+        Assert.Equal(["SMP0110"], problems);
     }
 }

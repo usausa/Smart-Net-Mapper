@@ -9,8 +9,8 @@ using Microsoft.CodeAnalysis;
 // Verifies resolution of explicit [MapProperty] renames onto members assigned through a constructor.
 //   - BuildPropertyMappings はセッターの無い対象を除外するため、get-only プロパティへの
 //     BuildPropertyMappings skips targets without a setter, so a rename onto a get-only property
-//     リネームはコンストラクタ解決時に失われていた（SMP0301 が誤発生していた）。
-//     used to be lost by the time constructor parameters were resolved (spurious SMP0301).
+//     リネームはコンストラクタ解決時に失われていた（SMP0305 が誤発生していた）。
+//     used to be lost by the time constructor parameters were resolved (spurious SMP0305).
 public class ConstructorParameterMappingTests
 {
     private static void AssertCompiles(string source)

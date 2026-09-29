@@ -106,18 +106,18 @@ public class ObsoleteMemberTests
 
     // Named by an attribute, one obsolete as an error is reported with the existing diagnostic of the attribute
     [Theory]
-    [InlineData("public class Src { public int A { get; set; } } public class Dst { [Obsolete(\"Old\", true)] public int A { get; set; } }", "[MapProperty(\"A\", \"A\")]", "", "SMP0214")]
-    [InlineData("public class Src { [Obsolete(\"Old\", true)] public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\")]", "", "SMP0213")]
-    [InlineData("public class Src { public Child Item { get; set; } = new(); } public class Dst { [Obsolete(\"Old\", true)] public Child Item { get; set; } = new(); }", "[MapProperty(\"Item.V\", \"Item.V\")]", "", "SMP0214")]
+    [InlineData("public class Src { public int A { get; set; } } public class Dst { [Obsolete(\"Old\", true)] public int A { get; set; } }", "[MapProperty(\"A\", \"A\")]", "", "SMP0102")]
+    [InlineData("public class Src { [Obsolete(\"Old\", true)] public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\")]", "", "SMP0108")]
+    [InlineData("public class Src { public Child Item { get; set; } = new(); } public class Dst { [Obsolete(\"Old\", true)] public Child Item { get; set; } = new(); }", "[MapProperty(\"Item.V\", \"Item.V\")]", "", "SMP0102")]
     [InlineData("public class Src { [Obsolete(\"Old\", true)] public int GetA() => 1; } public class Dst { public int A { get; set; } }", "[MapFrom(\"A\", \"GetA\")]", "", "SMP0204")]
-    [InlineData("public class Src { } public class Dst { [Obsolete(\"Old\", true)] public int Level; }", "[MapConstant(\"Level\", 1)]", "", "SMP0214")]
-    [InlineData("public class Src { public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\", Converter = nameof(Conv))]", "[Obsolete(\"Old\", true)] private static int Conv(int value) => value;", "SMP0104")]
-    [InlineData("public class Src { public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\")] [MapCondition(\"A\", nameof(Can))]", "[Obsolete(\"Old\", true)] private static bool Can(Src src) => true;", "SMP0106")]
+    [InlineData("public class Src { } public class Dst { [Obsolete(\"Old\", true)] public int Level; }", "[MapConstant(\"Level\", 1)]", "", "SMP0102")]
+    [InlineData("public class Src { public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\", Converter = nameof(Conv))]", "[Obsolete(\"Old\", true)] private static int Conv(int value) => value;", "SMP0110")]
+    [InlineData("public class Src { public int A { get; set; } } public class Dst { public int A { get; set; } }", "[MapProperty(\"A\", \"A\")] [MapCondition(\"A\", nameof(Can))]", "[Obsolete(\"Old\", true)] private static bool Can(Src src) => true;", "SMP0112")]
     [InlineData("public class Src { } public class Dst { public int A { get; set; } }", "[MapUsing(\"A\", nameof(Get))]", "[Obsolete(\"Old\", true)] private static int Get(Src src) => 1;", "SMP0201")]
-    [InlineData("public class Src { } public class Dst { }", "[BeforeMap(nameof(Before))]", "[Obsolete(\"Old\", true)] private static void Before(Src src, Dst dst) { }", "SMP0102")]
-    [InlineData("public class Src { } public class Dst { }", "[AfterMap(nameof(After))]", "[Obsolete(\"Old\", true)] private static void After(Src src, Dst dst) { }", "SMP0103")]
-    [InlineData("public class Src { public Child Item { get; set; } = new(); } public class Dst { public Child Item { get; set; } = new(); }", "[MapNested(\"Item\", Mapper = nameof(MapChild))]", "[Obsolete(\"Old\", true)] private static Child MapChild(Child source) => source;", "SMP0211")]
-    [InlineData("public class Src { public Child[] Items { get; set; } = []; } public class Dst { public Child[] Items { get; set; } = []; }", "[MapCollection(\"Items\", Mapper = nameof(MapChild))]", "[Obsolete(\"Old\", true)] private static Child MapChild(Child source) => source;", "SMP0210")]
+    [InlineData("public class Src { } public class Dst { }", "[BeforeMap(nameof(Before))]", "[Obsolete(\"Old\", true)] private static void Before(Src src, Dst dst) { }", "SMP0106")]
+    [InlineData("public class Src { } public class Dst { }", "[AfterMap(nameof(After))]", "[Obsolete(\"Old\", true)] private static void After(Src src, Dst dst) { }", "SMP0107")]
+    [InlineData("public class Src { public Child Item { get; set; } = new(); } public class Dst { public Child Item { get; set; } = new(); }", "[MapNested(\"Item\", Mapper = nameof(MapChild))]", "[Obsolete(\"Old\", true)] private static Child MapChild(Child source) => source;", "SMP0214")]
+    [InlineData("public class Src { public Child[] Items { get; set; } = []; } public class Dst { public Child[] Items { get; set; } = []; }", "[MapCollection(\"Items\", Mapper = nameof(MapChild))]", "[Obsolete(\"Old\", true)] private static Child MapChild(Child source) => source;", "SMP0213")]
     public void NamedObsoleteErrorMemberEmitsDiagnostic(string types, string attributes, string members, string id)
     {
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(types, attributes, "[Mapper(AutoMap = false)]", members));
@@ -163,6 +163,6 @@ public class ObsoleteMemberTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(
             "public class Src { public int A { get; set; } } public class Dst { [Obsolete(\"Old\")] public required int A { get; set; } }"));
 
-        Assert.Equal("SMP0303", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
+        Assert.Equal("SMP0308", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
     }
 }

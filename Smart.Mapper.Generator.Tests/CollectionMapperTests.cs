@@ -10,9 +10,11 @@ using Microsoft.CodeAnalysis;
 // used to create an empty collection, or fail on new T[]() and new (int, string)(). The collections are those of the
 // framework (System.Collections and the namespaces under it: lists, sets, dictionaries and their interfaces, the immutable,
 // frozen, concurrent and object model ones, and PriorityQueue<TElement, TPriority>, which does not implement IEnumerable),
-// classes deriving from one (class ItemList : List<Item>), and type parameters constrained to one (where T : List<Item>),
-// which the mapper maps by the members of the constraint. A type of its own that only implements IEnumerable<T>, such as
-// a page of items with its count, is mapped by its members, and so is a type parameter constrained to one.
+// the views over the elements of an array or of memory (ArraySegment<T>, Memory<T>, ReadOnlyMemory<T>, Span<T>,
+// ReadOnlySpan<T>), classes deriving from one (class ItemList : List<Item>), and type parameters constrained to one
+// (where T : List<Item>), which the mapper maps by the members of the constraint. A type of its own that only implements
+// IEnumerable<T>, such as a page of items with its count, is mapped by its members, and so is a type parameter
+// constrained to one.
 public class CollectionMapperTests
 {
     private static string Source(string declarations) =>
@@ -57,6 +59,10 @@ public class CollectionMapperTests
     [InlineData("[Mapper] public static partial (int Id, string Name) Map(Item source);", "(int Id, string Name)", "(int Id, string Name)")]
     [InlineData("[Mapper] public static partial Tuple<int, string> Map(Item source);", "Tuple<int, string>", "Tuple<int, string>")]
     [InlineData("[Mapper] public static partial ItemDto Map(PriorityQueue<Item, int> source);", "PriorityQueue<Item, int>", "PriorityQueue<Item, int> source")]
+    [InlineData("[Mapper] public static partial ItemDto Map(ArraySegment<Item> source);", "ArraySegment<Item>", "ArraySegment<Item> source")]
+    [InlineData("[Mapper] public static partial ItemDto Map(Memory<Item> source);", "Memory<Item>", "Memory<Item> source")]
+    [InlineData("[Mapper] public static partial ItemDto Map(ReadOnlyMemory<Item> source);", "ReadOnlyMemory<Item>", "ReadOnlyMemory<Item> source")]
+    [InlineData("[Mapper] public static partial ItemDto Map(ReadOnlySpan<Item> source);", "ReadOnlySpan<Item>", "ReadOnlySpan<Item> source")]
     [InlineData("[Mapper] public static partial PriorityQueue<ItemDto, int> Map(Item source);", "PriorityQueue<ItemDto, int>", "PriorityQueue<ItemDto, int>")]
     [InlineData("[Mapper] public static partial T Map<T>(Item source) where T : List<ItemDto>, new();", "T", "T")]
     [InlineData("[Mapper] public static partial PageDto Map<T>(T source) where T : IEnumerable<Item>;", "T", "T source")]

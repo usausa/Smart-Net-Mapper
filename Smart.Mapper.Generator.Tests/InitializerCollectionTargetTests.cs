@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis;
 // A return-type mapper sets an init-only member, or a required one the constructor called does not set, that
 // [MapNested] / [MapCollection] maps in its object initializer: the value is made before construction into a local,
 // as the one of a constructor argument is, with the null handling, the element annotations and the mappers of the
-// attributes as before. They used to be reported (SMP0212). A void mapper cannot assign an init-only member, which is
-// still reported (SMP0212), and InPlace cannot refill a required member made before construction (SMP0219), while it
+// attributes as before. They used to be reported (SMP0209). A void mapper cannot assign an init-only member, which is
+// still reported (SMP0209), and InPlace cannot refill a required member made before construction (SMP0208), while it
 // still refills the instance an init-only member holds.
 public class InitializerCollectionTargetTests
 {
@@ -123,9 +123,9 @@ public class InitializerCollectionTargetTests
     // A void mapper cannot assign an init-only member, and InPlace cannot refill a required member made before
     // construction
     [Theory]
-    [InlineData("public class Dst { public List<ItemDto> All { get; init; } = []; }", "[MapCollection(nameof(Dst.All), Mapper = nameof(MapItem))]", "public static partial void Map(Src src, Dst dst);", "SMP0212")]
-    [InlineData("public class Dst { public ItemDto? Head { get; init; } }", "[MapNested(nameof(Dst.Head), Mapper = nameof(MapItem))]", "public static partial void Map(Src src, Dst dst);", "SMP0212")]
-    [InlineData("public class Dst { public required List<ItemDto> All { get; set; } }", "[MapCollection(nameof(Dst.All), Mapper = nameof(MapItem), Strategy = CollectionStrategy.InPlace)]", "public static partial Dst Map(Src src);", "SMP0219")]
+    [InlineData("public class Dst { public List<ItemDto> All { get; init; } = []; }", "[MapCollection(nameof(Dst.All), Mapper = nameof(MapItem))]", "public static partial void Map(Src src, Dst dst);", "SMP0209")]
+    [InlineData("public class Dst { public ItemDto? Head { get; init; } }", "[MapNested(nameof(Dst.Head), Mapper = nameof(MapItem))]", "public static partial void Map(Src src, Dst dst);", "SMP0209")]
+    [InlineData("public class Dst { public required List<ItemDto> All { get; set; } }", "[MapCollection(nameof(Dst.All), Mapper = nameof(MapItem), Strategy = CollectionStrategy.InPlace)]", "public static partial Dst Map(Src src);", "SMP0208")]
     public void UnassignableTargetIsReported(string destination, string attributes, string mapper, string id)
     {
         var (_, problems) = Build(Source(destination, attributes, mapper));

@@ -99,7 +99,7 @@ public class NameComparisonScopeTests
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source("[Mapper(AutoMap = false, NameComparison = StringComparison.Ordinal)]", "[MapProperty(\"target\", nameof(Src.Value))]", Profile));
 
-        Assert.Equal("SMP0214", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
+        Assert.Equal("SMP0102", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
     }
 
     // Fields are matched ignoring case under the method's comparison, and Ordinal matches them exactly

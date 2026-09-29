@@ -4,7 +4,7 @@ using System.Globalization;
 
 // A dotted target going through a nullable struct (Location.Lat for a GeoPoint? Location) is not written into: the path
 // would write into the struct it holds, a copy read through Value that no setter takes back. It is reported as a target
-// that cannot be assigned (SMP0214), with a message saying so, where a dotted source reads through one. The other
+// that cannot be assigned (SMP0102), with a message saying so, where a dotted source reads through one. The other
 // targets that cannot be assigned keep the message they had.
 public class NullableStructTargetTests
 {
@@ -43,7 +43,7 @@ public class NullableStructTargetTests
         var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(Source(attributes)));
         var message = diagnostic.GetMessage(CultureInfo.InvariantCulture);
 
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.Contains(Message, message, StringComparison.Ordinal);
         Assert.Contains($"target=[{target}]", message, StringComparison.Ordinal);
     }
@@ -56,7 +56,7 @@ public class NullableStructTargetTests
             "[MapProperty(\"Location.Lat\", nameof(Src.Lat))]",
             "public static partial void Map(Src src, Dst dst);")));
 
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.Contains(Message, diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 
@@ -66,7 +66,7 @@ public class NullableStructTargetTests
     {
         var diagnostic = Assert.Single(GeneratorTestHelper.GetDiagnostics(Source("[MapProperty(\"Holder.Home.Lat\", nameof(Src.Lat))]")));
 
-        Assert.Equal("SMP0214", diagnostic.Id);
+        Assert.Equal("SMP0102", diagnostic.Id);
         Assert.DoesNotContain(Message, diagnostic.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
         Assert.DoesNotContain(GeneratorTestHelper.GetDiagnostics(Source("[MapProperty(nameof(Dst.Lat), \"Point.Lat\")]")), static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
     }

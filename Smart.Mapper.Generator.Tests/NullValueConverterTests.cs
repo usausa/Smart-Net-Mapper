@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 // NullValue with a converter method: a null source takes NullValue, and the converter, which takes the source as it
 // is, is called for a value only, in an assignment, a constructor argument and an object initializer alike. The
 // converter used to be called with null, and NullValue was left out without being checked; it is now checked as well
-// (SMP0218). NullBehavior.Skip still leaves the target as it is, NullValue aside.
+// (SMP0216). NullBehavior.Skip still leaves the target as it is, NullValue aside.
 public class NullValueConverterTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -84,6 +84,6 @@ public class NullValueConverterTests
     {
         var (_, problems) = Build(Source("[MapProperty(nameof(Dst.B), NullValue = \"x\", Converter = nameof(ToLength))]"));
 
-        Assert.Equal("SMP0218", Assert.Single(problems));
+        Assert.Equal("SMP0216", Assert.Single(problems));
     }
 }

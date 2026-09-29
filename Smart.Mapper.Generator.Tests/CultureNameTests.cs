@@ -6,7 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 
 // A culture names the field the generated code gets it into. One that is not a culture name (such as "en US")
-// broke that field's name in the generated code, and is reported (SMP0404), whether it comes from [Mapper],
+// broke that field's name in the generated code, and is reported (SMP0401), whether it comes from [Mapper],
 // [MapProperty] or [MapperProfile]. The field name of a culture name is always an identifier, and different
 // names get different fields: a hyphen becomes an underscore and the underscore of a sort order two.
 public class CultureNameTests
@@ -51,7 +51,7 @@ public class CultureNameTests
         var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(Source(attributes));
 
         var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
-        Assert.Equal("SMP0404", diagnostic.Id);
+        Assert.Equal("SMP0401", diagnostic.Id);
         Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
     }
 
@@ -60,7 +60,37 @@ public class CultureNameTests
     {
         var diagnostics = GeneratorTestHelper.GetDiagnostics(Source("[Mapper]", "[MapperProfile(Culture = \"en US\")]"));
 
-        Assert.Equal("SMP0404", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
+        Assert.Equal("SMP0401", Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal)).Id);
+    }
+
+    // The culture of the profile of the assembly is reported once, at the profile, and the mappers go without it
+    [Fact]
+    public void InvalidAssemblyProfileCultureNameIsReportedOnce()
+    {
+        const string source = """
+            using Smart.Mapper;
+            [assembly: MapperProfile(Culture = "en US")]
+            namespace Test;
+            public class Src { public int First { get; set; } }
+            public class Dst { public string First { get; set; } = ""; }
+            public static partial class M
+            {
+                [Mapper]
+                public static partial Dst Map(Src src);
+
+                [Mapper]
+                public static partial Dst Copy(Src src);
+            }
+            """;
+
+        var diagnostics = GeneratorTestHelper.GetDiagnosticsAll(source);
+
+        var diagnostic = Assert.Single(diagnostics, static d => d.Id.StartsWith("SMP", StringComparison.Ordinal));
+        Assert.Equal("SMP0401", diagnostic.Id);
+        Assert.True(diagnostic.Location.IsInSource);
+        Assert.Equal(1, diagnostic.Location.GetLineSpan().StartLinePosition.Line);
+        Assert.DoesNotContain(diagnostics, static d => IsGenerated(d));
+        Assert.Contains("__d.First = global::Smart.Mapper.DefaultValueConverter.ConvertToString(src.First);", GeneratorTestHelper.GetGeneratedSource(source), StringComparison.Ordinal);
     }
 
     [Theory]

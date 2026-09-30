@@ -105,7 +105,7 @@ internal sealed record PropertyMappingModel(
     EquatableArray<string> SourceEnumMembers = default,
     EquatableArray<string> DestEnumMembers = default,
     // Parallel to the member names: the number a member marked [Obsolete] is written as, cast to the enum
-    // type, as naming it warns (CS0618) or fails (CS0619); empty for a member written by its name
+    // type, as its name is not written (one obsolete as an error could not be, CS0619); empty for a member written by its name
     EquatableArray<string> SourceEnumCastValues = default,
     EquatableArray<string> DestEnumCastValues = default,
     // The attribute this was declared by, as its index in MapperMethodModel.AttributeLocations, which the

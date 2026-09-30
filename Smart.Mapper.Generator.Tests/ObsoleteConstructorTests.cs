@@ -7,9 +7,9 @@ using Microsoft.CodeAnalysis;
 // A constructor obsolete as a warning is called only when nothing else constructs the destination, a constructor the
 // mapping fills or one callable without arguments; a parameterless one obsolete as a warning does not count as a way
 // to construct without arguments then. It used to be called as any other, and the generated code warned (CS0618). A
-// type that constructs only through one still calls it, warning as before. The targets of the attributes choose before
-// an obsolete constructor is avoided, so one alone receiving the target of an attribute is called, warning as well,
-// where it used to be passed over for the target to be reported (SMP0102).
+// type that constructs only through one still calls it, and the generated file does not warn (it disables CS0612 /
+// CS0618). The targets of the attributes choose before an obsolete constructor is avoided, so one alone receiving the
+// target of an attribute is called as well, where it used to be passed over for the target to be reported (SMP0102).
 public class ObsoleteConstructorTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -60,7 +60,7 @@ public class ObsoleteConstructorTests
         Assert.Contains(expected, generated, StringComparison.Ordinal);
     }
 
-    // Nothing else constructs, so the obsolete one is called, warning as before
+    // Nothing else constructs, so the obsolete one is called
     [Theory]
     [InlineData(
         "public class Src { public int X { get; set; } } public class Dst { [Obsolete(\"For serializers\")] public Dst() { } public Dst(int a) { A = a; } public int A { get; set; } }",
@@ -72,7 +72,7 @@ public class ObsoleteConstructorTests
     {
         var (generated, problems) = Build(Source(types));
 
-        Assert.Equal("CS0618", Assert.Single(problems));
+        Assert.Empty(problems);
         Assert.Contains(expected, generated, StringComparison.Ordinal);
     }
 
@@ -84,7 +84,7 @@ public class ObsoleteConstructorTests
     {
         var (generated, problems) = Build(Source(types, "[MapProperty(\"A\", \"X\")]"));
 
-        Assert.Equal("CS0618", Assert.Single(problems));
+        Assert.Empty(problems);
         Assert.Contains("var __d = new global::Test.Dst(src.X);", generated, StringComparison.Ordinal);
     }
 

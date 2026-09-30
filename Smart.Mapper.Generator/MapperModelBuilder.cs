@@ -261,6 +261,15 @@ internal static partial class MapperModelBuilder
         // written in the attributes are resolved under that comparison
         model = ParseConverterAttributes(symbol, model);
 
+        if (model.NameComparison is < (int)StringComparison.CurrentCulture or > (int)StringComparison.OrdinalIgnoreCase)
+        {
+            return Results.Error<MapperMethodModel>(new DiagnosticInfo(
+                Diagnostics.UndefinedNameComparison,
+                syntax.Identifier.GetLocation(),
+                symbol.Name,
+                model.NameComparison.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
         // The CultureInfo parameter that may be null goes to a parameter not taking null as the culture the conversions
         // go with, which the culture of the method gives for null
         if (model.IsCultureParameterNullable && (model.CultureParameterName is { } culture))

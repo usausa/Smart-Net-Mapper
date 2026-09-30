@@ -7,7 +7,8 @@ using Microsoft.CodeAnalysis;
 // A property marked [Obsolete] is left out of the automatic mapping, as a source and as a destination, whether
 // obsolete as a warning or as an error (on the property, an accessor, or the property an override overrides), and
 // strict mode does not report it. It used to be mapped, and the generated code warned (CS0618) or failed (CS0619).
-// A member an attribute names is used when obsolete as a warning, warning as C# does, and reported with the existing
+// A member an attribute names is used when obsolete as a warning, without a warning in the generated file (which
+// disables CS0612 / CS0618 as the other generators do), and reported with the existing
 // diagnostic of the attribute when obsolete as an error: a property, a field, a segment of a dotted path, the method
 // of [MapFrom], and the methods of the mapper class the attributes name. An intermediate member of a dotted target is
 // not created through a constructor obsolete as an error.
@@ -69,7 +70,7 @@ public class ObsoleteMemberTests
         Assert.Empty(problems);
     }
 
-    // Named by an attribute, one obsolete as a warning is used, warning as C# does
+    // Named by an attribute, one obsolete as a warning is used, and the generated file does not warn
     [Theory]
     [InlineData(
         "public class Src { public int A { get; set; } } public class Dst { [Obsolete(\"Old\")] public int A { get; set; } }",
@@ -100,7 +101,7 @@ public class ObsoleteMemberTests
     {
         var (generated, problems) = Build(Source(types, attributes, "[Mapper(AutoMap = false)]", members));
 
-        Assert.Equal("CS0618", Assert.Single(problems));
+        Assert.Empty(problems);
         Assert.Contains(expected, generated, StringComparison.Ordinal);
     }
 
@@ -152,7 +153,7 @@ public class ObsoleteMemberTests
             "[MapProperty(\"Item.V\", \"V\")]",
             "[Mapper(AutoMap = false)]"));
 
-        Assert.Equal("CS0618", Assert.Single(problems));
+        Assert.Empty(problems);
         Assert.Contains("__d.Item ??= new global::Test.Holder();", generated, StringComparison.Ordinal);
     }
 

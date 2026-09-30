@@ -129,8 +129,8 @@ internal static class ConstantExpressionHelper
         (BitConverter.DoubleToInt64Bits(value) == Int64.MinValue) && (text[0] != '-') ? "-" + text : text;
 
     // A value is written as the first member declared with it, and as a cast of its number when no member has
-    // it. A member marked [Obsolete] is passed over, as naming it warns (CS0618) or fails (CS0619), so a value
-    // only such members have is written as a cast too.
+    // it. A member marked [Obsolete] is passed over, as its name is not written (one obsolete as an error could not
+    // be, CS0619), so a value only such members have is written as a cast too.
     private static string? FormatEnum(ITypeSymbol? type, object? value)
     {
         if ((type is not INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType) || !CanReferTo(enumType))

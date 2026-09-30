@@ -1603,8 +1603,8 @@ internal static partial class MapperModelBuilder
             string? converterMethod = null;
             string? conditionMethod = null;
 
-            // The automatic mapping leaves an obsolete property out (CS0618 / CS0619 otherwise), while one a
-            // [MapProperty] names is mapped
+            // The automatic mapping leaves an obsolete property out, while one a [MapProperty] names is mapped (one
+            // obsolete as an error could not be, CS0619)
             var isNamed = customMappings.ContainsKey(destProp.Name);
             if (!isNamed && (destProp.GetWriteObsoleteKind() != ObsoleteKind.None))
             {
@@ -1775,8 +1775,8 @@ internal static partial class MapperModelBuilder
         return members;
     }
 
-    // A member marked [Obsolete] is written as a cast of its number, as naming it warns (CS0618) or fails
-    // (CS0619); the matching by name stays as it is. Empty for a member written by its name.
+    // A member marked [Obsolete] is written as a cast of its number, as its name is not written (one obsolete as an
+    // error could not be, CS0619); the matching by name stays as it is. Empty for a member written by its name.
     private static string GetEnumCastValue(IFieldSymbol field) =>
         field.GetObsoleteKind() == ObsoleteKind.None ? string.Empty : ConstantExpressionHelper.FormatEnumNumber(field.ConstantValue) ?? string.Empty;
 

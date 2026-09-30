@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 // a conversion operator, a method of the [ValueConverter] / [CollectionConverter] class, the ToString(format,
 // provider) or Parse of the conversions, and the constructor a collection is created with. Another conversion takes
 // over when there is one, and otherwise the diagnostic of a conversion that is not there is reported. One obsolete as
-// a warning is still called, warning as C# does (CS0618).
+// a warning is still called, and the generated file does not warn (it disables CS0612 / CS0618).
 public class ObsoleteConversionTests
 {
     private static bool IsGenerated(Diagnostic diagnostic) =>
@@ -120,7 +120,7 @@ public class ObsoleteConversionTests
         var (generated, problems) = Build(Source(
             "public readonly struct Money { public decimal Value { get; init; } [Obsolete(\"Old\")] public static implicit operator decimal(Money m) => m.Value; } public class Src { public Money Amount { get; set; } } public class Dst { public decimal Amount { get; set; } }"));
 
-        Assert.Equal("CS0618", Assert.Single(problems));
+        Assert.Empty(problems);
         Assert.Contains("__d.Amount = src.Amount;", generated, StringComparison.Ordinal);
     }
 }

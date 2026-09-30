@@ -93,6 +93,24 @@ internal static class Diagnostics
         isEnabledByDefault: true,
         customTags: ErrorTags);
 
+    public static DiagnosticDescriptor UndefinedNameComparison { get; } = new(
+        id: "SMP0009",
+        title: "Undefined NameComparison value",
+        messageFormat: "NameComparison of [Mapper] or [MapperProfile] is not a defined StringComparison value. method=[{0}], value=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        customTags: ErrorTags);
+
+    public static DiagnosticDescriptor HintNameCollision { get; } = new(
+        id: "SMP0010",
+        title: "Type name differs only in case",
+        messageFormat: "Type name differs only in case from another type, and its source is not generated. type=[{0}], other=[{1}]",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        customTags: ErrorTags);
+
     // ==================================================================
     // SMP01xx — mapping attributes (targets, sources and the methods the attributes name)
     // ==================================================================

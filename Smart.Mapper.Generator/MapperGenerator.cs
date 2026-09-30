@@ -59,11 +59,15 @@ public sealed class MapperGenerator : IIncrementalGenerator
         // The source does not depend on the locations the diagnostics are reported at (the warnings, and the
         // attributes), which change as the code around them moves
         var groups = methodProvider.SelectMany(static (methods, _) =>
-            methods.SelectValue()
+        {
+            var collisions = FindHintNameCollisions(methods);
+            return methods.SelectValue()
+                .Where(x => !collisions.ContainsKey(GetHintName(x.Namespace, x.ClassName)))
                 .Select(static x => x with { Warnings = default, AttributeLocations = default })
                 .GroupBy(static x => new { x.Namespace, x.ClassName })
                 .Select(static g => new ClassMethodsModel(g.Key.Namespace, g.Key.ClassName, new EquatableArray<MapperMethodModel>(g)))
-                .ToImmutableArray());
+                .ToImmutableArray();
+        });
         context.RegisterImplementationSourceOutput(
             groups,
             static (context, group) => Execute(context, group));
@@ -84,19 +88,38 @@ public sealed class MapperGenerator : IIncrementalGenerator
     // Groups parsed mapper models by class, generates one source file per class, and reports diagnostics.
     private static void ReportDiagnostics(SourceProductionContext context, ImmutableArray<Result<MapperMethodModel>> methods, ImmutableArray<SyntaxTree> trees)
     {
-        foreach (var info in methods.SelectError())
+        var infos = methods.SelectError()
+            .Concat(methods.SelectValue().SelectMany(static x => x.Warnings))
+            .Concat(FindHintNameCollisions(methods).Values)
+            .Distinct();
+        foreach (var info in infos)
         {
             context.ReportDiagnostic(ToDiagnostic(info, trees));
         }
+    }
 
-        // Report the warnings of the models built without errors, at the method or the attribute they concern
-        foreach (var model in methods.SelectValue())
+    private static string GetHintName(string ns, string className) =>
+        HintNameBuilder.Build(ns, className);
+
+    private static Dictionary<string, DiagnosticInfo> FindHintNameCollisions(ImmutableArray<Result<MapperMethodModel>> methods)
+    {
+        var collisions = new Dictionary<string, DiagnosticInfo>(StringComparer.Ordinal);
+        var firsts = new Dictionary<string, (string HintName, string TypeName)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var method in methods.SelectValue().OrderBy(static x => GetHintName(x.Namespace, x.ClassName), StringComparer.Ordinal))
         {
-            foreach (var info in model.Warnings)
+            var hintName = GetHintName(method.Namespace, method.ClassName);
+            var typeName = String.IsNullOrEmpty(method.Namespace) ? method.ClassName : $"{method.Namespace}.{method.ClassName}";
+            if (!firsts.TryGetValue(hintName, out var first))
             {
-                context.ReportDiagnostic(ToDiagnostic(info, trees));
+                firsts.Add(hintName, (hintName, typeName));
+            }
+            else if ((first.HintName != hintName) && !collisions.ContainsKey(hintName))
+            {
+                collisions.Add(hintName, new DiagnosticInfo(Diagnostics.HintNameCollision, (Location?)null, typeName, first.TypeName));
             }
         }
+
+        return collisions;
     }
 
     // A diagnostic located in the syntax tree the model located it in: a location in a tree is what a #pragma
@@ -118,6 +141,6 @@ public sealed class MapperGenerator : IIncrementalGenerator
         var builder = new SourceBuilder();
         MapperSourceBuilder.BuildSource(builder, group.Methods);
 
-        context.AddSource(HintNameBuilder.Build(group.Namespace, group.ClassName), builder);
+        context.AddSource(GetHintName(group.Namespace, group.ClassName), builder);
     }
 }

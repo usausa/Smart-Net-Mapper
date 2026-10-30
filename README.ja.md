@@ -34,6 +34,7 @@ dotnet add package Usa.Smart.Mapper
 ## ドキュメント
 
 - [API リファレンス](docs/API.ja.md) - すべての属性と規則の詳細。自動マッピング、プロパティパス、コレクション、コンストラクタ、null の扱い、型変換、カルチャ、Strict モード、細かな場合まで
+- [Source Generator 詳細ソースリーディングガイド](docs/SourceGenerator-Guide.ja.md) - 処理フロー、メソッドの呼び出し関係、解析モデルと生成コードの対応。[全メソッド索引](docs/SourceGenerator-MethodIndex.ja.md)付き
 - [診断](Diagnostics.md)（英語） - コンパイル時の診断それぞれの原因と対処
 - [English](README.md)
 

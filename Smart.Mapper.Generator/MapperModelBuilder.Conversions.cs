@@ -1292,8 +1292,6 @@ internal static partial class MapperModelBuilder
             return model;
         }
 
-        // ReSharper disable UseCollectionExpression
-#pragma warning disable IDE0028
         return model with
         {
             PropertyMappings = updatedMappings is null ? model.PropertyMappings : new EquatableArray<PropertyMappingModel>(updatedMappings),
@@ -1307,8 +1305,6 @@ internal static partial class MapperModelBuilder
             IgnoredProperties = updatedIgnored is null ? model.IgnoredProperties : new EquatableArray<string>(updatedIgnored),
             IgnoreTargets = updatedIgnoreTargets is null ? model.IgnoreTargets : new EquatableArray<string>(updatedIgnoreTargets)
         };
-#pragma warning restore IDE0028
-        // ReSharper restore UseCollectionExpression
     }
 
     internal static DiagnosticInfo? ValidateExplicitPropertyMappings(
@@ -1878,9 +1874,7 @@ internal static partial class MapperModelBuilder
                     currentType = prop.Type;
                 }
             }
-#pragma warning disable IDE0028, IDE0306
             sourcePathSegments = new(sourceSegments);
-#pragma warning restore IDE0028, IDE0306
 
             var finalSourceProp = PropertyPathHelper.GetProperties(currentType, within, compilation, readable: true).FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
             if (finalSourceProp is not null)
@@ -2167,11 +2161,7 @@ internal static partial class MapperModelBuilder
             };
         }
 
-        // ReSharper disable UseCollectionExpression
-#pragma warning disable IDE0028
         return analyzed is null ? mappings : new EquatableArray<PropertyMappingModel>(analyzed);
-#pragma warning restore IDE0028
-        // ReSharper restore UseCollectionExpression
     }
 
     // The converter class of a mapper: the type a [ValueConverter] / [CollectionConverter] names with

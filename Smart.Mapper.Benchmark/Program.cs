@@ -201,9 +201,7 @@ public class CollectionMapBenchmark
     {
         source = new()
         {
-#pragma warning disable IDE0028
             Items = Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" }).ToList()
-#pragma warning restore IDE0028
         };
     }
 
@@ -214,11 +212,7 @@ public class CollectionMapBenchmark
         List<CollectionItemDestination> ret = default!;
         for (var i = 0; i < N; i++)
         {
-            // ReSharper disable UseCollectionExpression
-#pragma warning disable IDE0028
             ret = new(src.Items.Count);
-#pragma warning restore IDE0028
-            // ReSharper restore UseCollectionExpression
             foreach (var item in src.Items)
             {
                 ret.Add(new() { Id = item.Id, Label = item.Label });
@@ -262,9 +256,7 @@ public class CollectionListMapBenchmark
     [GlobalSetup]
     public void Setup()
     {
-#pragma warning disable IDE0028
         sourceItems = Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" }).ToList();
-#pragma warning restore IDE0028
     }
 
     // 手書き代入（インライン）— 呼び出し側でリスト管理
@@ -329,9 +321,7 @@ public class CollectionWrapperMapBenchmark
     {
         source = new()
         {
-#pragma warning disable IDE0028
             Items = Enumerable.Range(1, ItemCount).Select(i => new CollectionItemSource { Id = i, Label = $"Item{i}" }).ToList()
-#pragma warning restore IDE0028
         };
     }
 

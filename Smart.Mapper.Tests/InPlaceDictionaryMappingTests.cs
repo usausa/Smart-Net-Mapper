@@ -22,7 +22,7 @@ public class InPlaceDictionaryMappingTests
     [Fact]
     public void InstanceIsRefilled()
     {
-        var items = new SortedDictionary<string, ReferenceElementItemDto> { ["old"] = new() };
+        var items = new SortedDictionary<string, ReferenceElementItemDto>(StringComparer.Ordinal) { ["old"] = new() };
         var destination = new InPlaceDictionaryDestination { Items = items };
 
         TestMappers.MapInPlaceDictionary(new InPlaceDictionarySource { Items = { ["b"] = new ReferenceElementItem { Value = 2 } } }, destination);

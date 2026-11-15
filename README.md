@@ -389,7 +389,7 @@ dotnet run --project Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.c
 
 # NativeAOT smoke tests (Smart.Mapper.AotTests): publish with the RID of your platform (win-x64, linux-x64, ...) and run
 dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r win-x64
-.\Smart.Mapper.AotTests\bin\Release\net10.0\win-x64\publish\Smart.Mapper.AotTests.exe
+.\Smart.Mapper.AotTests\bin\Release\net11.0\win-x64\publish\Smart.Mapper.AotTests.exe
 ```
 
 `dotnet test` is not supported on .NET 10 SDK due to a Microsoft Testing Platform / VSTest incompatibility; use `dotnet run --project`, or Visual Studio Test Explorer. The AOT smoke test prints `[OK]` for each of its 8 scenarios (basic void mapping, basic return mapping, type conversion, enum mapping, null handling, nested property mapping, collection mapping and a custom value converter) and ends with `All AOT smoke tests passed.`; a failure prints `FAIL: <message>` to standard error and exits with a non-zero code. The publish output should show no `IL2xxx` / `IL3xxx` warnings (`dotnet publish ... 2>&1 | Select-String "IL2|IL3"`).

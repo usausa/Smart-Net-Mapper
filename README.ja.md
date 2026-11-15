@@ -28,7 +28,7 @@ dotnet add package Usa.Smart.Mapper
 
 | ライブラリ | フレームワーク |
 |-----------|--------------|
-| `Smart.Mapper` | net10.0, net9.0, net8.0 |
+| `Smart.Mapper` | net11.0, net10.0 |
 | `Smart.Mapper.Generator` | netstandard2.0 (Roslyn Incremental Source Generator) |
 
 ## ドキュメント
@@ -397,7 +397,7 @@ dotnet run --project Smart.Mapper.Generator.Tests/Smart.Mapper.Generator.Tests.c
 
 # NativeAOT スモークテスト（Smart.Mapper.AotTests）: 実行環境の RID（win-x64・linux-x64 など）で発行して実行
 dotnet publish Smart.Mapper.AotTests/Smart.Mapper.AotTests.csproj -c Release -r win-x64
-.\Smart.Mapper.AotTests\bin\Release\net10.0\win-x64\publish\Smart.Mapper.AotTests.exe
+.\Smart.Mapper.AotTests\bin\Release\net11.0\win-x64\publish\Smart.Mapper.AotTests.exe
 ```
 
 .NET 10 SDK では Microsoft Testing Platform と VSTest の非互換により `dotnet test` を使えません。`dotnet run --project` か、Visual Studio のテストエクスプローラーを使ってください。AOT スモークテストは 8 つのシナリオ（基本の void マッピング、基本の戻り値マッピング、型変換、enum のマッピング、null の扱い、ネストプロパティマッピング、コレクションマッピング、カスタム型変換器）ごとに `[OK]` を出力し、最後に `All AOT smoke tests passed.` を出力します。失敗した場合は標準エラーに `FAIL: <message>` を出力し、非ゼロの終了コードで終了します。発行の出力に `IL2xxx` / `IL3xxx` の警告が出ないことも確認します（`dotnet publish ... 2>&1 | Select-String "IL2|IL3"`）。

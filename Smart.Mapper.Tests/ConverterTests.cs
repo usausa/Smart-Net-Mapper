@@ -41,14 +41,14 @@ public class SpecializedConverterTests
     [Fact]
     public void MapWithSpecializedConverterUsesSpecializedMethodsWhenAvailable()
     {
-        var source = new SpecializedConverterSource { StringValue = "42", IntValue = 100, DoubleValue = 3.14 };
+        var source = new SpecializedConverterSource { StringValue = "42", IntValue = 100, DoubleValue = 2.5 };
         var destination = new SpecializedConverterDestination();
 
         TestMappers.MapWithSpecializedConverter(source, destination);
 
         Assert.Equal(1042, destination.StringValue);
         Assert.Equal("SPEC_100", destination.IntValue);
-        Assert.Equal(3.14m, destination.DoubleValue);
+        Assert.Equal(2.5m, destination.DoubleValue);
     }
 }
 

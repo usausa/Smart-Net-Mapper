@@ -156,11 +156,13 @@ public class NestedMapBenchmark
             {
                 Id = src.Id,
                 Name = src.Name,
-                Address = src.Address is null ? null : new AddressDestination
-                {
-                    City = src.Address.City,
-                    ZipCode = src.Address.ZipCode
-                }
+                Address = src.Address is null
+                    ? null
+                    : new AddressDestination
+                    {
+                        City = src.Address.City,
+                        ZipCode = src.Address.ZipCode
+                    }
             };
         }
         return ret;
@@ -394,11 +396,13 @@ public class VoidNestedMapBenchmark
             {
                 Id = src.Id,
                 Name = src.Name,
-                Address = src.Address is null ? null : new AddressDestination
-                {
-                    City = src.Address.City,
-                    ZipCode = src.Address.ZipCode
-                }
+                Address = src.Address is null
+                    ? null
+                    : new AddressDestination
+                    {
+                        City = src.Address.City,
+                        ZipCode = src.Address.ZipCode
+                    }
             };
         }
         return ret;

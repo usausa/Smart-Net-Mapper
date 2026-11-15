@@ -176,7 +176,8 @@ internal static partial class MapperModelBuilder
             return Results.Error<MapperMethodModel>(new DiagnosticInfo(
                 Diagnostics.CollectionMapper,
                 isSource ? syntax.ParameterList.Parameters[0].GetLocation() :
-                returnsDestination ? syntax.ReturnType.GetLocation() : syntax.ParameterList.Parameters[1].GetLocation(),
+                returnsDestination ? syntax.ReturnType.GetLocation() :
+                syntax.ParameterList.Parameters[1].GetLocation(),
                 symbol.Name,
                 type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }
@@ -248,8 +249,8 @@ internal static partial class MapperModelBuilder
             ReturnsDestination: returnsDestination,
             ReturnNotNullIfNotNull: returnsDestination && MayBeNullReference(sourceParam.Type) && symbol.ReturnType.IsNullableType() &&
                                     CanApplyNotNullIfNotNull(context.SemanticModel.Compilation, containingType)
-                ? sourceParam.Name
-                : null,
+                                        ? sourceParam.Name
+                                        : null,
             CultureParameterName: cultureParameterName,
             IsCultureParameterNullable: isCultureParameterNullable,
             IsInstance: !symbol.IsStatic,
@@ -1030,8 +1031,8 @@ internal static partial class MapperModelBuilder
             result[i] = (customParams[index].NonNullArgument is not null) &&
                         (parameter.RefKind is RefKind.None or RefKind.In) &&
                         (parameter.NullableAnnotation == NullableAnnotation.NotAnnotated)
-                ? ~index
-                : index;
+                            ? ~index
+                            : index;
         }
 
         return result;

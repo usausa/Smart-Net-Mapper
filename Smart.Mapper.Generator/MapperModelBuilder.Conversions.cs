@@ -1351,7 +1351,7 @@ internal static partial class MapperModelBuilder
             // parameter of the constructor that construction will actually call. Matching mirrors the
             // argument-binding loop, so anything accepted here is guaranteed to be consumed rather than
             // silently dropped.
-            var targetProperty = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
+            var targetProperty = PropertyPathHelper.FindProperty(destinationProperties, mapping.TargetPath, StringComparison.Ordinal);
             if (((targetProperty is null) || !CanAssignFromMapper(targetProperty, destinationType, within, compilation)) &&
                 !IsConstructorParameterTarget(effectiveConstructor, mapping.TargetPath, nameComparison))
             {
@@ -1534,7 +1534,7 @@ internal static partial class MapperModelBuilder
                 // assignment and produce code that cannot compile (CS8852).
                 if (!mapping.TargetPath.Contains('.'))
                 {
-                    var nestedTargetProp = destinationProperties.FirstOrDefault(p => String.Equals(p.Name, mapping.TargetPath, StringComparison.Ordinal));
+                    var nestedTargetProp = PropertyPathHelper.FindProperty(destinationProperties, mapping.TargetPath, StringComparison.Ordinal);
                     if (nestedTargetProp is not null)
                     {
                         mapping = mapping with
@@ -1863,7 +1863,7 @@ internal static partial class MapperModelBuilder
                 var part = sourceParts[i];
                 pathBuilder.Add(part);
 
-                var prop = PropertyPathHelper.GetProperties(currentType, within, compilation, readable: true).FirstOrDefault(p => p.Name == part);
+                var prop = PropertyPathHelper.FindPropertyOrdinal(currentType, part, within, compilation, readable: true);
                 if (prop is not null)
                 {
                     var isNullable = MayBeNullMember(prop);
@@ -1876,7 +1876,7 @@ internal static partial class MapperModelBuilder
             }
             sourcePathSegments = new(sourceSegments);
 
-            var finalSourceProp = PropertyPathHelper.GetProperties(currentType, within, compilation, readable: true).FirstOrDefault(p => p.Name == sourceParts[sourceParts.Length - 1]);
+            var finalSourceProp = PropertyPathHelper.FindPropertyOrdinal(currentType, sourceParts[sourceParts.Length - 1], within, compilation, readable: true);
             if (finalSourceProp is not null)
             {
                 sourceTypeName = finalSourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1887,7 +1887,7 @@ internal static partial class MapperModelBuilder
         }
         else
         {
-            var sourceProp = PropertyPathHelper.GetProperties(sourceType, within, compilation, readable: true).FirstOrDefault(p => p.Name == mapping.SourcePath);
+            var sourceProp = PropertyPathHelper.FindPropertyOrdinal(sourceType, mapping.SourcePath, within, compilation, readable: true);
             if (sourceProp is not null)
             {
                 sourceTypeName = sourceProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1914,7 +1914,7 @@ internal static partial class MapperModelBuilder
                 currentTargetType = GetMemberType(targetMembers[targetMembers.Count - 2])!;
             }
 
-            var finalProp = PropertyPathHelper.GetProperties(currentTargetType, within, compilation).FirstOrDefault(p => p.Name == targetParts[targetParts.Length - 1]);
+            var finalProp = PropertyPathHelper.FindPropertyOrdinal(currentTargetType, targetParts[targetParts.Length - 1], within, compilation);
             if (finalProp is not null)
             {
                 targetTypeName = finalProp.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -1926,7 +1926,7 @@ internal static partial class MapperModelBuilder
         else
         {
             var targetMemberType = targetTypeOverride ??
-                                   PropertyPathHelper.GetProperties(destinationType, within, compilation).FirstOrDefault(p => p.Name == mapping.TargetPath)?.Type;
+                                   PropertyPathHelper.FindPropertyOrdinal(destinationType, mapping.TargetPath, within, compilation)?.Type;
             if (targetMemberType is not null)
             {
                 targetTypeName = targetMemberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);

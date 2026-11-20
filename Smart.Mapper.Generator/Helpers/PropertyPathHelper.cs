@@ -91,11 +91,19 @@ internal static class PropertyPathHelper
     // class ask for the same ones many times. The type is compared with its nullable annotations, which the types of
     // its members carry (List<string?>). The table lets go of them with the compilation, the dictionary takes lookups
     // made at the same time, and the list returned cannot be changed, as every caller shares it.
-    public static IReadOnlyList<IPropertySymbol> GetProperties(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation, bool readable = false) =>
-        PropertiesCache.GetValue(compilation, static _ => new ConcurrentDictionary<PropertiesKey, IReadOnlyList<IPropertySymbol>>())
-            .GetOrAdd(new PropertiesKey(type, within, readable), key => CollectProperties(key.Type, key.Within, compilation, key.Readable));
+    public static ImmutableArray<IPropertySymbol> GetProperties(ITypeSymbol type, INamedTypeSymbol within, Compilation compilation, bool readable = false)
+    {
+        var cache = PropertiesCache.GetValue(compilation, static _ => new ConcurrentDictionary<PropertiesKey, ImmutableArray<IPropertySymbol>>());
+        var key = new PropertiesKey(type, within, readable);
+        if (cache.TryGetValue(key, out var properties))
+        {
+            return properties;
+        }
 
-    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<PropertiesKey, IReadOnlyList<IPropertySymbol>>> PropertiesCache = new();
+        return cache.GetOrAdd(key, CollectProperties(type, within, compilation, readable));
+    }
+
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<PropertiesKey, ImmutableArray<IPropertySymbol>>> PropertiesCache = new();
 
     private readonly struct PropertiesKey : IEquatable<PropertiesKey>
     {
@@ -176,7 +184,23 @@ internal static class PropertyPathHelper
 
     // Single lookup primitive every resolver in this class goes through
     private static IPropertySymbol? FindPropertyCore(ITypeSymbol type, string name, StringComparison comparison, INamedTypeSymbol within, Compilation compilation, bool readable) =>
-        GetProperties(type, within, compilation, readable).FirstOrDefault(p => String.Equals(p.Name, name, comparison));
+        FindProperty(GetProperties(type, within, compilation, readable), name, comparison);
+
+    public static IPropertySymbol? FindProperty(ImmutableArray<IPropertySymbol> properties, string name, StringComparison comparison)
+    {
+        foreach (var property in properties)
+        {
+            if (String.Equals(property.Name, name, comparison))
+            {
+                return property;
+            }
+        }
+
+        return null;
+    }
+
+    public static IPropertySymbol? FindPropertyOrdinal(ITypeSymbol type, string name, INamedTypeSymbol within, Compilation compilation, bool readable = false) =>
+        FindPropertyCore(type, name, StringComparison.Ordinal, within, compilation, readable);
 
     // Resolves a property by name, preferring an exact ordinal match before falling back to the
     // mapper's configured name comparison. Exact-first keeps the result deterministic when a type
